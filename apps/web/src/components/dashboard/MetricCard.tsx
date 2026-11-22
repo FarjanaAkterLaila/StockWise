@@ -1,5 +1,5 @@
 import React from 'react';
-import type { MetricSummary } from '../../types';
+import type { MetricSummary } from '@/types';
 import { 
   DollarSign, 
   ShoppingCart, 

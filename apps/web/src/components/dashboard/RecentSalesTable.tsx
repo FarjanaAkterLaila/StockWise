@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import type { RecentSale, PaymentStatus } from '../../types';
-import { Badge } from '../common/Badge';
-import { Card } from '../common/Card';
-import { 
-  ArrowUpRight, 
-  Search, 
-  CreditCard, 
-  Banknote, 
-  Building2, 
+import type { RecentSale, PaymentStatus } from '@/types';
+import { Badge } from '@/components/common/Badge';
+import { Card } from '@/components/common/Card';
+import {
+  ArrowUpRight,
+  Search,
+  CreditCard,
+  Banknote,
+  Building2,
   Smartphone,
   Eye,
   Filter
@@ -68,7 +68,7 @@ export const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const filteredSales = sales.filter((sale) => {
-    const matchesSearch = 
+    const matchesSearch =
       sale.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sale.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sale.itemsSummary.toLowerCase().includes(searchTerm.toLowerCase());
@@ -102,7 +102,7 @@ export const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
 
         <FilterBox>
           <Filter size={14} />
-          <FilterSelect 
+          <FilterSelect
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
@@ -184,7 +184,7 @@ export const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
                       </DateBlock>
                     </TableCell>
                     <TableCell $align="right">
-                      <ActionIconButton 
+                      <ActionIconButton
                         title={`View receipt for ${sale.invoiceNumber}`}
                         type="button"
                       >

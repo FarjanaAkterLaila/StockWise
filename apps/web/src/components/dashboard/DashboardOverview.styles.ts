@@ -95,48 +95,26 @@ export const BannerButton = styled.button<{ $variant?: 'primary' | 'outline' }>`
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
-
   ${({ $variant, theme }) =>
     $variant === 'outline'
-      ? `
-        background: rgba(255, 255, 255, 0.15);
-        color: #ffffff;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        &:hover {
-          background: rgba(255, 255, 255, 0.25);
-        }
-      `
-      : `
-        background-color: ${theme.colors.primary};
-        color: #ffffff;
-        border: 1px solid transparent;
-        &:hover {
-          background-color: ${theme.colors.primaryHover};
-          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
-        }
-      `}
+      ? `background: rgba(255, 255, 255, 0.08); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.25); &:hover { background: rgba(255, 255, 255, 0.15); }`
+      : `background-color: #ffffff; color: ${theme.colors.primaryHover}; border: 1px solid #ffffff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); &:hover { background-color: #f8fafc; transform: translateY(-1px); }`}
 `;
 
 export const MetricsGrid = styled.section`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
+  gap: 20px;
   margin-bottom: 24px;
-
-  ${({ theme }) => theme.media.desktopLg} {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  ${({ theme }) => theme.media.mobile} {
-    grid-template-columns: 1fr;
-  }
+  ${({ theme }) => theme.media.desktopLg} { grid-template-columns: repeat(2, 1fr); }
+  ${({ theme }) => theme.media.mobile} { grid-template-columns: 1fr; }
 `;
 
 export const QuickOpsBar = styled.section`
   background-color: ${({ theme }) => theme.colors.background};
   border: 1px solid ${({ theme }) => theme.colors.borderCard};
   border-radius: ${({ theme }) => theme.radius.lg};
-  padding: 16px 20px;
+  padding: 20px 22px;
   margin-bottom: 24px;
   box-shadow: ${({ theme }) => theme.shadows.card};
 `;
@@ -145,35 +123,33 @@ export const QuickOpsHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 `;
 
-export const QuickOpsTitle = styled.span`
-  font-size: 12.5px;
+export const QuickOpsTitle = styled.h3`
+  font-size: 14px;
   font-weight: 700;
-  color: ${({ theme }) => theme.colors.textSecondary};
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: ${({ theme }) => theme.colors.textPrimary};
+  display: flex;
+  align-items: center;
+  gap: 8px;
 `;
 
 export const QuickOpsBadge = styled.span`
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
-  color: ${({ theme }) => theme.colors.textMuted};
+  color: ${({ theme }) => theme.colors.primary};
+  background-color: ${({ theme }) => theme.colors.primaryLight};
+  padding: 3px 8px;
+  border-radius: ${({ theme }) => theme.radius.sm};
 `;
 
 export const QuickOpsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
-
-  ${({ theme }) => theme.media.desktopLg} {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  ${({ theme }) => theme.media.mobile} {
-    grid-template-columns: 1fr;
-  }
+  ${({ theme }) => theme.media.desktopLg} { grid-template-columns: repeat(2, 1fr); }
+  ${({ theme }) => theme.media.mobile} { grid-template-columns: 1fr; }
 `;
 
 export const QuickOpButton = styled.button`
@@ -187,7 +163,6 @@ export const QuickOpButton = styled.button`
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
-
   &:hover {
     background-color: #ffffff;
     border-color: ${({ theme }) => theme.colors.primary};
@@ -204,20 +179,14 @@ export const QuickOpIconWrap = styled.div<{ $colorVariant: 'emerald' | 'indigo' 
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-
-  ${({ $colorVariant, theme }) => {
-    switch ($colorVariant) {
-      case 'emerald':
-        return `background-color: ${theme.colors.successLight}; color: ${theme.colors.success};`;
-      case 'amber':
-        return `background-color: ${theme.colors.warningLight}; color: ${theme.colors.warning};`;
-      case 'rose':
-        return `background-color: ${theme.colors.dangerLight}; color: ${theme.colors.danger};`;
-      case 'indigo':
-      default:
-        return `background-color: ${theme.colors.primaryLight}; color: ${theme.colors.primary};`;
-    }
-  }}
+  background-color: ${({ $colorVariant, theme }) =>
+    $colorVariant === 'emerald' ? theme.colors.successLight :
+    $colorVariant === 'amber' ? theme.colors.warningLight :
+    $colorVariant === 'rose' ? theme.colors.dangerLight : theme.colors.primaryLight};
+  color: ${({ $colorVariant, theme }) =>
+    $colorVariant === 'emerald' ? theme.colors.success :
+    $colorVariant === 'amber' ? theme.colors.warning :
+    $colorVariant === 'rose' ? theme.colors.danger : theme.colors.primary};
 `;
 
 export const QuickOpText = styled.div`
@@ -241,14 +210,10 @@ export const SplitGrid = styled.section`
   grid-template-columns: 1fr 420px;
   gap: 20px;
   margin-bottom: 24px;
-
-  ${({ theme }) => theme.media.desktopLg} {
-    grid-template-columns: 1fr;
-  }
+  ${({ theme }) => theme.media.desktopLg} { grid-template-columns: 1fr; }
 `;
 
 export const SplitLeft = styled.div``;
-
 export const SplitRight = styled.div``;
 
 export const StatsStrip = styled.section`
@@ -269,24 +234,15 @@ export const StatsStripHeader = styled.div`
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 14px;
-
-  svg {
-    color: ${({ theme }) => theme.colors.primary};
-  }
+  svg { color: ${({ theme }) => theme.colors.primary}; }
 `;
 
 export const StatsStripGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 18px;
-
-  ${({ theme }) => theme.media.desktopLg} {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  ${({ theme }) => theme.media.mobile} {
-    grid-template-columns: 1fr;
-  }
+  ${({ theme }) => theme.media.desktopLg} { grid-template-columns: repeat(2, 1fr); }
+  ${({ theme }) => theme.media.mobile} { grid-template-columns: 1fr; }
 `;
 
 export const StatsStripItem = styled.div`

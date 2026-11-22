@@ -1,7 +1,7 @@
 import React from 'react';
-import type { LowStockProduct } from '../../types';
-import { Card } from '../common/Card';
-import { Badge } from '../common/Badge';
+import type { LowStockProduct } from '@/types';
+import { Card } from '@/components/common/Card';
+import { Badge } from '@/components/common/Badge';
 import { 
   AlertTriangle, 
   ArrowRight, 

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { MetricSummary, RecentSale, LowStockProduct, ComputerShopQuickStat } from '../../types';
+import type { MetricSummary, RecentSale, LowStockProduct, ComputerShopQuickStat } from '@/types';
 import { MetricCard } from './MetricCard';
 import { RecentSalesTable } from './RecentSalesTable';
 import { LowStockAlert } from './LowStockAlert';

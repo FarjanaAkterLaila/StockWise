@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import type { NavModule, LowStockProduct } from './types';
-import { AppLayout } from './components/layout/AppLayout';
-import { DashboardOverview } from './components/dashboard/DashboardOverview';
-import { ModulePlaceholder } from './components/common/ModulePlaceholder';
+import type { NavModule, LowStockProduct } from '@/types';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { DashboardOverview } from '@/components/dashboard/DashboardOverview';
+import { InventoryModule } from '@/components/inventory/InventoryModule';
+import { ModulePlaceholder } from '@/components/common/ModulePlaceholder';
 import { 
   METRIC_SUMMARIES, 
   RECENT_SALES, 
   LOW_STOCK_PRODUCTS, 
   SHOP_QUICK_STATS 
-} from './data/mockData';
+} from '@/data/mockData';
 
 export function App() {
   const [activeModule, setActiveModule] = useState<NavModule>('dashboard');
@@ -39,6 +40,8 @@ export function App() {
           onQuickSale={handleQuickSale}
           onRestockProduct={handleRestockProduct}
         />
+      ) : activeModule === 'inventory' ? (
+        <InventoryModule />
       ) : (
         <ModulePlaceholder
           module={activeModule}

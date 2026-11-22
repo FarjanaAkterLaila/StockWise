@@ -1,13 +1,13 @@
 import React from 'react';
-import type { NavModule } from '../../types';
-import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  ShoppingBag, 
-  Package, 
-  WalletCards, 
-  Monitor, 
-  Cpu, 
+import type { NavModule } from '@/types';
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  ShoppingBag,
+  Package,
+  WalletCards,
+  Monitor,
+  Cpu,
   ChevronRight,
   Sparkles,
   ShieldCheck,

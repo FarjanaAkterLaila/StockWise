@@ -1,5 +1,5 @@
 import React from 'react';
-import type { NavModule } from '../../types';
+import type { NavModule } from '@/types';
 import { Badge } from './Badge';
 import { 
   ShoppingCart, 

@@ -2,7 +2,6 @@ import styled, { css } from 'styled-components';
 
 export const Backdrop = styled.div<{ $isOpen: boolean }>`
   display: none;
-
   ${({ theme }) => theme.media.tablet} {
     display: block;
     position: fixed;
@@ -56,11 +55,7 @@ export const LogoWrap = styled.div`
   justify-content: center;
   color: #ffffff;
   box-shadow: 0 4px 10px rgba(79, 70, 229, 0.35);
-
-  svg {
-    width: 22px;
-    height: 22px;
-  }
+  svg { width: 22px; height: 22px; }
 `;
 
 export const BrandText = styled.div`
@@ -99,10 +94,7 @@ export const MobileCloseButton = styled.button`
   color: #94a3b8;
   cursor: pointer;
   margin-left: auto;
-
-  ${({ theme }) => theme.media.tablet} {
-    display: block;
-  }
+  ${({ theme }) => theme.media.tablet} { display: block; }
 `;
 
 export const StoreInfoBox = styled.div`
@@ -215,10 +207,7 @@ export const NavLinkLeft = styled.span`
   display: flex;
   align-items: center;
   gap: 12px;
-
-  svg {
-    flex-shrink: 0;
-  }
+  svg { flex-shrink: 0; }
 `;
 
 export const NavLinkRight = styled.span`
@@ -232,18 +221,12 @@ export const SidebarBadge = styled.span<{ $variant?: 'primary' | 'warning' | 'da
   font-weight: 700;
   padding: 2px 7px;
   border-radius: ${({ theme }) => theme.radius.full};
-
-  ${({ $variant }) => {
-    switch ($variant) {
-      case 'warning':
-        return 'background-color: rgba(245, 158, 11, 0.2); color: #fbbf24;';
-      case 'danger':
-        return 'background-color: rgba(225, 29, 72, 0.2); color: #fda4af;';
-      case 'primary':
-      default:
-        return 'background-color: rgba(99, 102, 241, 0.2); color: #a5b4fc;';
-    }
-  }}
+  background-color: ${({ $variant }) =>
+    $variant === 'warning' ? 'rgba(245, 158, 11, 0.2)' :
+    $variant === 'danger' ? 'rgba(225, 29, 72, 0.2)' : 'rgba(99, 102, 241, 0.2)'};
+  color: ${({ $variant }) =>
+    $variant === 'warning' ? '#fbbf24' :
+    $variant === 'danger' ? '#fda4af' : '#a5b4fc'};
 `;
 
 export const SidebarFooter = styled.div`

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { NavModule } from '../../types';
+import type { NavModule } from '@/types';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import {
