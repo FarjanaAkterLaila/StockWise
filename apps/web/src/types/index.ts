@@ -43,6 +43,21 @@ export interface LowStockProduct {
   urgency: StockUrgency;
 }
 
+export interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  barcode?: string;
+  category: string;
+  costPrice: number;
+  sellingPrice: number;
+  stockQuantity: number;
+  minStockLevel: number;
+  unit: string;
+  status: 'active' | 'inactive';
+  description?: string;
+}
+
 export interface ComputerShopQuickStat {
   label: string;
   value: string;
