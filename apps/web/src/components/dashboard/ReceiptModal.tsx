@@ -1,12 +1,8 @@
 import React from "react";
 import type { RecentSale, PaymentStatus } from "@/types";
-import { GenericModal } from "@/components/common/GenericModal";
+import { ViewModal } from "@/components/common/ViewModal";
 import { Badge } from "@/components/common/Badge";
-import {
-  formatCurrency,
-  formatDate,
-  triggerPrintModal,
-} from "@/utils/formatters";
+import { formatCurrency, formatDate } from "@/utils/formatters";
 import { BADGE_VARIANTS, PAYMENT_STATUS } from "@/utils/constants";
 import {
   Building2,
@@ -14,12 +10,10 @@ import {
   CreditCard,
   Banknote,
   Smartphone,
-  Printer,
   Package,
   Layers,
 } from "lucide-react";
 import {
-  ReceiptContainer,
   ReceiptHeader,
   StoreInfo,
   StoreName,
@@ -37,9 +31,6 @@ import {
   TotalsBox,
   TotalRow,
   PrintNotice,
-  ModalActionsRow,
-  PrintBtn,
-  CloseBtn,
 } from "./ReceiptModal.styles";
 
 interface ReceiptModalProps {
@@ -77,130 +68,111 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
     .map((item) => item.trim())
     .filter(Boolean);
 
-  const handlePrint = () => {
-    triggerPrintModal();
-  };
-
   return (
-    <GenericModal
+    <ViewModal
       isOpen={isOpen}
       onClose={onClose}
       title={`Sales Receipt • ${sale.invoiceNumber}`}
       subtitle={`Billing details for POS transaction on ${formatDate(sale.date)}`}
       size="md"
-      footer={
-        <ModalActionsRow className="no-print">
-          <CloseBtn type="button" onClick={onClose}>
-            Close
-          </CloseBtn>
-          <PrintBtn type="button" onClick={handlePrint}>
-            <Printer size={15} />
-            <span>Print Receipt</span>
-          </PrintBtn>
-        </ModalActionsRow>
-      }
+      printLabel="Print Receipt"
     >
-      <ReceiptContainer id="printable-receipt" className="printable-receipt">
-        {/* Store & Header */}
-        <ReceiptHeader>
-          <StoreInfo>
-            <StoreName>
-              <Building2 size={16} />
-              <span>StockWise Computer Hub BD</span>
-            </StoreName>
-            <StoreAddress>
-              Shop 412, Level 4, Multiplan Center, New Elephant Road, Dhaka
-            </StoreAddress>
-          </StoreInfo>
+      <ReceiptHeader>
+        <StoreInfo>
+          <StoreName>
+            <Building2 size={16} />
+            <span>StockWise Computer Hub BD</span>
+          </StoreName>
+          <StoreAddress>
+            Shop 412, Level 4, Multiplan Center, New Elephant Road, Dhaka
+          </StoreAddress>
+        </StoreInfo>
 
-          <ReceiptBadgeGroup>
-            <InvoiceTag>{sale.invoiceNumber}</InvoiceTag>
-            <Badge variant={STATUS_VARIANT[sale.paymentStatus]} size="sm" dot>
-              {sale.paymentStatus.toUpperCase()}
+        <ReceiptBadgeGroup>
+          <InvoiceTag>{sale.invoiceNumber}</InvoiceTag>
+          <Badge variant={STATUS_VARIANT[sale.paymentStatus]} size="sm" dot>
+            {sale.paymentStatus.toUpperCase()}
+          </Badge>
+        </ReceiptBadgeGroup>
+      </ReceiptHeader>
+
+      <DetailsGrid>
+        <DetailCard>
+          <DetailLabel>Customer</DetailLabel>
+          <DetailValue>
+            <span>{sale.customerName}</span>
+            <Badge variant="neutral" size="sm">
+              {sale.customerType}
             </Badge>
-          </ReceiptBadgeGroup>
-        </ReceiptHeader>
+          </DetailValue>
+        </DetailCard>
 
-        <DetailsGrid>
-          <DetailCard>
-            <DetailLabel>Customer</DetailLabel>
-            <DetailValue>
-              <span>{sale.customerName}</span>
-              <Badge variant="neutral" size="sm">
-                {sale.customerType}
-              </Badge>
-            </DetailValue>
-          </DetailCard>
+        <DetailCard>
+          <DetailLabel>Payment Method</DetailLabel>
+          <DetailValue>
+            <PayIcon size={16} />
+            <span>{sale.paymentMethod}</span>
+          </DetailValue>
+        </DetailCard>
 
-          <DetailCard>
-            <DetailLabel>Payment Method</DetailLabel>
-            <DetailValue>
-              <PayIcon size={16} />
-              <span>{sale.paymentMethod}</span>
-            </DetailValue>
-          </DetailCard>
+        <DetailCard>
+          <DetailLabel>Date & Time</DetailLabel>
+          <DetailValue>
+            <Calendar size={14} />
+            <span>
+              {formatDate(sale.date)} • {sale.time}
+            </span>
+          </DetailValue>
+        </DetailCard>
 
-          <DetailCard>
-            <DetailLabel>Date & Time</DetailLabel>
-            <DetailValue>
-              <Calendar size={14} />
-              <span>
-                {formatDate(sale.date)} • {sale.time}
-              </span>
-            </DetailValue>
-          </DetailCard>
+        <DetailCard>
+          <DetailLabel>Component Count</DetailLabel>
+          <DetailValue>
+            <Layers size={14} />
+            <span>{sale.itemCount} Items</span>
+          </DetailValue>
+        </DetailCard>
+      </DetailsGrid>
 
-          <DetailCard>
-            <DetailLabel>Component Count</DetailLabel>
-            <DetailValue>
-              <Layers size={14} />
-              <span>{sale.itemCount} Items</span>
-            </DetailValue>
-          </DetailCard>
-        </DetailsGrid>
+      <ItemsSection>
+        <ItemsHeader>
+          <span>Hardware Components & Items</span>
+          <span>{sale.itemCount} SKUs</span>
+        </ItemsHeader>
+        <ItemsList>
+          {itemsList.map((item, idx) => (
+            <ItemRow key={idx}>
+              <Package size={14} />
+              <span>{item}</span>
+            </ItemRow>
+          ))}
+        </ItemsList>
+      </ItemsSection>
 
-        {/* Hardware Items List */}
-        <ItemsSection>
-          <ItemsHeader>
-            <span>Hardware Components & Items</span>
-            <span>{sale.itemCount} SKUs</span>
-          </ItemsHeader>
-          <ItemsList>
-            {itemsList.map((item, idx) => (
-              <ItemRow key={idx}>
-                <Package size={14} />
-                <span>{item}</span>
-              </ItemRow>
-            ))}
-          </ItemsList>
-        </ItemsSection>
-
-        {/* Financial Summary Box */}
-        <TotalsBox>
-          <TotalRow>
-            <span>Total Bill Amount:</span>
-            <span>{formatCurrency(sale.totalAmount)}</span>
+      <TotalsBox>
+        <TotalRow>
+          <span>Total Bill Amount:</span>
+          <span>{formatCurrency(sale.totalAmount)}</span>
+        </TotalRow>
+        <TotalRow>
+          <span>Amount Paid / Collected:</span>
+          <span>{formatCurrency(sale.paidAmount)}</span>
+        </TotalRow>
+        {dueAmount > 0 && (
+          <TotalRow $isDue>
+            <span>Remaining Balance Due:</span>
+            <span>{formatCurrency(dueAmount)}</span>
           </TotalRow>
-          <TotalRow>
-            <span>Amount Paid / Collected:</span>
-            <span>{formatCurrency(sale.paidAmount)}</span>
-          </TotalRow>
-          {dueAmount > 0 && (
-            <TotalRow $isDue>
-              <span>Remaining Balance Due:</span>
-              <span>{formatCurrency(dueAmount)}</span>
-            </TotalRow>
-          )}
-          <TotalRow $isFinal>
-            <span>Net Settled Amount:</span>
-            <span>{formatCurrency(sale.paidAmount)}</span>
-          </TotalRow>
-        </TotalsBox>
+        )}
+        <TotalRow $isFinal>
+          <span>Net Settled Amount:</span>
+          <span>{formatCurrency(sale.paidAmount)}</span>
+        </TotalRow>
+      </TotalsBox>
 
-        <PrintNotice>
-          Official computer shop billing receipt generated by StockWise ERP
-        </PrintNotice>
-      </ReceiptContainer>
-    </GenericModal>
+      <PrintNotice>
+        Official computer shop billing receipt generated by StockWise ERP
+      </PrintNotice>
+    </ViewModal>
   );
 };

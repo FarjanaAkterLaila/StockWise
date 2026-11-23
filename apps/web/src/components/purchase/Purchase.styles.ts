@@ -54,6 +54,12 @@ export {
   ViewMetaValue,
   ViewItemsTable,
   PrintBtn,
+  ViewDocumentNumber,
+  DocumentTitle,
+  DocumentDate,
+  ViewDocumentNumber as ViewPONumber,
+  DocumentTitle as POTitle,
+  DocumentDate as PODate,
 } from "@/components/common/ModalForm.styles";
 
 export const PurchaseContainer = styled.div`
@@ -373,20 +379,3 @@ export const DueAmount = styled.span<{ $hasDue?: boolean }>`
   white-space: nowrap;
 `;
 
-export const ViewPONumber = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-`;
-
-export const POTitle = styled.span`
-  font-size: 18px;
-  font-weight: 800;
-  color: ${({ theme }) => theme.colors.primary};
-  font-family: ${({ theme }) => theme.typography.fontFamily.mono};
-`;
-
-export const PODate = styled.span`
-  font-size: 12px;
-  color: ${({ theme }) => theme.colors.textMuted};
-`;

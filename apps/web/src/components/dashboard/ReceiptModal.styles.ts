@@ -1,26 +1,9 @@
 import styled from "styled-components";
 
-export const ReceiptContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-
-  @media print {
-    gap: 12px;
-    padding: 20px 24px;
-    border: 1px solid ${({ theme }) => theme.colors.borderDashed};
-    border-radius: ${({ theme }) => theme.radius.md};
-    background: ${({ theme }) => theme.colors.background};
-    color: ${({ theme }) => theme.colors.textPrimary};
-    box-shadow: none;
-    width: 100%;
-    max-width: 680px;
-    margin: 0 auto;
-    box-sizing: border-box;
-    page-break-inside: avoid;
-    break-inside: avoid;
-  }
-`;
+export {
+  ViewContainer as ReceiptContainer,
+  PrintNotice,
+} from "@/components/common/ModalForm.styles";
 
 export const ReceiptHeader = styled.div`
   display: flex;
@@ -181,76 +164,4 @@ export const TotalRow = styled.div<{ $isFinal?: boolean; $isDue?: boolean }>`
   padding-top: ${({ $isFinal }) => ($isFinal ? "8px" : "0")};
   border-top: ${({ $isFinal, theme }) =>
     $isFinal ? `1px dashed ${theme.colors.borderDashed}` : "none"};
-`;
-
-export const PrintNotice = styled.div`
-  text-align: center;
-  font-size: 11px;
-  color: ${({ theme }) => theme.colors.textMuted};
-  font-style: italic;
-  padding-top: 4px;
-`;
-
-export const ModalActionsRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  width: 100%;
-  padding: 16px 24px;
-  background-color: ${({ theme }) => theme.colors.backgroundSubtle};
-  border-top: 1px solid ${({ theme }) => theme.colors.border};
-  box-sizing: border-box;
-
-  @media print {
-    display: none;
-  }
-`;
-
-export const CloseBtn = styled.button`
-  padding: 9px 18px;
-  font-size: 13px;
-  font-weight: 600;
-  color: ${({ theme }) => theme.colors.textSecondary};
-  background-color: ${({ theme }) => theme.colors.background};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.radius.md};
-  cursor: pointer;
-  transition: all 0.15s ease;
-
-  &:hover {
-    background-color: ${({ theme }) => theme.colors.hoverSubtle};
-    color: ${({ theme }) => theme.colors.textPrimary};
-    border-color: ${({ theme }) => theme.colors.textMuted};
-  }
-
-  @media print {
-    display: none;
-  }
-`;
-
-export const PrintBtn = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 9px 18px;
-  font-size: 13px;
-  font-weight: 600;
-  color: ${({ theme }) => theme.colors.textInverse};
-  background-color: ${({ theme }) => theme.colors.primary};
-  border: 1px solid ${({ theme }) => theme.colors.primary};
-  border-radius: ${({ theme }) => theme.radius.md};
-  cursor: pointer;
-  box-shadow: 0 1px 2px rgba(79, 70, 229, 0.2);
-  transition: all 0.15s ease;
-
-  &:hover {
-    background-color: ${({ theme }) => theme.colors.primaryHover};
-    border-color: ${({ theme }) => theme.colors.primaryHover};
-    box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
-  }
-
-  @media print {
-    display: none;
-  }
 `;

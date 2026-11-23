@@ -54,6 +54,12 @@ export {
   ViewMetaValue,
   ViewItemsTable,
   PrintBtn,
+  ViewDocumentNumber,
+  DocumentTitle,
+  DocumentDate,
+  ViewDocumentNumber as ViewInvoiceNumber,
+  DocumentTitle as InvoiceTitle,
+  DocumentDate as InvoiceDate,
 } from "@/components/common/ModalForm.styles";
 
 export const SalesContainer = styled.div`
@@ -358,20 +364,3 @@ export const DueAmount = styled.span<{ $hasDue?: boolean }>`
     $hasDue ? theme.colors.danger : theme.colors.success};
 `;
 
-export const ViewInvoiceNumber = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-`;
-
-export const InvoiceTitle = styled.span`
-  font-size: 18px;
-  font-weight: 800;
-  color: ${({ theme }) => theme.colors.primary};
-  font-family: ${({ theme }) => theme.typography.fontFamily.mono};
-`;
-
-export const InvoiceDate = styled.span`
-  font-size: 12px;
-  color: ${({ theme }) => theme.colors.textMuted};
-`;

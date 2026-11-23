@@ -480,3 +480,29 @@ export const PrintBtn = styled.button`
     display: none;
   }
 `;
+
+export const ViewDocumentNumber = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+export const DocumentTitle = styled.span`
+  font-size: 18px;
+  font-weight: 800;
+  color: ${({ theme }) => theme.colors.primary};
+  font-family: ${({ theme }) => theme.typography.fontFamily.mono};
+`;
+
+export const DocumentDate = styled.span`
+  font-size: 12px;
+  color: ${({ theme }) => theme.colors.textMuted};
+`;
+
+export const PrintNotice = styled.div`
+  text-align: center;
+  font-size: 11px;
+  color: ${({ theme }) => theme.colors.textMuted};
+  font-style: italic;
+  padding-top: 4px;
+`;
