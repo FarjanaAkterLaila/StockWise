@@ -2,99 +2,60 @@ import React from "react";
 import type { Sale } from "@/types";
 import { ShoppingBag } from "lucide-react";
 import { SalesTableRow } from "./SalesTableRow";
+import { DataTable, type TableColumn } from "@/components/common/DataTable";
 import { APP_STRINGS } from "@/utils/constants";
-import {
-  TableContainer,
-  TableResponsiveWrapper,
-  Table,
-  TableHead,
-  HeaderRow,
-  TableHeader,
-  TableBody,
-  EmptyState,
-  EmptyIconWrap,
-  EmptyTitle,
-  EmptyDesc,
-  ClearFilterBtn,
-  TableFooterBar,
-  FooterCountText,
-  ActiveFilterBadge,
-} from "./Sales.styles";
 
 interface SalesTableProps {
   sales: Sale[];
   totalAllCount?: number;
   hasActiveFilters: boolean;
   onResetFilters: () => void;
+  onView: (sale: Sale) => void;
   onEdit: (sale: Sale) => void;
   onDelete: (sale: Sale) => void;
 }
+
+const SALES_COLUMNS: TableColumn[] = [
+  { label: "Invoice & Time" },
+  { label: "Customer" },
+  { label: "Hardware Items" },
+  { label: "Date" },
+  { label: "Total & Due Amount" },
+  { label: "Payment" },
+  { label: "Order Status" },
+  { label: "Actions", align: "right" },
+];
 
 export const SalesTable: React.FC<SalesTableProps> = ({
   sales,
   totalAllCount,
   hasActiveFilters,
   onResetFilters,
+  onView,
   onEdit,
   onDelete,
 }) => {
   return (
-    <TableContainer>
-      <TableResponsiveWrapper>
-        <Table>
-          <TableHead>
-            <HeaderRow>
-              <TableHeader>Invoice & Time</TableHeader>
-              <TableHeader>Customer</TableHeader>
-              <TableHeader>Hardware Items</TableHeader>
-              <TableHeader>Date</TableHeader>
-              <TableHeader>Total & Due Amount</TableHeader>
-              <TableHeader>Payment</TableHeader>
-              <TableHeader>Order Status</TableHeader>
-              <TableHeader $align="right">Actions</TableHeader>
-            </HeaderRow>
-          </TableHead>
-          <TableBody>
-            {sales.length === 0 ? (
-              <tr>
-                <td colSpan={8}>
-                  <EmptyState>
-                    <EmptyIconWrap>
-                      <ShoppingBag size={28} />
-                    </EmptyIconWrap>
-                    <EmptyTitle>{APP_STRINGS.emptySalesTitle}</EmptyTitle>
-                    <EmptyDesc>{APP_STRINGS.emptySalesDesc}</EmptyDesc>
-                    {hasActiveFilters && (
-                      <ClearFilterBtn onClick={onResetFilters} type="button">
-                        {APP_STRINGS.resetFilters}
-                      </ClearFilterBtn>
-                    )}
-                  </EmptyState>
-                </td>
-              </tr>
-            ) : (
-              sales.map((sale) => (
-                <SalesTableRow
-                  key={sale.id}
-                  sale={sale}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                />
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableResponsiveWrapper>
-
-      <TableFooterBar>
-        <FooterCountText>
-          Showing <strong>{sales.length}</strong> of{" "}
-          <strong>{totalAllCount ?? sales.length}</strong> sales invoices
-        </FooterCountText>
-        {hasActiveFilters && (
-          <ActiveFilterBadge>Filters active</ActiveFilterBadge>
-        )}
-      </TableFooterBar>
-    </TableContainer>
+    <DataTable
+      columns={SALES_COLUMNS}
+      itemCount={sales.length}
+      totalAllCount={totalAllCount}
+      itemLabel="sales invoices"
+      hasActiveFilters={hasActiveFilters}
+      onResetFilters={onResetFilters}
+      emptyIcon={<ShoppingBag size={28} />}
+      emptyTitle={APP_STRINGS.emptySalesTitle}
+      emptyDesc={APP_STRINGS.emptySalesDesc}
+    >
+      {sales.map((sale) => (
+        <SalesTableRow
+          key={sale.id}
+          sale={sale}
+          onView={onView}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      ))}
+    </DataTable>
   );
 };

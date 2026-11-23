@@ -20,9 +20,13 @@ export const Overlay = styled.div<{ $isOpen: boolean }>`
     background: transparent;
     backdrop-filter: none;
     padding: 0;
-    margin: 0;
+    margin: 0 auto;
     opacity: 1;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
     height: auto;
     min-height: 0;
     overflow: visible;
@@ -63,12 +67,16 @@ export const Dialog = styled.div<{ $size?: ModalSize }>`
     border: none;
     max-width: 100%;
     width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
     max-height: none;
     height: auto;
     overflow: visible;
     background: transparent;
     animation: none;
-    margin: 0;
+    margin: 0 auto;
     padding: 0;
   }
 `;
@@ -140,6 +148,11 @@ export const Body = styled.div`
 
   @media print {
     padding: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
     overflow: visible;
     height: auto;
     max-height: none;

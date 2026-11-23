@@ -2,7 +2,7 @@ import React from "react";
 import type { Sale } from "@/types";
 import { Badge } from "@/components/common/Badge";
 import { BADGE_VARIANTS, UI_SIZES } from "@/utils/constants";
-import { Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import {
   TableRow,
@@ -26,12 +26,14 @@ import {
 
 interface SalesTableRowProps {
   sale: Sale;
+  onView: (sale: Sale) => void;
   onEdit: (sale: Sale) => void;
   onDelete: (sale: Sale) => void;
 }
 
 export const SalesTableRow: React.FC<SalesTableRowProps> = ({
   sale,
+  onView,
   onEdit,
   onDelete,
 }) => {
@@ -126,6 +128,14 @@ export const SalesTableRow: React.FC<SalesTableRowProps> = ({
       {/* Action Buttons */}
       <TableCell $align="right">
         <ActionButtonsGroup>
+          <ActionBtn
+            $variant="view"
+            onClick={() => onView(sale)}
+            title={`View Invoice ${sale.invoiceNumber}`}
+            type="button"
+          >
+            <Eye size={15} />
+          </ActionBtn>
           <ActionBtn
             $variant="edit"
             onClick={() => onEdit(sale)}

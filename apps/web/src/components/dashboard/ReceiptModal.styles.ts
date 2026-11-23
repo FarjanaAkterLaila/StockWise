@@ -7,12 +7,13 @@ export const ReceiptContainer = styled.div`
 
   @media print {
     gap: 12px;
-    padding: 16px;
+    padding: 20px 24px;
     border: 1px solid ${({ theme }) => theme.colors.borderDashed};
     border-radius: ${({ theme }) => theme.radius.md};
     background: ${({ theme }) => theme.colors.background};
     color: ${({ theme }) => theme.colors.textPrimary};
     box-shadow: none;
+    width: 100%;
     max-width: 680px;
     margin: 0 auto;
     box-sizing: border-box;

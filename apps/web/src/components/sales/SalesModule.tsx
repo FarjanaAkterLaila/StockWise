@@ -6,6 +6,7 @@ import { SalesStats } from "./SalesStats";
 import { SalesFilterBar } from "./SalesFilterBar";
 import { SalesTable } from "./SalesTable";
 import { SaleModal } from "./SaleModal";
+import { SalesViewModal } from "./SalesViewModal";
 import { GenericModal } from "@/components/common/GenericModal";
 import { APP_STRINGS, DEFAULT_VALUES } from "@/utils/constants";
 import {
@@ -29,6 +30,7 @@ export const SalesModule: React.FC = () => {
   );
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [viewingSale, setViewingSale] = useState<Sale | null>(null);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [deletingSale, setDeletingSale] = useState<Sale | null>(null);
 
@@ -143,9 +145,18 @@ export const SalesModule: React.FC = () => {
         totalAllCount={sales.length}
         hasActiveFilters={hasActiveFilters}
         onResetFilters={handleResetFilters}
+        onView={(sale) => setViewingSale(sale)}
         onEdit={(sale) => setEditingSale(sale)}
         onDelete={(sale) => setDeletingSale(sale)}
       />
+
+      {viewingSale && (
+        <SalesViewModal
+          isOpen={Boolean(viewingSale)}
+          sale={viewingSale}
+          onClose={() => setViewingSale(null)}
+        />
+      )}
 
       {(isCreateModalOpen || editingSale) && (
         <SaleModal

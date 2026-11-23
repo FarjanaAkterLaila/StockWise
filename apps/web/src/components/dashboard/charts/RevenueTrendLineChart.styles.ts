@@ -122,7 +122,7 @@ export const MetricHighlightRow = styled.div`
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
-  padding: 12px 16px;
+  padding: 10px 16px 12px;
   background-color: ${({ theme }) => theme.colors.backgroundSubtle};
   border-radius: ${({ theme }) => theme.radius.md};
   border: 1px solid ${({ theme }) => theme.colors.border};
@@ -130,6 +130,7 @@ export const MetricHighlightRow = styled.div`
   box-sizing: border-box;
   flex-wrap: nowrap;
   gap: 10px;
+  overflow: visible;
 `;
 
 export const HighlightLeft = styled.div`
@@ -137,6 +138,7 @@ export const HighlightLeft = styled.div`
   align-items: baseline;
   gap: 10px;
   min-width: 0;
+  overflow: visible;
 `;
 
 export const HighlightValue = styled.span`
@@ -147,6 +149,8 @@ export const HighlightValue = styled.span`
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   line-height: 1.3;
+  padding-bottom: 2px;
+  overflow: visible;
 `;
 
 export const HighlightLabel = styled.span`

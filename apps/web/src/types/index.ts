@@ -151,3 +151,46 @@ export interface InventoryStatusBreakdown {
   percentage: number;
   color: string;
 }
+
+export type PurchaseStatus = "received" | "ordered" | "pending" | "cancelled";
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
+  address: string;
+  distributorOf: string[];
+}
+
+export interface PurchaseItem {
+  id: string;
+  productId: string;
+  productName: string;
+  sku: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+}
+
+export interface Purchase {
+  id: string;
+  purchaseNumber: string;
+  supplierId: string;
+  supplierName: string;
+  date: string;
+  time?: string;
+  items: PurchaseItem[];
+  subtotal: number;
+  discountAmount: number;
+  vatRate: number;
+  vatAmount: number;
+  grandTotal: number;
+  paidAmount: number;
+  dueAmount: number;
+  paymentStatus: PaymentStatus;
+  paymentMethod: PaymentMethod;
+  status: PurchaseStatus;
+  notes?: string;
+}

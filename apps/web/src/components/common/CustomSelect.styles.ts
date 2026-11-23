@@ -6,8 +6,9 @@ export const SelectContainer = styled.div<{
 }>`
   position: relative;
   display: ${({ $fullWidth }) => ($fullWidth ? "block" : "inline-block")};
-  width: ${({ $fullWidth }) => ($fullWidth ? "100%" : "auto")};
-  min-width: ${({ $minWidth }) => $minWidth || "auto"};
+  width: ${({ $fullWidth }) => ($fullWidth ? "100%" : "fit-content")};
+  max-width: 100%;
+  min-width: ${({ $minWidth }) => $minWidth || "0"};
   box-sizing: border-box;
 `;
 
@@ -20,6 +21,7 @@ export const SelectTrigger = styled.button<{
   justify-content: space-between;
   gap: 10px;
   width: ${({ $fullWidth }) => ($fullWidth ? "100%" : "auto")};
+  min-width: 0;
   box-sizing: border-box;
   background-color: ${({ $fullWidth, theme }) =>
     $fullWidth ? theme.colors.background : theme.colors.backgroundSubtle};
@@ -94,7 +96,7 @@ export const DropdownMenu = styled.div<{
   ${({ $align }) => ($align === "right" ? "right: 0;" : "left: 0;")}
   min-width: 100%;
   width: ${({ $fullWidth }) => ($fullWidth ? "100%" : "max-content")};
-  max-width: ${({ $fullWidth }) => ($fullWidth ? "100%" : "340px")};
+  max-width: ${({ $fullWidth }) => ($fullWidth ? "100%" : "min(420px, 90vw)")};
   max-height: 240px;
   overflow-y: auto;
   background-color: ${({ theme }) => theme.colors.background};

@@ -60,6 +60,14 @@ export const PAYMENT_STATUS = {
   UNPAID: "unpaid",
 } as const;
 
+export const PURCHASE_STATUS = {
+  ALL: "all",
+  RECEIVED: "received",
+  ORDERED: "ordered",
+  PENDING: "pending",
+  CANCELLED: "cancelled",
+} as const;
+
 export const DEFAULT_VALUES = {
   WALK_IN_CUSTOMER_ID: "cust-walkin",
   WALK_IN_CUSTOMER_NAME: "Walk-in Customer",
@@ -69,12 +77,16 @@ export const DEFAULT_VALUES = {
   PAYMENT_STATUS_PARTIAL: "partial" as const,
   PAYMENT_STATUS_UNPAID: "unpaid" as const,
   SALE_STATUS_COMPLETED: "completed" as const,
+  PURCHASE_STATUS_RECEIVED: "received" as const,
+  PURCHASE_STATUS_ORDERED: "ordered" as const,
+  PURCHASE_STATUS_PENDING: "pending" as const,
   PRODUCT_STATUS_ACTIVE: "active" as const,
   PRODUCT_STATUS_INACTIVE: "inactive" as const,
   PRODUCT_UNIT: "pcs" as const,
   DEFAULT_CATEGORY: "Graphics Cards",
   DEFAULT_MIN_STOCK: "5",
   DEFAULT_QUANTITY: "1",
+  DEFAULT_VAT_RATE: "5",
   FILTER_ALL: "all",
 } as const;
 
@@ -116,6 +128,14 @@ export const PAYMENT_STATUS_OPTIONS = [
   { value: "paid", label: "Paid in Full" },
   { value: "partial", label: "Partial Due" },
   { value: "unpaid", label: "Unpaid" },
+] as const;
+
+export const PURCHASE_STATUS_OPTIONS = [
+  { value: "all", label: "All Purchase Statuses" },
+  { value: "received", label: "Received / In Stock" },
+  { value: "ordered", label: "Ordered from Distributor" },
+  { value: "pending", label: "Pending Shipment" },
+  { value: "cancelled", label: "Cancelled" },
 ] as const;
 
 export const PAYMENT_METHODS = [
@@ -165,4 +185,19 @@ export const APP_STRINGS = {
   deleteSaleConfirm: "Delete Invoice",
   createSale: "Complete & Print Invoice",
   saveSale: "Update Invoice",
+
+  // Purchase Module
+  purchaseTitle: "Vendor Purchases & Restock",
+  purchaseSubtitle:
+    "Procurement purchase orders, distributor intake, payment settlements (BDT), and vendor payables",
+  createPurchaseBtn: "New Purchase Order",
+  purchaseSearchPlaceholder:
+    "Search by PO number, distributor/supplier, hardware SKU...",
+  emptyPurchaseTitle: "No Purchase Orders Found",
+  emptyPurchaseDesc:
+    "No purchase records match your search or filter criteria. Adjust your filters or create a new purchase order.",
+  deletePurchaseTitle: "Delete Purchase Order?",
+  deletePurchaseConfirm: "Delete Order",
+  createPurchase: "Create Purchase Order",
+  savePurchase: "Update Purchase Order",
 } as const;

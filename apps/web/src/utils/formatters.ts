@@ -85,3 +85,14 @@ export const calculateStockPercentage = (
   if (minStock <= 0) return 100;
   return Math.round((currentStock / minStock) * 100);
 };
+
+export const triggerPrintModal = (cleanupDelayMs = 2000): void => {
+  document.body.classList.add("printing-receipt");
+  const cleanup = () => {
+    document.body.classList.remove("printing-receipt");
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+  window.print();
+  setTimeout(cleanup, cleanupDelayMs);
+};

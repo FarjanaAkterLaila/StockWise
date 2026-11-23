@@ -14,12 +14,11 @@ import {
   SALE_ITEM_FIELDS,
   type SaleItemField,
 } from "@/utils/sale.utils";
-import { GenericModal } from "@/components/common/GenericModal";
+import { ModalForm } from "@/components/common/ModalForm";
 import { CustomSelect } from "@/components/common/CustomSelect";
 import { formatCurrency, formatTime } from "@/utils/formatters";
 import { Plus, Trash2 } from "lucide-react";
 import {
-  ModalForm,
   FormRow,
   FormGroup,
   FormLabel,
@@ -36,9 +35,6 @@ import {
   TotalsCard,
   TotalsRow,
   TotalsAmount,
-  ModalFooter,
-  CancelBtn,
-  SubmitBtn,
 } from "./Sales.styles";
 
 interface SaleModalProps {
@@ -171,7 +167,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   };
 
   return (
-    <GenericModal
+    <ModalForm
       isOpen={isOpen}
       onClose={onClose}
       size="lg"
@@ -185,9 +181,11 @@ export const SaleModal: React.FC<SaleModalProps> = ({
           ? "Update invoice details and line items"
           : "Create a computer shop sales invoice and POS receipt (BDT)"
       }
+      onSubmit={handleSubmit}
+      submitText={isEditing ? APP_STRINGS.saveSale : APP_STRINGS.createSale}
+      cancelText={APP_STRINGS.cancel}
     >
-      <ModalForm onSubmit={handleSubmit}>
-        <FormRow $cols="1.2fr 1fr 1fr">
+      <FormRow $cols="1.2fr 1fr 1fr">
           <FormGroup>
             <FormLabel>
               Customer Profile <span className="required">*</span>
@@ -393,16 +391,6 @@ export const SaleModal: React.FC<SaleModalProps> = ({
             </TotalsAmount>
           </TotalsRow>
         </TotalsCard>
-
-        <ModalFooter>
-          <CancelBtn type="button" onClick={onClose}>
-            {APP_STRINGS.cancel}
-          </CancelBtn>
-          <SubmitBtn type="submit">
-            {isEditing ? APP_STRINGS.saveSale : APP_STRINGS.createSale}
-          </SubmitBtn>
-        </ModalFooter>
-      </ModalForm>
-    </GenericModal>
+    </ModalForm>
   );
 };

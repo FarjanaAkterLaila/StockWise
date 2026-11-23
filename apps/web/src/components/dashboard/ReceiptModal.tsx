@@ -2,7 +2,11 @@ import React from "react";
 import type { RecentSale, PaymentStatus } from "@/types";
 import { GenericModal } from "@/components/common/GenericModal";
 import { Badge } from "@/components/common/Badge";
-import { formatCurrency, formatDate } from "@/utils/formatters";
+import {
+  formatCurrency,
+  formatDate,
+  triggerPrintModal,
+} from "@/utils/formatters";
 import { BADGE_VARIANTS, PAYMENT_STATUS } from "@/utils/constants";
 import {
   Building2,
@@ -68,21 +72,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   const PayIcon = PAYMENT_ICON[sale.paymentMethod] || CreditCard;
   const dueAmount = Math.max(0, sale.totalAmount - sale.paidAmount);
 
-  // Split comma-separated hardware items if present
   const itemsList = sale.itemsSummary
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
 
   const handlePrint = () => {
-    document.body.classList.add("printing-receipt");
-    const cleanup = () => {
-      document.body.classList.remove("printing-receipt");
-      window.removeEventListener("afterprint", cleanup);
-    };
-    window.addEventListener("afterprint", cleanup);
-    window.print();
-    setTimeout(cleanup, 2000);
+    triggerPrintModal();
   };
 
   return (
@@ -125,7 +121,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           </ReceiptBadgeGroup>
         </ReceiptHeader>
 
-        {/* Transaction Details Grid */}
         <DetailsGrid>
           <DetailCard>
             <DetailLabel>Customer</DetailLabel>

@@ -10,18 +10,14 @@ import {
   getInitialProductFormData,
   AVAILABLE_CATEGORIES,
 } from "@/utils/product.utils";
-import { GenericModal } from "@/components/common/GenericModal";
+import { ModalForm } from "@/components/common/ModalForm";
 import { CustomSelect } from "@/components/common/CustomSelect";
 import {
-  ModalForm,
   FormGroup,
   FormRow,
   FormLabel,
   FormInput,
   FormError,
-  ModalFooter,
-  CancelButton,
-  SubmitButton,
 } from "./Inventory.styles";
 
 interface ProductModalProps {
@@ -70,7 +66,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   return (
-    <GenericModal
+    <ModalForm
       isOpen={isOpen}
       onClose={onClose}
       size="lg"
@@ -80,9 +76,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           ? `Updating specifications for ${initialProduct?.sku}`
           : "Enter computer shop hardware specifications and inventory details"
       }
+      onSubmit={handleSubmit}
+      submitText={isEditing ? APP_STRINGS.saveChanges : APP_STRINGS.createProduct}
+      cancelText={APP_STRINGS.cancel}
     >
-      <ModalForm onSubmit={handleSubmit}>
-        <FormGroup>
+      <FormGroup>
           <FormLabel htmlFor="prod-name">
             Product Name <span className="required">*</span>
           </FormLabel>
@@ -265,16 +263,6 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             ]}
           />
         </FormGroup>
-
-        <ModalFooter>
-          <CancelButton type="button" onClick={onClose}>
-            {APP_STRINGS.cancel}
-          </CancelButton>
-          <SubmitButton type="submit">
-            {isEditing ? APP_STRINGS.saveChanges : APP_STRINGS.createProduct}
-          </SubmitButton>
-        </ModalFooter>
-      </ModalForm>
-    </GenericModal>
+    </ModalForm>
   );
 };

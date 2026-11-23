@@ -121,7 +121,7 @@ export const SummaryStatsRow = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  padding: 12px 16px;
+  padding: 10px 16px 14px;
   background-color: ${({ theme }) => theme.colors.backgroundSubtle};
   border-radius: ${({ theme }) => theme.radius.md};
   border: 1px solid ${({ theme }) => theme.colors.border};
@@ -129,6 +129,7 @@ export const SummaryStatsRow = styled.div`
   min-height: 64px;
   align-items: center;
   box-sizing: border-box;
+  overflow: visible;
 
   ${({ theme }) => theme.media.mobile} {
     grid-template-columns: 1fr;
@@ -142,6 +143,7 @@ export const SummaryStatItem = styled.div`
   flex-direction: column;
   justify-content: center;
   min-width: 0;
+  overflow: visible;
 `;
 
 export const StatLabel = styled.span`
@@ -155,6 +157,7 @@ export const StatLabel = styled.span`
 export const StatValue = styled.span<{
   $colorVariant?: "primary" | "warning" | "success";
 }>`
+  display: block;
   font-size: 13.5px;
   font-weight: 700;
   color: ${({ $colorVariant, theme }) =>
@@ -166,7 +169,9 @@ export const StatValue = styled.span<{
   margin-top: 3px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  line-height: 1.5;
+  line-height: 1.4;
+  padding-bottom: 2px;
+  overflow: visible;
 `;
 
 export const LegendRow = styled.div`
