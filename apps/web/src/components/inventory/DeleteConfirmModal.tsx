@@ -1,7 +1,7 @@
-import React from 'react';
-import type { Product } from '@/types';
-import { GenericModal } from '@/components/common/GenericModal';
-import { APP_STRINGS } from '@/utils/constants';
+import React from "react";
+import type { Product } from "@/types";
+import { GenericModal } from "@/components/common/GenericModal";
+import { APP_STRINGS } from "@/utils/constants";
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;

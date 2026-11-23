@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import type { RecentSale, PaymentStatus } from '@/types';
-import { Badge } from '@/components/common/Badge';
-import { Card } from '@/components/common/Card';
+import React, { useState } from "react";
+import type { RecentSale, PaymentStatus } from "@/types";
+import { Badge } from "@/components/common/Badge";
+import { Card } from "@/components/common/Card";
+import { formatCurrency, formatDate } from "@/utils/formatters";
+import { PAYMENT_STATUS, BADGE_VARIANTS } from "@/utils/constants";
 import {
   ArrowUpRight,
   Search,
@@ -10,8 +12,8 @@ import {
   Building2,
   Smartphone,
   Eye,
-  Filter
-} from 'lucide-react';
+  Filter,
+} from "lucide-react";
 import {
   ControlsRow,
   SearchBox,
@@ -40,32 +42,33 @@ import {
   ActionIconButton,
   EmptyMessage,
   HeaderLinkButton,
-} from './RecentSalesTable.styles';
+} from "./RecentSalesTable.styles";
 
 interface RecentSalesTableProps {
   sales: RecentSale[];
   onViewAll?: () => void;
 }
 
-const STATUS_VARIANT: Record<PaymentStatus, 'success' | 'warning' | 'danger'> = {
-  paid: 'success',
-  partial: 'warning',
-  unpaid: 'danger',
-};
+const STATUS_VARIANT: Record<PaymentStatus, "success" | "warning" | "danger"> =
+  {
+    [PAYMENT_STATUS.PAID]: BADGE_VARIANTS.SUCCESS,
+    [PAYMENT_STATUS.PARTIAL]: BADGE_VARIANTS.WARNING,
+    [PAYMENT_STATUS.UNPAID]: BADGE_VARIANTS.DANGER,
+  };
 
 const PAYMENT_ICON = {
   Cash: Banknote,
   Card: CreditCard,
-  'Bank Transfer': Building2,
+  "Bank Transfer": Building2,
   MFS: Smartphone,
 };
 
 export const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
   sales,
-  onViewAll
+  onViewAll,
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const filteredSales = sales.filter((sale) => {
     const matchesSearch =
@@ -73,7 +76,8 @@ export const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
       sale.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sale.itemsSummary.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === 'all' || sale.paymentStatus === statusFilter;
+    const matchesStatus =
+      statusFilter === "all" || sale.paymentStatus === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
@@ -106,10 +110,10 @@ export const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <option value="all">All Statuses</option>
-            <option value="paid">Paid</option>
-            <option value="partial">Partial</option>
-            <option value="unpaid">Unpaid</option>
+            <option value={PAYMENT_STATUS.ALL}>All Statuses</option>
+            <option value={PAYMENT_STATUS.PAID}>Paid</option>
+            <option value={PAYMENT_STATUS.PARTIAL}>Partial</option>
+            <option value={PAYMENT_STATUS.UNPAID}>Unpaid</option>
           </FilterSelect>
         </FilterBox>
       </ControlsRow>
@@ -142,7 +146,9 @@ export const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
                     <TableCell>
                       <InvoiceBlock>
                         <InvoiceNumber>{sale.invoiceNumber}</InvoiceNumber>
-                        <CustomerTypeBadge>{sale.customerType}</CustomerTypeBadge>
+                        <CustomerTypeBadge>
+                          {sale.customerType}
+                        </CustomerTypeBadge>
                       </InvoiceBlock>
                     </TableCell>
                     <TableCell>
@@ -157,18 +163,22 @@ export const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
                     <TableCell>
                       <AmountBlock>
                         <TotalAmount>
-                          ${sale.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          {formatCurrency(sale.totalAmount)}
                         </TotalAmount>
-                        {sale.paymentStatus === 'partial' && (
+                        {sale.paymentStatus === PAYMENT_STATUS.PARTIAL && (
                           <PaidAmount>
-                            Paid: ${sale.paidAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            Paid: {formatCurrency(sale.paidAmount)}
                           </PaidAmount>
                         )}
                       </AmountBlock>
                     </TableCell>
                     <TableCell>
                       <StatusWrapper>
-                        <Badge variant={STATUS_VARIANT[sale.paymentStatus]} size="sm" dot>
+                        <Badge
+                          variant={STATUS_VARIANT[sale.paymentStatus]}
+                          size="sm"
+                          dot
+                        >
                           {sale.paymentStatus.toUpperCase()}
                         </Badge>
                         <PaymentMethodRow>
@@ -179,7 +189,7 @@ export const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
                     </TableCell>
                     <TableCell>
                       <DateBlock>
-                        <span>{sale.date}</span>
+                        <span>{formatDate(sale.date)}</span>
                         <TimeText>{sale.time}</TimeText>
                       </DateBlock>
                     </TableCell>

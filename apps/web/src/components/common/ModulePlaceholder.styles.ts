@@ -1,4 +1,4 @@
-import styled from 'styled-components';
+import styled from "styled-components";
 
 export const PlaceholderContainer = styled.div`
   display: flex;
@@ -15,7 +15,6 @@ export const PlaceholderHero = styled.div`
   align-items: center;
   gap: 20px;
   box-shadow: ${({ theme }) => theme.shadows.card};
-
   ${({ theme }) => theme.media.mobile} {
     flex-direction: column;
     align-items: flex-start;
@@ -32,7 +31,6 @@ export const PlaceholderIconWrap = styled.div`
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-
   svg {
     width: 28px;
     height: 28px;
@@ -45,19 +43,16 @@ export const HeaderRow = styled.div`
   gap: 12px;
   flex-wrap: wrap;
 `;
-
 export const PlaceholderTitle = styled.h2`
   font-size: 22px;
   font-weight: 800;
   color: ${({ theme }) => theme.colors.textPrimary};
 `;
-
 export const PlaceholderSubtitle = styled.p`
   font-size: 13.5px;
   color: ${({ theme }) => theme.colors.textMuted};
   margin-top: 2px;
 `;
-
 export const PlaceholderDesc = styled.p`
   font-size: 14px;
   color: ${({ theme }) => theme.colors.textSecondary};
@@ -69,7 +64,6 @@ export const StatsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-
   ${({ theme }) => theme.media.mobile} {
     grid-template-columns: 1fr;
   }
@@ -90,7 +84,6 @@ export const StatLabel = styled.span`
   color: ${({ theme }) => theme.colors.textMuted};
   font-weight: 600;
 `;
-
 export const StatValue = styled.span`
   font-size: 20px;
   font-weight: 800;
@@ -114,7 +107,6 @@ export const SectionTitle = styled.h4`
   align-items: center;
   gap: 8px;
   margin-bottom: 16px;
-
   svg {
     color: ${({ theme }) => theme.colors.primary};
     width: 16px;
@@ -128,7 +120,6 @@ export const FeaturesList = styled.ul`
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   margin-bottom: 24px;
-
   ${({ theme }) => theme.media.mobile} {
     grid-template-columns: 1fr;
   }
@@ -166,7 +157,9 @@ export const ActionsRow = styled.div`
   flex-wrap: wrap;
 `;
 
-export const Button = styled.button<{ $variant?: 'primary' | 'secondary' | 'ghost' }>`
+export const Button = styled.button<{
+  $variant?: "primary" | "secondary" | "ghost";
+}>`
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -179,39 +172,33 @@ export const Button = styled.button<{ $variant?: 'primary' | 'secondary' | 'ghos
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
-
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
-
   ${({ $variant, theme }) => {
     switch ($variant) {
-      case 'secondary':
+      case "secondary":
         return `
-          background-color: #f1f5f9;
+          background-color: ${theme.colors.hoverSubtle};
           color: ${theme.colors.textPrimary};
           border-color: ${theme.colors.border};
-          &:hover:not(:disabled) {
-            background-color: #e2e8f0;
-          }
+          &:hover:not(:disabled) { background-color: ${theme.colors.hoverSecondary}; }
         `;
-      case 'ghost':
+      case "ghost":
         return `
           background-color: transparent;
           color: ${theme.colors.primary};
-          &:hover:not(:disabled) {
-            background-color: ${theme.colors.primaryLight};
-          }
+          &:hover:not(:disabled) { background-color: ${theme.colors.primaryLight}; }
         `;
-      case 'primary':
+      case "primary":
       default:
         return `
           background-color: ${theme.colors.primary};
-          color: #ffffff;
+          color: ${theme.colors.textInverse};
           &:hover:not(:disabled) {
             background-color: ${theme.colors.primaryHover};
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+            box-shadow: ${theme.shadows.btnPrimary};
           }
         `;
     }

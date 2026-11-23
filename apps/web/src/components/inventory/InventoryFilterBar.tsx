@@ -1,6 +1,10 @@
-import React from 'react';
-import { Search, Filter, RotateCcw } from 'lucide-react';
-import { HARDWARE_CATEGORIES, STOCK_FILTER_OPTIONS, APP_STRINGS } from '@/utils/constants';
+import React from "react";
+import { Search, Filter, RotateCcw } from "lucide-react";
+import {
+  HARDWARE_CATEGORIES,
+  STOCK_FILTER_OPTIONS,
+  APP_STRINGS,
+} from "@/utils/constants";
 import {
   FilterBarCard,
   FilterControlsRow,
@@ -11,7 +15,7 @@ import {
   StyledSelect,
   ClearFilterBtn,
   ResultsCountRow,
-} from './Inventory.styles';
+} from "./Inventory.styles";
 
 interface InventoryFilterBarProps {
   searchTerm: string;
@@ -60,7 +64,7 @@ export const InventoryFilterBar: React.FC<InventoryFilterBarProps> = ({
             >
               {HARDWARE_CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
-                  {cat === 'All' ? 'All Hardware Categories' : cat}
+                  {cat === "All" ? "All Hardware Categories" : cat}
                 </option>
               ))}
             </StyledSelect>
@@ -68,7 +72,7 @@ export const InventoryFilterBar: React.FC<InventoryFilterBarProps> = ({
 
           <SelectBox>
             <StyledSelect
-              style={{ paddingLeft: '14px' }}
+              style={{ paddingLeft: "14px" }}
               value={selectedStockFilter}
               onChange={(e) => onStockFilterChange(e.target.value)}
             >
@@ -91,7 +95,8 @@ export const InventoryFilterBar: React.FC<InventoryFilterBarProps> = ({
 
       <ResultsCountRow>
         <span>
-          Showing <strong>{totalFilteredCount}</strong> of <strong>{totalAllCount}</strong> hardware items
+          Showing <strong>{totalFilteredCount}</strong> of{" "}
+          <strong>{totalAllCount}</strong> hardware items
         </span>
         {hasActiveFilters && <span>Filters active</span>}
       </ResultsCountRow>

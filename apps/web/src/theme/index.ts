@@ -1,4 +1,4 @@
-export { theme } from './theme';
-export type { AppTheme } from './theme';
-export { ThemeProvider } from './ThemeProvider';
-export { GlobalStyles } from './GlobalStyles';
+export { theme } from "./theme";
+export type { AppTheme } from "./theme";
+export { ThemeProvider } from "./ThemeProvider";
+export { GlobalStyles } from "./GlobalStyles";

@@ -1,13 +1,14 @@
-import React from 'react';
-import type { NavModule } from '@/types';
-import { 
-  Menu, 
-  Search, 
-  Bell, 
-  PlusCircle, 
-  CheckCircle2, 
-  ChevronDown 
-} from 'lucide-react';
+import React from "react";
+import type { NavModule } from "@/types";
+import { MODULE_TITLES } from "@/utils/navigation.utils";
+import {
+  Menu,
+  Search,
+  Bell,
+  PlusCircle,
+  CheckCircle2,
+  ChevronDown,
+} from "lucide-react";
 import {
   HeaderContainer,
   HeaderLeft,
@@ -31,7 +32,7 @@ import {
   ProfileInfo,
   ProfileName,
   ProfileRole,
-} from './Header.styles';
+} from "./Header.styles";
 
 interface HeaderProps {
   activeModule: NavModule;
@@ -39,40 +40,20 @@ interface HeaderProps {
   onOpenQuickSale?: () => void;
 }
 
-const MODULE_TITLES: Record<NavModule, { title: string; subtitle: string }> = {
-  dashboard: {
-    title: 'Dashboard Overview',
-    subtitle: 'Real-time sales, inventory alerts, and store performance'
-  },
-  sales: {
-    title: 'Sales & Invoices',
-    subtitle: 'Point of sale terminal, customer billing, and transaction logs'
-  },
-  purchase: {
-    title: 'Purchases & Restock',
-    subtitle: 'Vendor purchase orders, incoming stock intake, and payables'
-  },
-  inventory: {
-    title: 'Inventory Catalog',
-    subtitle: 'Hardware SKUs, real-time stock levels, and minimum thresholds'
-  },
-  accounts: {
-    title: 'Financial Accounts',
-    subtitle: 'Expense ledger, cash drawer balance, and store margin analytics'
-  }
-};
-
 export const Header: React.FC<HeaderProps> = ({
   activeModule,
   onToggleSidebar,
-  onOpenQuickSale
+  onOpenQuickSale,
 }) => {
   const currentInfo = MODULE_TITLES[activeModule];
 
   return (
     <HeaderContainer>
       <HeaderLeft>
-        <MobileToggleBtn onClick={onToggleSidebar} aria-label="Toggle navigation menu">
+        <MobileToggleBtn
+          onClick={onToggleSidebar}
+          aria-label="Toggle navigation menu"
+        >
           <Menu size={20} />
         </MobileToggleBtn>
 
@@ -95,13 +76,20 @@ export const Header: React.FC<HeaderProps> = ({
           <SearchShortcut>⌘K</SearchShortcut>
         </SearchWrapper>
 
-        <ActionButton onClick={onOpenQuickSale} type="button" title="Create a new POS sale invoice">
+        <ActionButton
+          onClick={onOpenQuickSale}
+          type="button"
+          title="Create a new POS sale invoice"
+        >
           <PlusCircle size={16} />
           <span>New Sale</span>
         </ActionButton>
 
         <IconBtnWrap>
-          <HeaderIconButton aria-label="Notifications" title="5 low stock items need attention">
+          <HeaderIconButton
+            aria-label="Notifications"
+            title="5 low stock items need attention"
+          >
             <Bell size={18} />
             <NotificationDot />
           </HeaderIconButton>
@@ -111,12 +99,12 @@ export const Header: React.FC<HeaderProps> = ({
 
         <ProfileButton tabIndex={0} role="button">
           <AvatarWrap>
-            <span>AT</span>
+            <span>TA</span>
             <AvatarLiveDot title="Logged in as Admin" />
           </AvatarWrap>
 
           <ProfileInfo>
-            <ProfileName>Alex Turner</ProfileName>
+            <ProfileName>Tanvir Ahmed</ProfileName>
             <ProfileRole>
               <CheckCircle2 size={11} />
               Store Manager

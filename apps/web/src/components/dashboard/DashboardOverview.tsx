@@ -1,18 +1,23 @@
-import React from 'react';
-import type { MetricSummary, RecentSale, LowStockProduct, ComputerShopQuickStat } from '@/types';
-import { MetricCard } from './MetricCard';
-import { RecentSalesTable } from './RecentSalesTable';
-import { LowStockAlert } from './LowStockAlert';
-import { 
-  PlusCircle, 
-  Package, 
-  ShoppingBag, 
-  WalletCards, 
+import React from "react";
+import type {
+  MetricSummary,
+  RecentSale,
+  LowStockProduct,
+  ComputerShopQuickStat,
+} from "@/types";
+import { MetricCard } from "./MetricCard";
+import { RecentSalesTable } from "./RecentSalesTable";
+import { LowStockAlert } from "./LowStockAlert";
+import {
+  PlusCircle,
+  Package,
+  ShoppingBag,
+  WalletCards,
   Receipt,
   ScanBarcode,
   Wrench,
-  CheckCircle
-} from 'lucide-react';
+  CheckCircle,
+} from "lucide-react";
 import {
   DashboardViewContainer,
   StoreBanner,
@@ -44,14 +49,16 @@ import {
   StatsStripLabel,
   StatsStripValue,
   StatsStripSub,
-} from './DashboardOverview.styles';
+} from "./DashboardOverview.styles";
 
 interface DashboardOverviewProps {
   metrics: MetricSummary[];
   sales: RecentSale[];
   lowStockProducts: LowStockProduct[];
   quickStats: ComputerShopQuickStat[];
-  onNavigateModule: (module: 'sales' | 'purchase' | 'inventory' | 'accounts') => void;
+  onNavigateModule: (
+    module: "sales" | "purchase" | "inventory" | "accounts",
+  ) => void;
   onQuickSale: () => void;
   onRestockProduct?: (product: LowStockProduct) => void;
 }
@@ -72,11 +79,12 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         <BannerContent>
           <LiveBadge>
             <PulseDot />
-            <span>Apex Hardware & Computer Hub • Live POS Register</span>
+            <span>StockWise Computer Hub BD • Multiplan POS Register</span>
           </LiveBadge>
           <BannerTitle>Store Performance & Daily Inventory</BannerTitle>
           <BannerSubtitle>
-            Welcome back, Alex. Today you have processed 19 sales transactions. 5 components require restocking from distributors.
+            Welcome back, Tanvir. Today you have processed 19 sales
+            transactions. 5 components require restocking from distributors.
           </BannerSubtitle>
         </BannerContent>
 
@@ -85,9 +93,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <PlusCircle size={16} />
             <span>New Sale (POS)</span>
           </BannerButton>
-          <BannerButton 
-            $variant="outline" 
-            onClick={() => onNavigateModule('inventory')}
+          <BannerButton
+            $variant="outline"
+            onClick={() => onNavigateModule("inventory")}
             type="button"
           >
             <ScanBarcode size={16} />
@@ -120,7 +128,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </QuickOpText>
           </QuickOpButton>
 
-          <QuickOpButton onClick={() => onNavigateModule('inventory')} type="button">
+          <QuickOpButton
+            onClick={() => onNavigateModule("inventory")}
+            type="button"
+          >
             <QuickOpIconWrap $colorVariant="indigo">
               <Package size={18} />
             </QuickOpIconWrap>
@@ -130,7 +141,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </QuickOpText>
           </QuickOpButton>
 
-          <QuickOpButton onClick={() => onNavigateModule('purchase')} type="button">
+          <QuickOpButton
+            onClick={() => onNavigateModule("purchase")}
+            type="button"
+          >
             <QuickOpIconWrap $colorVariant="amber">
               <ShoppingBag size={18} />
             </QuickOpIconWrap>
@@ -140,7 +154,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </QuickOpText>
           </QuickOpButton>
 
-          <QuickOpButton onClick={() => onNavigateModule('accounts')} type="button">
+          <QuickOpButton
+            onClick={() => onNavigateModule("accounts")}
+            type="button"
+          >
             <QuickOpIconWrap $colorVariant="rose">
               <WalletCards size={18} />
             </QuickOpIconWrap>
@@ -155,16 +172,16 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       {/* Main 2-Column Section: Recent Sales & Low Stock Alerts */}
       <SplitGrid>
         <SplitLeft>
-          <RecentSalesTable 
-            sales={sales} 
-            onViewAll={() => onNavigateModule('sales')} 
+          <RecentSalesTable
+            sales={sales}
+            onViewAll={() => onNavigateModule("sales")}
           />
         </SplitLeft>
 
         <SplitRight>
-          <LowStockAlert 
-            products={lowStockProducts} 
-            onViewInventory={() => onNavigateModule('inventory')}
+          <LowStockAlert
+            products={lowStockProducts}
+            onViewInventory={() => onNavigateModule("inventory")}
             onRestockProduct={onRestockProduct}
           />
         </SplitRight>

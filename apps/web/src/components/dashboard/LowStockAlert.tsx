@@ -1,13 +1,9 @@
-import React from 'react';
-import type { LowStockProduct } from '@/types';
-import { Card } from '@/components/common/Card';
-import { Badge } from '@/components/common/Badge';
-import { 
-  AlertTriangle, 
-  ArrowRight, 
-  PackagePlus, 
-  Boxes
-} from 'lucide-react';
+import React from "react";
+import type { LowStockProduct } from "@/types";
+import { Card } from "@/components/common/Card";
+import { Badge } from "@/components/common/Badge";
+import { BADGE_VARIANTS, UI_SIZES } from "@/utils/constants";
+import { AlertTriangle, ArrowRight, PackagePlus, Boxes } from "lucide-react";
 import {
   LowStockTitleWrap,
   LowStockList,
@@ -32,7 +28,7 @@ import {
   FooterInfo,
   BulkOrderButton,
   HeaderLink,
-} from './LowStockAlert.styles';
+} from "./LowStockAlert.styles";
 
 interface LowStockAlertProps {
   products: LowStockProduct[];
@@ -63,7 +59,10 @@ export const LowStockAlert: React.FC<LowStockAlertProps> = ({
     >
       <LowStockList>
         {products.map((item) => {
-          const percentage = Math.min(100, Math.round((item.currentStock / item.minStock) * 100));
+          const percentage = Math.min(
+            100,
+            Math.round((item.currentStock / item.minStock) * 100),
+          );
           const isCritical = item.currentStock <= 2;
 
           return (
@@ -72,8 +71,16 @@ export const LowStockAlert: React.FC<LowStockAlertProps> = ({
                 <ProductInfo>
                   <ProductNameRow>
                     <ProductName>{item.name}</ProductName>
-                    <Badge variant={isCritical ? 'danger' : 'warning'} size="sm" dot>
-                      {isCritical ? 'Critical' : 'Low Stock'}
+                    <Badge
+                      variant={
+                        isCritical
+                          ? BADGE_VARIANTS.DANGER
+                          : BADGE_VARIANTS.WARNING
+                      }
+                      size={UI_SIZES.SM}
+                      dot
+                    >
+                      {isCritical ? "Critical" : "Low Stock"}
                     </Badge>
                   </ProductNameRow>
                   <ProductMetaRow>
@@ -98,7 +105,10 @@ export const LowStockAlert: React.FC<LowStockAlertProps> = ({
               <BarContainer>
                 <BarLabels>
                   <StockCount>
-                    On Hand: <strong>{item.currentStock} {item.unit}</strong>
+                    On Hand:{" "}
+                    <strong>
+                      {item.currentStock} {item.unit}
+                    </strong>
                   </StockCount>
                   <MinStockCount>
                     Min Threshold: {item.minStock} {item.unit}

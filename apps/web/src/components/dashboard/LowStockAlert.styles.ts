@@ -1,10 +1,9 @@
-import styled from 'styled-components';
+import styled from "styled-components";
 
 export const LowStockTitleWrap = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-
   svg {
     color: ${({ theme }) => theme.colors.danger};
   }
@@ -18,14 +17,13 @@ export const LowStockList = styled.div`
 
 export const LowStockItem = styled.div`
   padding: 12px 14px;
-  background-color: #f8fafc;
+  background-color: ${({ theme }) => theme.colors.backgroundSubtle};
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radius.md};
   transition: all 0.2s ease;
-
   &:hover {
-    background-color: #ffffff;
-    border-color: #cbd5e1;
+    background-color: ${({ theme }) => theme.colors.background};
+    border-color: ${({ theme }) => theme.colors.hoverBorder};
   }
 `;
 
@@ -72,7 +70,7 @@ export const SkuText = styled.span`
 `;
 
 export const MetaDot = styled.span`
-  color: #cbd5e1;
+  color: ${({ theme }) => theme.colors.borderDashed};
   font-size: 10px;
 `;
 
@@ -99,10 +97,9 @@ export const ReorderButton = styled.button`
   border-radius: ${({ theme }) => theme.radius.sm};
   cursor: pointer;
   transition: all 0.2s ease;
-
   &:hover {
-    background-color: #f8fafc;
-    border-color: #cbd5e1;
+    background-color: ${({ theme }) => theme.colors.backgroundSubtle};
+    border-color: ${({ theme }) => theme.colors.hoverBorder};
   }
 `;
 
@@ -120,7 +117,6 @@ export const BarLabels = styled.div`
 
 export const StockCount = styled.span`
   color: ${({ theme }) => theme.colors.textPrimary};
-
   strong {
     font-weight: 700;
   }
@@ -132,12 +128,15 @@ export const MinStockCount = styled.span`
 
 export const ProgressTrack = styled.div`
   height: 6px;
-  background-color: #e2e8f0;
+  background-color: ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radius.full};
   overflow: hidden;
 `;
 
-export const ProgressFill = styled.div<{ $percentage: number; $isCritical: boolean }>`
+export const ProgressFill = styled.div<{
+  $percentage: number;
+  $isCritical: boolean;
+}>`
   height: 100%;
   border-radius: ${({ theme }) => theme.radius.full};
   width: ${({ $percentage }) => Math.max(12, $percentage)}%;
@@ -162,7 +161,6 @@ export const FooterInfo = styled.div`
   gap: 6px;
   font-size: 11.5px;
   color: ${({ theme }) => theme.colors.textSecondary};
-
   svg {
     color: ${({ theme }) => theme.colors.primary};
   }
@@ -176,12 +174,11 @@ export const BulkOrderButton = styled.button`
   font-size: 12px;
   font-weight: 600;
   background-color: ${({ theme }) => theme.colors.primary};
-  color: #ffffff;
+  color: ${({ theme }) => theme.colors.textInverse};
   border: none;
   border-radius: ${({ theme }) => theme.radius.sm};
   cursor: pointer;
   transition: all 0.2s ease;
-
   &:hover {
     background-color: ${({ theme }) => theme.colors.primaryHover};
   }
@@ -199,7 +196,6 @@ export const HeaderLink = styled.button`
   cursor: pointer;
   padding: 4px 8px;
   border-radius: ${({ theme }) => theme.radius.sm};
-
   &:hover {
     background-color: ${({ theme }) => theme.colors.primaryLight};
   }

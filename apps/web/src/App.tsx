@@ -1,26 +1,27 @@
-import { useState } from 'react';
-import type { NavModule, LowStockProduct } from '@/types';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { DashboardOverview } from '@/components/dashboard/DashboardOverview';
-import { InventoryModule } from '@/components/inventory/InventoryModule';
-import { ModulePlaceholder } from '@/components/common/ModulePlaceholder';
-import { 
-  METRIC_SUMMARIES, 
-  RECENT_SALES, 
-  LOW_STOCK_PRODUCTS, 
-  SHOP_QUICK_STATS 
-} from '@/data/mockData';
+import { useState } from "react";
+import type { NavModule, LowStockProduct } from "@/types";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
+import { InventoryModule } from "@/components/inventory/InventoryModule";
+import { SalesModule } from "@/components/sales/SalesModule";
+import { ModulePlaceholder } from "@/components/common/ModulePlaceholder";
+import {
+  METRIC_SUMMARIES,
+  RECENT_SALES,
+  LOW_STOCK_PRODUCTS,
+  SHOP_QUICK_STATS,
+} from "@/data/mockData";
 
 export function App() {
-  const [activeModule, setActiveModule] = useState<NavModule>('dashboard');
+  const [activeModule, setActiveModule] = useState<NavModule>("dashboard");
 
   const handleQuickSale = () => {
-    setActiveModule('sales');
+    setActiveModule("sales");
   };
 
   const handleRestockProduct = (product: LowStockProduct) => {
     if (product) {
-      setActiveModule('purchase');
+      setActiveModule("purchase");
     }
   };
 
@@ -30,7 +31,7 @@ export function App() {
       onSelectModule={setActiveModule}
       onQuickSale={handleQuickSale}
     >
-      {activeModule === 'dashboard' ? (
+      {activeModule === "dashboard" ? (
         <DashboardOverview
           metrics={METRIC_SUMMARIES}
           sales={RECENT_SALES}
@@ -40,12 +41,14 @@ export function App() {
           onQuickSale={handleQuickSale}
           onRestockProduct={handleRestockProduct}
         />
-      ) : activeModule === 'inventory' ? (
+      ) : activeModule === "inventory" ? (
         <InventoryModule />
+      ) : activeModule === "sales" ? (
+        <SalesModule />
       ) : (
         <ModulePlaceholder
           module={activeModule}
-          onNavigateHome={() => setActiveModule('dashboard')}
+          onNavigateHome={() => setActiveModule("dashboard")}
         />
       )}
     </AppLayout>

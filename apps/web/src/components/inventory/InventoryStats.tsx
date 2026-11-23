@@ -1,6 +1,6 @@
-import React from 'react';
-import { Package, Boxes, AlertTriangle, DollarSign } from 'lucide-react';
-import { formatCurrency } from '@/utils/formatters';
+import React from "react";
+import { Package, Boxes, AlertTriangle, Banknote } from "lucide-react";
+import { formatCurrency } from "@/utils/formatters";
 import {
   StatsGrid,
   StatCard,
@@ -8,7 +8,7 @@ import {
   StatDetails,
   StatLabel,
   StatValue,
-} from './Inventory.styles';
+} from "./Inventory.styles";
 
 interface InventoryStatsProps {
   totalCount: number;
@@ -46,7 +46,7 @@ export const InventoryStats: React.FC<InventoryStatsProps> = ({
       </StatCard>
 
       <StatCard>
-        <StatIconBox $colorVariant={lowStockCount > 0 ? 'warning' : 'success'}>
+        <StatIconBox $colorVariant={lowStockCount > 0 ? "warning" : "success"}>
           <AlertTriangle size={20} />
         </StatIconBox>
         <StatDetails>
@@ -57,7 +57,7 @@ export const InventoryStats: React.FC<InventoryStatsProps> = ({
 
       <StatCard>
         <StatIconBox $colorVariant="success">
-          <DollarSign size={20} />
+          <Banknote size={20} />
         </StatIconBox>
         <StatDetails>
           <StatLabel>Total Inventory Cost</StatLabel>

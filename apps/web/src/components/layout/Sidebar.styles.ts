@@ -1,4 +1,4 @@
-import styled, { css } from 'styled-components';
+import styled, { css } from "styled-components";
 
 export const Backdrop = styled.div<{ $isOpen: boolean }>`
   display: none;
@@ -6,11 +6,11 @@ export const Backdrop = styled.div<{ $isOpen: boolean }>`
     display: block;
     position: fixed;
     inset: 0;
-    background-color: rgba(15, 23, 42, 0.6);
+    background-color: ${({ theme }) => theme.colors.overlay};
     backdrop-filter: blur(4px);
     z-index: 45;
     opacity: ${({ $isOpen }) => ($isOpen ? 1 : 0)};
-    pointer-events: ${({ $isOpen }) => ($isOpen ? 'auto' : 'none')};
+    pointer-events: ${({ $isOpen }) => ($isOpen ? "auto" : "none")};
     transition: opacity 0.3s ease;
   }
 `;
@@ -27,13 +27,12 @@ export const SidebarContainer = styled.aside<{ $isOpen: boolean }>`
   border-right: 1px solid ${({ theme }) => theme.colors.borderSidebar};
   z-index: 50;
   transition: transform 0.3s ease;
-
   ${({ theme }) => theme.media.tablet} {
     position: fixed;
     top: 0;
     left: 0;
-    transform: ${({ $isOpen }) => ($isOpen ? 'translateX(0)' : 'translateX(-100%)')};
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
+    transform: ${({ $isOpen }) => ($isOpen ? "translateX(0)" : "translateX(-100%)")};
+    box-shadow: ${({ theme }) => theme.shadows.sidebarMobile};
   }
 `;
 
@@ -48,39 +47,42 @@ export const BrandSection = styled.div`
 export const LogoWrap = styled.div`
   width: 38px;
   height: 38px;
-  background: linear-gradient(135deg, #4f46e5, #818cf8);
+  background: linear-gradient(
+    135deg,
+    ${({ theme }) => theme.colors.primary},
+    ${({ theme }) => theme.colors.sidebarAccent}
+  );
   border-radius: ${({ theme }) => theme.radius.md};
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.35);
-  svg { width: 22px; height: 22px; }
+  color: ${({ theme }) => theme.colors.textInverse};
+  box-shadow: ${({ theme }) => theme.shadows.sidebarLogo};
+  svg {
+    width: 22px;
+    height: 22px;
+  }
 `;
 
 export const BrandText = styled.div`
   display: flex;
   flex-direction: column;
 `;
-
 export const BrandTitle = styled.div`
   font-size: 19px;
   font-weight: 800;
   letter-spacing: -0.5px;
   line-height: 1.1;
 `;
-
 export const BrandPrimary = styled.span`
-  color: #ffffff;
+  color: ${({ theme }) => theme.colors.textInverse};
 `;
-
 export const BrandAccent = styled.span`
-  color: #818cf8;
+  color: ${({ theme }) => theme.colors.sidebarAccent};
 `;
-
 export const BrandSubtitle = styled.span`
   font-size: 11px;
-  color: #94a3b8;
+  color: ${({ theme }) => theme.colors.textMuted};
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -91,16 +93,18 @@ export const MobileCloseButton = styled.button`
   display: none;
   background: none;
   border: none;
-  color: #94a3b8;
+  color: ${({ theme }) => theme.colors.textMuted};
   cursor: pointer;
   margin-left: auto;
-  ${({ theme }) => theme.media.tablet} { display: block; }
+  ${({ theme }) => theme.media.tablet} {
+    display: block;
+  }
 `;
 
 export const StoreInfoBox = styled.div`
   margin: 16px 16px 8px;
   padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: ${({ theme }) => theme.colors.sidebarSubtle};
   border: 1px solid ${({ theme }) => theme.colors.borderSidebar};
   border-radius: ${({ theme }) => theme.radius.md};
   display: flex;
@@ -111,12 +115,12 @@ export const StoreInfoBox = styled.div`
 export const StoreIconPill = styled.div`
   width: 28px;
   height: 28px;
-  background: rgba(99, 102, 241, 0.15);
+  background: ${({ theme }) => theme.colors.sidebarIconPill};
   border-radius: ${({ theme }) => theme.radius.sm};
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #818cf8;
+  color: ${({ theme }) => theme.colors.sidebarAccent};
 `;
 
 export const StoreDetails = styled.div`
@@ -125,27 +129,25 @@ export const StoreDetails = styled.div`
   flex: 1;
   min-width: 0;
 `;
-
 export const StoreName = styled.span`
-  color: #f1f5f9;
+  color: ${({ theme }) => theme.colors.hoverSubtle};
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `;
-
 export const StoreBranch = styled.span`
-  color: #64748b;
+  color: ${({ theme }) => theme.colors.textSubtle};
   font-size: 10px;
 `;
 
 export const LiveIndicatorDot = styled.span`
   width: 8px;
   height: 8px;
-  background-color: #10b981;
+  background-color: ${({ theme }) => theme.colors.liveEmerald};
   border-radius: 50%;
-  box-shadow: 0 0 8px #10b981;
+  box-shadow: ${({ theme }) => theme.shadows.dotLive};
 `;
 
 export const NavSection = styled.nav`
@@ -153,13 +155,12 @@ export const NavSection = styled.nav`
   padding: 16px 12px;
   overflow-y: auto;
 `;
-
 export const NavHeading = styled.div`
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #64748b;
+  color: ${({ theme }) => theme.colors.textSubtle};
   padding: 0 12px 10px;
 `;
 
@@ -169,7 +170,6 @@ export const NavMenuList = styled.ul`
   flex-direction: column;
   gap: 4px;
 `;
-
 export const NavMenuItem = styled.li``;
 
 export const NavMenuButton = styled.button<{ $isActive: boolean }>`
@@ -185,20 +185,19 @@ export const NavMenuButton = styled.button<{ $isActive: boolean }>`
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
-
   ${({ $isActive, theme }) =>
     $isActive
       ? css`
           background-color: ${theme.colors.backgroundSidebarActive};
-          color: #ffffff;
-          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+          color: ${theme.colors.textInverse};
+          box-shadow: ${theme.shadows.sidebarNavActive};
         `
       : css`
           background: transparent;
-          color: #94a3b8;
+          color: ${theme.colors.textMuted};
           &:hover {
             background-color: ${theme.colors.backgroundSidebarHover};
-            color: #ffffff;
+            color: ${theme.colors.textInverse};
           }
         `}
 `;
@@ -207,66 +206,70 @@ export const NavLinkLeft = styled.span`
   display: flex;
   align-items: center;
   gap: 12px;
-  svg { flex-shrink: 0; }
+  svg {
+    flex-shrink: 0;
+  }
 `;
-
 export const NavLinkRight = styled.span`
   display: flex;
   align-items: center;
   gap: 8px;
 `;
 
-export const SidebarBadge = styled.span<{ $variant?: 'primary' | 'warning' | 'danger' }>`
+export const SidebarBadge = styled.span<{
+  $variant?: "primary" | "warning" | "danger";
+}>`
   font-size: 10.5px;
   font-weight: 700;
   padding: 2px 7px;
   border-radius: ${({ theme }) => theme.radius.full};
-  background-color: ${({ $variant }) =>
-    $variant === 'warning' ? 'rgba(245, 158, 11, 0.2)' :
-    $variant === 'danger' ? 'rgba(225, 29, 72, 0.2)' : 'rgba(99, 102, 241, 0.2)'};
-  color: ${({ $variant }) =>
-    $variant === 'warning' ? '#fbbf24' :
-    $variant === 'danger' ? '#fda4af' : '#a5b4fc'};
+  background-color: ${({ $variant, theme }) =>
+    $variant === "warning"
+      ? theme.colors.sidebarBadgeWarning
+      : $variant === "danger"
+        ? theme.colors.sidebarBadgeDanger
+        : theme.colors.sidebarBadgePrimary};
+  color: ${({ $variant, theme }) =>
+    $variant === "warning"
+      ? theme.colors.sidebarWarningText
+      : $variant === "danger"
+        ? theme.colors.sidebarDangerText
+        : theme.colors.sidebarPrimaryText};
 `;
 
 export const SidebarFooter = styled.div`
   padding: 16px 16px 20px;
   border-top: 1px solid ${({ theme }) => theme.colors.borderSidebar};
 `;
-
 export const SystemCard = styled.div`
-  background: rgba(255, 255, 255, 0.03);
+  background: ${({ theme }) => theme.colors.sidebarSubtle};
   border: 1px solid ${({ theme }) => theme.colors.borderSidebar};
   border-radius: ${({ theme }) => theme.radius.md};
   padding: 12px;
 `;
-
 export const SystemHeader = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #818cf8;
+  color: ${({ theme }) => theme.colors.sidebarAccent};
 `;
-
 export const SystemVersion = styled.span`
   font-size: 11px;
   font-weight: 700;
-  color: #e2e8f0;
+  color: ${({ theme }) => theme.colors.border};
 `;
-
 export const SystemDesc = styled.p`
   font-size: 10.5px;
-  color: #64748b;
+  color: ${({ theme }) => theme.colors.textSubtle};
   margin-top: 4px;
   line-height: 1.4;
 `;
-
 export const SystemStatus = styled.div`
   display: flex;
   align-items: center;
   gap: 5px;
   font-size: 10px;
-  color: #10b981;
+  color: ${({ theme }) => theme.colors.liveEmerald};
   font-weight: 600;
   margin-top: 8px;
 `;

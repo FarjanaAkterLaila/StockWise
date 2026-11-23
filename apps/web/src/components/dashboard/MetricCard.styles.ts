@@ -1,4 +1,4 @@
-import styled from 'styled-components';
+import styled from "styled-components";
 
 export const CardWrap = styled.div<{ $metricId: string }>`
   background-color: ${({ theme }) => theme.colors.background};
@@ -38,15 +38,27 @@ export const IconBox = styled.div<{ $metricId: string }>`
 
   ${({ $metricId, theme }) => {
     switch ($metricId) {
-      case 'sales_count':
-        return `background-color: ${theme.colors.successLight}; color: ${theme.colors.success};`;
-      case 'inventory_value':
-        return `background-color: ${theme.colors.infoLight}; color: ${theme.colors.info};`;
-      case 'low_stock':
-        return `background-color: ${theme.colors.warningLight}; color: ${theme.colors.warning};`;
-      case 'revenue':
+      case "sales_count":
+        return `
+          background-color: ${theme.colors.successLight};
+          color: ${theme.colors.success};
+        `;
+      case "inventory_value":
+        return `
+          background-color: ${theme.colors.infoLight};
+          color: ${theme.colors.info};
+        `;
+      case "low_stock":
+        return `
+          background-color: ${theme.colors.warningLight};
+          color: ${theme.colors.warning};
+        `;
+      case "revenue":
       default:
-        return `background-color: ${theme.colors.primaryLight}; color: ${theme.colors.primary};`;
+        return `
+          background-color: ${theme.colors.primaryLight};
+          color: ${theme.colors.primary};
+        `;
     }
   }}
 `;
@@ -63,7 +75,7 @@ export const MetricValue = styled.span`
   font-weight: 800;
   color: ${({ theme }) => theme.colors.textPrimary};
   letter-spacing: -0.5px;
-  font-feature-settings: 'tnum';
+  font-feature-settings: "tnum";
 `;
 
 export const StatusPill = styled.span<{ $isPositive: boolean }>`

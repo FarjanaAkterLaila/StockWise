@@ -1,12 +1,12 @@
-import React from 'react';
-import { 
-  CardContainer, 
-  CardHeader, 
-  CardTitle, 
-  CardSubtitle, 
-  CardAction, 
-  CardBody 
-} from './Card.styles';
+import React from "react";
+import {
+  CardContainer,
+  CardHeader,
+  CardTitle,
+  CardSubtitle,
+  CardAction,
+  CardBody,
+} from "./Card.styles";
 
 interface CardProps {
   title?: React.ReactNode;
@@ -31,8 +31,8 @@ export const Card: React.FC<CardProps> = ({
       {hasHeader && (
         <CardHeader>
           <div>
-            {title && (typeof title === 'string' ? <CardTitle>{title}</CardTitle> : title)}
-            {subtitle && (typeof subtitle === 'string' ? <CardSubtitle>{subtitle}</CardSubtitle> : subtitle)}
+            {title && <CardTitle>{title}</CardTitle>}
+            {subtitle && <CardSubtitle>{subtitle}</CardSubtitle>}
           </div>
           {action && <CardAction>{action}</CardAction>}
         </CardHeader>

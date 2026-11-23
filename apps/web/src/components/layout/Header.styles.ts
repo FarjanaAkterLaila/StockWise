@@ -1,4 +1,4 @@
-import styled from 'styled-components';
+import styled from "styled-components";
 
 export const HeaderContainer = styled.header`
   height: 72px;
@@ -11,8 +11,7 @@ export const HeaderContainer = styled.header`
   position: sticky;
   top: 0;
   z-index: 30;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-
+  box-shadow: ${({ theme }) => theme.shadows.header};
   ${({ theme }) => theme.media.tablet} {
     padding: 0 20px;
   }
@@ -32,7 +31,6 @@ export const MobileToggleBtn = styled.button`
   padding: 7px;
   color: ${({ theme }) => theme.colors.textSecondary};
   cursor: pointer;
-
   ${({ theme }) => theme.media.tablet} {
     display: flex;
     align-items: center;
@@ -41,20 +39,17 @@ export const MobileToggleBtn = styled.button`
 `;
 
 export const TitleBlock = styled.div``;
-
 export const PageTitle = styled.h1`
   font-size: 18px;
   font-weight: 700;
   color: ${({ theme }) => theme.colors.textPrimary};
   letter-spacing: -0.3px;
 `;
-
 export const PageSubtitle = styled.p`
   font-size: 12px;
   color: ${({ theme }) => theme.colors.textMuted};
   font-weight: 500;
 `;
-
 export const HeaderRight = styled.div`
   display: flex;
   align-items: center;
@@ -66,7 +61,6 @@ export const SearchWrapper = styled.div`
   display: flex;
   align-items: center;
   width: 320px;
-
   ${({ theme }) => theme.media.tablet} {
     display: none;
   }
@@ -87,15 +81,14 @@ export const SearchInput = styled.input`
   font-size: 13px;
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radius.md};
-  background-color: #f8fafc;
+  background-color: ${({ theme }) => theme.colors.backgroundSubtle};
   color: ${({ theme }) => theme.colors.textPrimary};
   transition: all 0.2s ease;
-
   &:focus {
     outline: none;
     border-color: ${({ theme }) => theme.colors.primary};
-    background-color: #ffffff;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+    background-color: ${({ theme }) => theme.colors.background};
+    box-shadow: ${({ theme }) => theme.shadows.focusPrimary};
   }
 `;
 
@@ -106,7 +99,7 @@ export const SearchShortcut = styled.span`
   font-family: ${({ theme }) => theme.typography.fontFamily.mono};
   font-weight: 600;
   color: ${({ theme }) => theme.colors.textMuted};
-  background: #ffffff;
+  background: ${({ theme }) => theme.colors.background};
   border: 1px solid ${({ theme }) => theme.colors.border};
   padding: 1px 5px;
   border-radius: 4px;
@@ -123,13 +116,12 @@ export const ActionButton = styled.button`
   border: 1px solid transparent;
   cursor: pointer;
   background-color: ${({ theme }) => theme.colors.primary};
-  color: #ffffff;
+  color: ${({ theme }) => theme.colors.textInverse};
   transition: all 0.2s ease;
   white-space: nowrap;
-
   &:hover {
     background-color: ${({ theme }) => theme.colors.primaryHover};
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    box-shadow: ${({ theme }) => theme.shadows.btnPrimary};
   }
 `;
 
@@ -144,15 +136,14 @@ export const HeaderIconButton = styled.button`
   align-items: center;
   justify-content: center;
   border: 1px solid ${({ theme }) => theme.colors.border};
-  background-color: #ffffff;
+  background-color: ${({ theme }) => theme.colors.background};
   color: ${({ theme }) => theme.colors.textSecondary};
   border-radius: ${({ theme }) => theme.radius.md};
   cursor: pointer;
   position: relative;
   transition: all 0.2s ease;
-
   &:hover {
-    background-color: #f1f5f9;
+    background-color: ${({ theme }) => theme.colors.hoverSubtle};
     color: ${({ theme }) => theme.colors.textPrimary};
   }
 `;
@@ -165,14 +156,13 @@ export const NotificationDot = styled.span`
   height: 8px;
   background-color: ${({ theme }) => theme.colors.danger};
   border-radius: 50%;
-  border: 2px solid #ffffff;
+  border: 2px solid ${({ theme }) => theme.colors.background};
 `;
 
 export const HeaderDivider = styled.div`
   width: 1px;
   height: 28px;
   background-color: ${({ theme }) => theme.colors.border};
-
   ${({ theme }) => theme.media.mobile} {
     display: none;
   }
@@ -186,9 +176,8 @@ export const ProfileButton = styled.div`
   border-radius: ${({ theme }) => theme.radius.md};
   cursor: pointer;
   transition: all 0.2s ease;
-
   &:hover {
-    background-color: #f1f5f9;
+    background-color: ${({ theme }) => theme.colors.hoverSubtle};
   }
 `;
 
@@ -196,8 +185,12 @@ export const AvatarWrap = styled.div`
   width: 36px;
   height: 36px;
   border-radius: ${({ theme }) => theme.radius.md};
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  color: #ffffff;
+  background: linear-gradient(
+    135deg,
+    ${({ theme }) => theme.colors.avatarStart},
+    ${({ theme }) => theme.colors.avatarEnd}
+  );
+  color: ${({ theme }) => theme.colors.textInverse};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -212,34 +205,30 @@ export const AvatarLiveDot = styled.span`
   right: -1px;
   width: 9px;
   height: 9px;
-  background-color: #10b981;
-  border: 2px solid #ffffff;
+  background-color: ${({ theme }) => theme.colors.liveEmerald};
+  border: 2px solid ${({ theme }) => theme.colors.background};
   border-radius: 50%;
 `;
 
 export const ProfileInfo = styled.div`
   display: flex;
   flex-direction: column;
-
   ${({ theme }) => theme.media.mobile} {
     display: none;
   }
 `;
-
 export const ProfileName = styled.span`
   font-size: 13px;
   font-weight: 700;
   color: ${({ theme }) => theme.colors.textPrimary};
   line-height: 1.2;
 `;
-
 export const ProfileRole = styled.span`
   font-size: 11px;
   color: ${({ theme }) => theme.colors.textMuted};
   display: flex;
   align-items: center;
   gap: 3px;
-
   svg {
     color: ${({ theme }) => theme.colors.primary};
   }

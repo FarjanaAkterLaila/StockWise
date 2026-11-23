@@ -1,10 +1,11 @@
-import styled, { css } from 'styled-components';
+import styled, { css } from "styled-components";
+import type { BadgeVariant, BadgeSize } from "@/types";
 
-export type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'primary';
+export type { BadgeVariant };
 
 interface BadgeContainerProps {
   $variant: BadgeVariant;
-  $size: 'sm' | 'md';
+  $size: BadgeSize;
 }
 
 const variantStyles = {
@@ -34,7 +35,7 @@ const variantStyles = {
     border: 1px solid ${({ theme }) => theme.colors.primaryBorder};
   `,
   neutral: css`
-    background-color: #f1f5f9;
+    background-color: ${({ theme }) => theme.colors.hoverSubtle};
     color: ${({ theme }) => theme.colors.textSecondary};
     border: 1px solid ${({ theme }) => theme.colors.border};
   `,
@@ -50,7 +51,7 @@ export const BadgeContainer = styled.span<BadgeContainerProps>`
   white-space: nowrap;
 
   ${({ $size }) =>
-    $size === 'sm'
+    $size === "sm"
       ? css`
           font-size: 10.5px;
           padding: 1px 6px;

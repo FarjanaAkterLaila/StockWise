@@ -1,8 +1,8 @@
-import React from 'react';
-import type { Product } from '@/types';
-import { PackageSearch } from 'lucide-react';
-import { InventoryTableRow } from './InventoryTableRow';
-import { APP_STRINGS } from '@/utils/constants';
+import React from "react";
+import type { Product } from "@/types";
+import { PackageSearch } from "lucide-react";
+import { InventoryTableRow } from "./InventoryTableRow";
+import { APP_STRINGS } from "@/utils/constants";
 import {
   TableContainer,
   TableResponsiveWrapper,
@@ -16,7 +16,7 @@ import {
   EmptyTitle,
   EmptyDesc,
   ClearFilterBtn,
-} from './Inventory.styles';
+} from "./Inventory.styles";
 
 interface InventoryTableProps {
   products: Product[];

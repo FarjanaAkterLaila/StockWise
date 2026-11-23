@@ -1,18 +1,14 @@
-import React from 'react';
-import type { NavModule } from '@/types';
+import React from "react";
+import type { NavModule } from "@/types";
+import { NAV_ITEMS } from "@/utils/navigation.utils";
 import {
-  LayoutDashboard,
-  ShoppingCart,
-  ShoppingBag,
-  Package,
-  WalletCards,
   Monitor,
   Cpu,
   ChevronRight,
   Sparkles,
   ShieldCheck,
-  X
-} from 'lucide-react';
+  X,
+} from "lucide-react";
 import {
   Backdrop,
   SidebarContainer,
@@ -44,7 +40,7 @@ import {
   SystemVersion,
   SystemDesc,
   SystemStatus,
-} from './Sidebar.styles';
+} from "./Sidebar.styles";
 
 interface SidebarProps {
   activeModule: NavModule;
@@ -52,22 +48,6 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-interface NavItemConfig {
-  id: NavModule;
-  label: string;
-  icon: React.ElementType;
-  badge?: string;
-  badgeVariant?: 'primary' | 'warning' | 'danger';
-}
-
-const NAV_ITEMS: NavItemConfig[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'sales', label: 'Sales', icon: ShoppingCart },
-  { id: 'purchase', label: 'Purchase', icon: ShoppingBag },
-  { id: 'inventory', label: 'Inventory', icon: Package, badge: '5 Low', badgeVariant: 'warning' },
-  { id: 'accounts', label: 'Accounts', icon: WalletCards },
-];
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeModule,
@@ -101,8 +81,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Monitor size={14} />
           </StoreIconPill>
           <StoreDetails>
-            <StoreName>Apex Hardware & PC</StoreName>
-            <StoreBranch>Main Branch • POS-1</StoreBranch>
+            <StoreName>StockWise Computers BD</StoreName>
+            <StoreBranch>Multiplan Branch • Dhaka</StoreBranch>
           </StoreDetails>
           <LiveIndicatorDot title="Terminal Online" />
         </StoreInfoBox>
@@ -130,7 +110,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </NavLinkLeft>
                     <NavLinkRight>
                       {item.badge && (
-                        <SidebarBadge $variant={item.badgeVariant || 'primary'}>
+                        <SidebarBadge $variant={item.badgeVariant || "primary"}>
                           {item.badge}
                         </SidebarBadge>
                       )}

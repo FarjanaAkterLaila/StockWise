@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import type { NavModule } from '@/types';
-import { Sidebar } from './Sidebar';
-import { Header } from './Header';
+import React, { useState } from "react";
+import type { NavModule } from "@/types";
+import { Sidebar } from "./Sidebar";
+import { Header } from "./Header";
 import {
   LayoutWrapper,
   MainContentArea,
   ScrollableContent,
   PageContainer,
-} from './AppLayout.styles';
+} from "./AppLayout.styles";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -41,9 +41,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         />
 
         <ScrollableContent>
-          <PageContainer>
-            {children}
-          </PageContainer>
+          <PageContainer>{children}</PageContainer>
         </ScrollableContent>
       </MainContentArea>
     </LayoutWrapper>

@@ -1,8 +1,15 @@
-import React, { useState } from 'react';
-import type { Product } from '@/types';
-import { HARDWARE_CATEGORIES, UNIT_OPTIONS, APP_STRINGS } from '@/utils/constants';
-import { validateProductForm, type ProductFormData } from '@/validations/product.validation';
-import { GenericModal } from '@/components/common/GenericModal';
+import React, { useState } from "react";
+import type { Product, ProductStatus } from "@/types";
+import { UNIT_OPTIONS, APP_STRINGS, PRODUCT_STATUS } from "@/utils/constants";
+import {
+  validateProductForm,
+  type ProductFormData,
+} from "@/validations/product.validation";
+import {
+  getInitialProductFormData,
+  AVAILABLE_CATEGORIES,
+} from "@/utils/product.utils";
+import { GenericModal } from "@/components/common/GenericModal";
 import {
   ModalForm,
   FormGroup,
@@ -14,29 +21,14 @@ import {
   ModalFooter,
   CancelButton,
   SubmitButton,
-} from './Inventory.styles';
+} from "./Inventory.styles";
 
 interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (product: Omit<Product, 'id'> & { id?: string }) => void;
+  onSave: (product: Omit<Product, "id"> & { id?: string }) => void;
   initialProduct?: Product | null;
 }
-
-const AVAILABLE_CATEGORIES = HARDWARE_CATEGORIES.filter((c) => c !== 'All');
-
-const getInitialFormData = (p: Product | null | undefined): ProductFormData => ({
-  name: p?.name || '',
-  sku: p?.sku || '',
-  barcode: p?.barcode || '',
-  category: p?.category || AVAILABLE_CATEGORIES[0] || 'Graphics Cards',
-  costPrice: p ? String(p.costPrice) : '',
-  sellingPrice: p ? String(p.sellingPrice) : '',
-  stockQuantity: p ? String(p.stockQuantity) : '',
-  minStockLevel: p ? String(p.minStockLevel) : '5',
-  unit: p?.unit || 'pcs',
-  status: p?.status || 'active',
-});
 
 export const ProductModal: React.FC<ProductModalProps> = ({
   isOpen,
@@ -45,7 +37,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   initialProduct,
 }) => {
   const isEditing = Boolean(initialProduct);
-  const [formData, setFormData] = useState<ProductFormData>(() => getInitialFormData(initialProduct));
+  const [formData, setFormData] = useState<ProductFormData>(() =>
+    getInitialProductFormData(initialProduct),
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   if (!isOpen) return null;
@@ -78,16 +72,18 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       size="lg"
-      title={isEditing ? 'Edit Product' : 'Add New Hardware Product'}
+      title={isEditing ? "Edit Product" : "Add New Hardware Product"}
       subtitle={
         isEditing
           ? `Updating specifications for ${initialProduct?.sku}`
-          : 'Enter computer shop hardware specifications and inventory details'
+          : "Enter computer shop hardware specifications and inventory details"
       }
     >
       <ModalForm onSubmit={handleSubmit}>
         <FormGroup>
-          <FormLabel htmlFor="prod-name">Product Name <span className="required">*</span></FormLabel>
+          <FormLabel htmlFor="prod-name">
+            Product Name <span className="required">*</span>
+          </FormLabel>
           <FormInput
             id="prod-name"
             type="text"
@@ -100,39 +96,53 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
         <FormRow>
           <FormGroup>
-            <FormLabel htmlFor="prod-sku">SKU / Item Code <span className="required">*</span></FormLabel>
+            <FormLabel htmlFor="prod-sku">
+              SKU / Item Code <span className="required">*</span>
+            </FormLabel>
             <FormInput
               id="prod-sku"
               type="text"
               placeholder="e.g. GPU-NV-4080S"
               value={formData.sku}
-              onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, sku: e.target.value })
+              }
             />
             {errors.sku && <FormError>{errors.sku}</FormError>}
           </FormGroup>
 
           <FormGroup>
-            <FormLabel htmlFor="prod-barcode">Barcode / EAN (Optional)</FormLabel>
+            <FormLabel htmlFor="prod-barcode">
+              Barcode / EAN (Optional)
+            </FormLabel>
             <FormInput
               id="prod-barcode"
               type="text"
               placeholder="e.g. 843591029101"
               value={formData.barcode}
-              onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, barcode: e.target.value })
+              }
             />
           </FormGroup>
         </FormRow>
 
         <FormRow>
           <FormGroup>
-            <FormLabel htmlFor="prod-cat">Category <span className="required">*</span></FormLabel>
+            <FormLabel htmlFor="prod-cat">
+              Category <span className="required">*</span>
+            </FormLabel>
             <FormSelect
               id="prod-cat"
               value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, category: e.target.value })
+              }
             >
               {AVAILABLE_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
               ))}
             </FormSelect>
           </FormGroup>
@@ -142,10 +152,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             <FormSelect
               id="prod-unit"
               value={formData.unit}
-              onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, unit: e.target.value })
+              }
             >
               {UNIT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </FormSelect>
           </FormGroup>
@@ -153,31 +167,41 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
         <FormRow>
           <FormGroup>
-            <FormLabel htmlFor="prod-cost">Purchase Price ($) <span className="required">*</span></FormLabel>
+            <FormLabel htmlFor="prod-cost">
+              Purchase Price (৳) <span className="required">*</span>
+            </FormLabel>
             <FormInput
               id="prod-cost"
               type="number"
-              step="0.01"
+              step="1"
               min="0"
               placeholder="0.00"
               value={formData.costPrice}
-              onChange={(e) => setFormData({ ...formData, costPrice: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, costPrice: e.target.value })
+              }
             />
             {errors.costPrice && <FormError>{errors.costPrice}</FormError>}
           </FormGroup>
 
           <FormGroup>
-            <FormLabel htmlFor="prod-sell">Selling Price ($) <span className="required">*</span></FormLabel>
+            <FormLabel htmlFor="prod-sell">
+              Selling Price (৳) <span className="required">*</span>
+            </FormLabel>
             <FormInput
               id="prod-sell"
               type="number"
-              step="0.01"
+              step="1"
               min="0"
               placeholder="0.00"
               value={formData.sellingPrice}
-              onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, sellingPrice: e.target.value })
+              }
             />
-            {errors.sellingPrice && <FormError>{errors.sellingPrice}</FormError>}
+            {errors.sellingPrice && (
+              <FormError>{errors.sellingPrice}</FormError>
+            )}
           </FormGroup>
         </FormRow>
 
@@ -190,22 +214,32 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               min="0"
               placeholder="0"
               value={formData.stockQuantity}
-              onChange={(e) => setFormData({ ...formData, stockQuantity: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, stockQuantity: e.target.value })
+              }
             />
-            {errors.stockQuantity && <FormError>{errors.stockQuantity}</FormError>}
+            {errors.stockQuantity && (
+              <FormError>{errors.stockQuantity}</FormError>
+            )}
           </FormGroup>
 
           <FormGroup>
-            <FormLabel htmlFor="prod-min">Low Stock Warning Threshold</FormLabel>
+            <FormLabel htmlFor="prod-min">
+              Low Stock Warning Threshold
+            </FormLabel>
             <FormInput
               id="prod-min"
               type="number"
               min="0"
               placeholder="5"
               value={formData.minStockLevel}
-              onChange={(e) => setFormData({ ...formData, minStockLevel: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, minStockLevel: e.target.value })
+              }
             />
-            {errors.minStockLevel && <FormError>{errors.minStockLevel}</FormError>}
+            {errors.minStockLevel && (
+              <FormError>{errors.minStockLevel}</FormError>
+            )}
           </FormGroup>
         </FormRow>
 
@@ -214,10 +248,19 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           <FormSelect
             id="prod-status"
             value={formData.status}
-            onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                status: e.target.value as ProductStatus,
+              })
+            }
           >
-            <option value="active">Active (Available for POS & Sales)</option>
-            <option value="inactive">Inactive (Discontinued / Hidden)</option>
+            <option value={PRODUCT_STATUS.ACTIVE}>
+              Active (Available for POS & Sales)
+            </option>
+            <option value={PRODUCT_STATUS.INACTIVE}>
+              Inactive (Discontinued / Hidden)
+            </option>
           </FormSelect>
         </FormGroup>
 

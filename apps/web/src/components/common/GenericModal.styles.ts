@@ -1,9 +1,10 @@
-import styled from 'styled-components';
+import styled from "styled-components";
+import type { ModalSize, ModalVariant } from "@/types";
 
 export const Overlay = styled.div<{ $isOpen: boolean }>`
   position: fixed;
   inset: 0;
-  background-color: rgba(15, 23, 42, 0.65);
+  background-color: ${({ theme }) => theme.colors.overlay};
   backdrop-filter: blur(4px);
   z-index: 100;
   display: flex;
@@ -11,20 +12,22 @@ export const Overlay = styled.div<{ $isOpen: boolean }>`
   justify-content: center;
   padding: 16px;
   opacity: ${({ $isOpen }) => ($isOpen ? 1 : 0)};
-  pointer-events: ${({ $isOpen }) => ($isOpen ? 'auto' : 'none')};
+  pointer-events: ${({ $isOpen }) => ($isOpen ? "auto" : "none")};
   transition: opacity 0.2s ease;
 `;
 
-export const Dialog = styled.div<{ $size?: 'sm' | 'md' | 'lg' }>`
+export const Dialog = styled.div<{ $size?: ModalSize }>`
   background-color: ${({ theme }) => theme.colors.background};
   border-radius: ${({ theme }) => theme.radius.xl};
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  box-shadow: ${({ theme }) => theme.shadows.modal};
   width: 100%;
-  max-width: ${({ $size }) => ($size === 'sm' ? '440px' : $size === 'lg' ? '700px' : '540px')};
+  max-width: ${({ $size }) =>
+    $size === "sm" ? "440px" : $size === "lg" ? "860px" : "560px"};
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-sizing: border-box;
   border: 1px solid ${({ theme }) => theme.colors.border};
 `;
 
@@ -65,12 +68,17 @@ export const CloseButton = styled.button`
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
-  &:hover { background-color: #f1f5f9; color: ${({ theme }) => theme.colors.textPrimary}; }
+  &:hover {
+    background-color: ${({ theme }) => theme.colors.hoverSubtle};
+    color: ${({ theme }) => theme.colors.textPrimary};
+  }
 `;
 
 export const Body = styled.div`
   padding: 22px 24px;
   overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
   font-size: 13.5px;
   color: ${({ theme }) => theme.colors.textSecondary};
   line-height: 1.5;
@@ -88,24 +96,26 @@ export const Footer = styled.div`
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 24px;
-  background-color: #f8fafc;
+  background-color: ${({ theme }) => theme.colors.backgroundSubtle};
   border-top: 1px solid ${({ theme }) => theme.colors.border};
 `;
 
-export const ConfirmBtn = styled.button<{ $variant?: 'primary' | 'danger' }>`
+export const ConfirmBtn = styled.button<{ $variant?: ModalVariant }>`
   padding: 10px 18px;
   font-size: 13.5px;
   font-weight: 700;
-  color: #ffffff;
+  color: ${({ theme }) => theme.colors.textInverse};
   background-color: ${({ $variant, theme }) =>
-    $variant === 'danger' ? theme.colors.danger : theme.colors.primary};
+    $variant === "danger" ? theme.colors.danger : theme.colors.primary};
   border: none;
   border-radius: ${({ theme }) => theme.radius.md};
   cursor: pointer;
   transition: all 0.2s ease;
   &:hover {
     background-color: ${({ $variant, theme }) =>
-      $variant === 'danger' ? '#be123c' : theme.colors.primaryHover};
+      $variant === "danger"
+        ? theme.colors.dangerHover
+        : theme.colors.primaryHover};
   }
 `;
 
@@ -114,10 +124,12 @@ export const CancelBtn = styled.button`
   font-size: 13.5px;
   font-weight: 600;
   color: ${({ theme }) => theme.colors.textSecondary};
-  background-color: #ffffff;
+  background-color: ${({ theme }) => theme.colors.background};
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radius.md};
   cursor: pointer;
   transition: all 0.2s ease;
-  &:hover { background-color: #f1f5f9; }
+  &:hover {
+    background-color: ${({ theme }) => theme.colors.hoverSubtle};
+  }
 `;

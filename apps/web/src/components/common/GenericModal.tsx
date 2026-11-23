@@ -1,5 +1,12 @@
-import { useEffect, type ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { useEffect, type ReactNode } from "react";
+import { X } from "lucide-react";
+import type { ModalVariant, ModalSize } from "@/types";
+import {
+  KEYBOARD_KEYS,
+  DOM_EVENTS,
+  MODAL_VARIANTS,
+  UI_SIZES,
+} from "@/utils/constants";
 import {
   Overlay,
   Dialog,
@@ -13,7 +20,7 @@ import {
   Footer,
   ConfirmBtn,
   CancelBtn,
-} from './GenericModal.styles';
+} from "./GenericModal.styles";
 
 export interface GenericModalProps {
   isOpen: boolean;
@@ -24,8 +31,8 @@ export interface GenericModalProps {
   confirmText?: string;
   cancelText?: string;
   onConfirm?: () => void;
-  variant?: 'primary' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: ModalVariant;
+  size?: ModalSize;
   showCloseButton?: boolean;
   children?: ReactNode;
   footer?: ReactNode;
@@ -38,10 +45,10 @@ export const GenericModal = ({
   subtitle,
   message,
   confirmText,
-  cancelText = 'Cancel',
+  cancelText = "Cancel",
   onConfirm,
-  variant = 'primary',
-  size = 'md',
+  variant = MODAL_VARIANTS.PRIMARY,
+  size = UI_SIZES.MD,
   showCloseButton = true,
   children,
   footer,
@@ -49,10 +56,10 @@ export const GenericModal = ({
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === KEYBOARD_KEYS.ESCAPE) onClose();
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener(DOM_EVENTS.KEYDOWN, handleKeyDown);
+    return () => window.removeEventListener(DOM_EVENTS.KEYDOWN, handleKeyDown);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -69,7 +76,11 @@ export const GenericModal = ({
               {subtitle && <Subtitle>{subtitle}</Subtitle>}
             </HeaderLeft>
             {showCloseButton && (
-              <CloseButton onClick={onClose} type="button" aria-label="Close modal">
+              <CloseButton
+                onClick={onClose}
+                type="button"
+                aria-label="Close modal"
+              >
                 <X size={18} />
               </CloseButton>
             )}

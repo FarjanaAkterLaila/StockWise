@@ -1,8 +1,13 @@
-import React from 'react';
-import type { Product } from '@/types';
-import { Badge } from '@/components/common/Badge';
-import { Pencil, Trash2, XCircle } from 'lucide-react';
-import { formatCurrency, calculateMargin, calculateStockPercentage } from '@/utils/formatters';
+import React from "react";
+import type { Product } from "@/types";
+import { Badge } from "@/components/common/Badge";
+import { PRODUCT_STATUS, BADGE_VARIANTS, UI_SIZES } from "@/utils/constants";
+import { Pencil, Trash2, XCircle } from "lucide-react";
+import {
+  formatCurrency,
+  calculateMargin,
+  calculateStockPercentage,
+} from "@/utils/formatters";
 import {
   TableRow,
   TableCell,
@@ -24,7 +29,7 @@ import {
   ProgressBarFill,
   ActionButtonsGroup,
   ActionBtn,
-} from './Inventory.styles';
+} from "./Inventory.styles";
 
 interface InventoryTableRowProps {
   product: Product;
@@ -38,9 +43,16 @@ export const InventoryTableRow: React.FC<InventoryTableRowProps> = ({
   onDelete,
 }) => {
   const isOutOfStock = product.stockQuantity === 0;
-  const isLowStock = product.stockQuantity <= product.minStockLevel && !isOutOfStock;
-  const percentage = calculateStockPercentage(product.stockQuantity, product.minStockLevel);
-  const marginPercent = calculateMargin(product.sellingPrice, product.costPrice);
+  const isLowStock =
+    product.stockQuantity <= product.minStockLevel && !isOutOfStock;
+  const percentage = calculateStockPercentage(
+    product.stockQuantity,
+    product.minStockLevel,
+  );
+  const marginPercent = calculateMargin(
+    product.sellingPrice,
+    product.costPrice,
+  );
 
   return (
     <TableRow>
@@ -81,7 +93,10 @@ export const InventoryTableRow: React.FC<InventoryTableRowProps> = ({
             <MinThreshold>Min: {product.minStockLevel}</MinThreshold>
           </StockCountRow>
           <ProgressBarTrack>
-            <ProgressBarFill $percentage={percentage} $isLow={isLowStock || isOutOfStock} />
+            <ProgressBarFill
+              $percentage={percentage}
+              $isLow={isLowStock || isOutOfStock}
+            />
           </ProgressBarTrack>
         </StockProgressWrap>
       </TableCell>
@@ -103,13 +118,16 @@ export const InventoryTableRow: React.FC<InventoryTableRowProps> = ({
       </TableCell>
 
       <TableCell>
-        {product.status === 'active' ? (
-          <Badge variant="neutral" size="sm">
+        {product.status === PRODUCT_STATUS.ACTIVE ? (
+          <Badge variant={BADGE_VARIANTS.NEUTRAL} size={UI_SIZES.SM}>
             Active
           </Badge>
         ) : (
-          <Badge variant="danger" size="sm">
-            <XCircle size={10} style={{ display: 'inline', marginRight: '3px' }} />
+          <Badge variant={BADGE_VARIANTS.DANGER} size={UI_SIZES.SM}>
+            <XCircle
+              size={10}
+              style={{ display: "inline", marginRight: "3px" }}
+            />
             Inactive
           </Badge>
         )}
