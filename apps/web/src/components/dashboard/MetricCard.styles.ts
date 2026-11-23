@@ -43,6 +43,7 @@ export const IconBox = styled.div<{ $metricId: string }>`
           background-color: ${theme.colors.successLight};
           color: ${theme.colors.success};
         `;
+      case "total_purchase":
       case "inventory_value":
         return `
           background-color: ${theme.colors.infoLight};

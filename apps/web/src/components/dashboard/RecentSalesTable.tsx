@@ -1,9 +1,12 @@
 import React, { useState } from "react";
+import { useTheme } from "styled-components";
 import type { RecentSale, PaymentStatus } from "@/types";
 import { Badge } from "@/components/common/Badge";
 import { Card } from "@/components/common/Card";
+import { CustomSelect } from "@/components/common/CustomSelect";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { PAYMENT_STATUS, BADGE_VARIANTS } from "@/utils/constants";
+import { ReceiptModal } from "./ReceiptModal";
 import {
   ArrowUpRight,
   Search,
@@ -18,8 +21,6 @@ import {
   ControlsRow,
   SearchBox,
   TableSearchInput,
-  FilterBox,
-  FilterSelect,
   TableWrapper,
   Table,
   TableHeader,
@@ -47,6 +48,7 @@ import {
 interface RecentSalesTableProps {
   sales: RecentSale[];
   onViewAll?: () => void;
+  onViewSale?: (sale: RecentSale) => void;
 }
 
 const STATUS_VARIANT: Record<PaymentStatus, "success" | "warning" | "danger"> =
@@ -66,9 +68,12 @@ const PAYMENT_ICON = {
 export const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
   sales,
   onViewAll,
+  onViewSale,
 }) => {
+  const theme = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [viewingSale, setViewingSale] = useState<RecentSale | null>(null);
 
   const filteredSales = sales.filter((sale) => {
     const matchesSearch =
@@ -104,18 +109,32 @@ export const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
           />
         </SearchBox>
 
-        <FilterBox>
-          <Filter size={14} />
-          <FilterSelect
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value={PAYMENT_STATUS.ALL}>All Statuses</option>
-            <option value={PAYMENT_STATUS.PAID}>Paid</option>
-            <option value={PAYMENT_STATUS.PARTIAL}>Partial</option>
-            <option value={PAYMENT_STATUS.UNPAID}>Unpaid</option>
-          </FilterSelect>
-        </FilterBox>
+        <CustomSelect
+          value={statusFilter}
+          onChange={setStatusFilter}
+          icon={<Filter size={14} />}
+          align="right"
+          minWidth="140px"
+          ariaLabel="Filter sales by payment status"
+          options={[
+            { value: PAYMENT_STATUS.ALL, label: "All Statuses" },
+            {
+              value: PAYMENT_STATUS.PAID,
+              label: "Paid",
+              dotColor: theme.colors.liveEmerald,
+            },
+            {
+              value: PAYMENT_STATUS.PARTIAL,
+              label: "Partial",
+              dotColor: theme.colors.warning,
+            },
+            {
+              value: PAYMENT_STATUS.UNPAID,
+              label: "Unpaid",
+              dotColor: theme.colors.danger,
+            },
+          ]}
+        />
       </ControlsRow>
 
       <TableWrapper>
@@ -197,6 +216,10 @@ export const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
                       <ActionIconButton
                         title={`View receipt for ${sale.invoiceNumber}`}
                         type="button"
+                        onClick={() => {
+                          setViewingSale(sale);
+                          onViewSale?.(sale);
+                        }}
                       >
                         <Eye size={15} />
                       </ActionIconButton>
@@ -208,6 +231,13 @@ export const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
           </tbody>
         </Table>
       </TableWrapper>
+
+      {/* Invoice / Receipt View Modal */}
+      <ReceiptModal
+        sale={viewingSale}
+        isOpen={Boolean(viewingSale)}
+        onClose={() => setViewingSale(null)}
+      />
     </Card>
   );
 };

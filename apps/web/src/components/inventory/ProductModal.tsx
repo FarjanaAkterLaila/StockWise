@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTheme } from "styled-components";
 import type { Product, ProductStatus } from "@/types";
 import { UNIT_OPTIONS, APP_STRINGS, PRODUCT_STATUS } from "@/utils/constants";
 import {
@@ -10,13 +11,13 @@ import {
   AVAILABLE_CATEGORIES,
 } from "@/utils/product.utils";
 import { GenericModal } from "@/components/common/GenericModal";
+import { CustomSelect } from "@/components/common/CustomSelect";
 import {
   ModalForm,
   FormGroup,
   FormRow,
   FormLabel,
   FormInput,
-  FormSelect,
   FormError,
   ModalFooter,
   CancelButton,
@@ -36,6 +37,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   onSave,
   initialProduct,
 }) => {
+  const theme = useTheme();
   const isEditing = Boolean(initialProduct);
   const [formData, setFormData] = useState<ProductFormData>(() =>
     getInitialProductFormData(initialProduct),
@@ -132,36 +134,30 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             <FormLabel htmlFor="prod-cat">
               Category <span className="required">*</span>
             </FormLabel>
-            <FormSelect
+            <CustomSelect
               id="prod-cat"
+              fullWidth
               value={formData.category}
-              onChange={(e) =>
-                setFormData({ ...formData, category: e.target.value })
-              }
-            >
-              {AVAILABLE_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </FormSelect>
+              onChange={(val) => setFormData({ ...formData, category: val })}
+              options={AVAILABLE_CATEGORIES.map((cat) => ({
+                value: cat,
+                label: cat,
+              }))}
+            />
           </FormGroup>
 
           <FormGroup>
             <FormLabel htmlFor="prod-unit">Unit of Measure</FormLabel>
-            <FormSelect
+            <CustomSelect
               id="prod-unit"
+              fullWidth
               value={formData.unit}
-              onChange={(e) =>
-                setFormData({ ...formData, unit: e.target.value })
-              }
-            >
-              {UNIT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </FormSelect>
+              onChange={(val) => setFormData({ ...formData, unit: val })}
+              options={UNIT_OPTIONS.map((opt) => ({
+                value: opt.value,
+                label: opt.label,
+              }))}
+            />
           </FormGroup>
         </FormRow>
 
@@ -245,23 +241,29 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
         <FormGroup>
           <FormLabel htmlFor="prod-status">Catalog Status</FormLabel>
-          <FormSelect
+          <CustomSelect
             id="prod-status"
+            fullWidth
             value={formData.status}
-            onChange={(e) =>
+            onChange={(val) =>
               setFormData({
                 ...formData,
-                status: e.target.value as ProductStatus,
+                status: val as ProductStatus,
               })
             }
-          >
-            <option value={PRODUCT_STATUS.ACTIVE}>
-              Active (Available for POS & Sales)
-            </option>
-            <option value={PRODUCT_STATUS.INACTIVE}>
-              Inactive (Discontinued / Hidden)
-            </option>
-          </FormSelect>
+            options={[
+              {
+                value: PRODUCT_STATUS.ACTIVE,
+                label: "Active (Available for POS & Sales)",
+                dotColor: theme.colors.liveEmerald,
+              },
+              {
+                value: PRODUCT_STATUS.INACTIVE,
+                label: "Inactive (Discontinued / Hidden)",
+                dotColor: theme.colors.textMuted,
+              },
+            ]}
+          />
         </FormGroup>
 
         <ModalFooter>

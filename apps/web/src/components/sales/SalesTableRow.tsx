@@ -10,6 +10,7 @@ import {
   InvoiceCell,
   InvoiceNum,
   TimeText,
+  DateText,
   CustomerCell,
   CustomerNameText,
   CustomerMeta,
@@ -71,9 +72,7 @@ export const SalesTableRow: React.FC<SalesTableRowProps> = ({
 
       {/* Date */}
       <TableCell>
-        <span style={{ fontSize: "13px", fontWeight: 600, color: "#334155" }}>
-          {formatDate(sale.date)}
-        </span>
+        <DateText>{formatDate(sale.date)}</DateText>
       </TableCell>
 
       {/* Financial Amounts (Total & Due) */}

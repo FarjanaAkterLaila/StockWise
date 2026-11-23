@@ -6,8 +6,10 @@ import {
   Package,
   WalletCards,
 } from "lucide-react";
-import type { NavModule } from "@/types";
+import type { NavModule, NavSubModule } from "@/types";
 import { NAV_MODULES, BADGE_VARIANTS } from "@/utils/constants";
+
+export type { NavSubModule };
 
 export interface NavItemConfig {
   id: NavModule;

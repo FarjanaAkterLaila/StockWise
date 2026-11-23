@@ -1,19 +1,12 @@
 export type NavModule =
-  | "dashboard"
-  | "sales"
-  | "purchase"
-  | "inventory"
-  | "accounts";
+  "dashboard" | "sales" | "purchase" | "inventory" | "accounts";
+
+export type NavSubModule = "sales" | "purchase" | "inventory" | "accounts";
 
 export type ProductStatus = "active" | "inactive";
 
 export type BadgeVariant =
-  | "success"
-  | "warning"
-  | "danger"
-  | "info"
-  | "neutral"
-  | "primary";
+  "success" | "warning" | "danger" | "info" | "neutral" | "primary";
 
 export type BadgeSize = "sm" | "md";
 
@@ -28,11 +21,12 @@ export interface MetricSummary {
   isPositive: boolean;
   period: string;
   iconName:
-  | "dollar-sign"
-  | "shopping-cart"
-  | "package"
-  | "alert-triangle"
-  | "trending-up";
+    | "dollar-sign"
+    | "shopping-cart"
+    | "shopping-bag"
+    | "package"
+    | "alert-triangle"
+    | "trending-up";
   badgeText?: string;
 }
 
@@ -131,4 +125,29 @@ export interface ComputerShopQuickStat {
   label: string;
   value: string;
   subtext: string;
+}
+
+export interface SalesPurchaseComparison {
+  month: string;
+  monthFull: string;
+  sales: number;
+  purchase: number;
+  margin: number;
+}
+
+export interface RevenueTrendPoint {
+  date: string;
+  label: string;
+  revenue: number;
+  invoices: number;
+}
+
+export type InventoryStockCategory = "in_stock" | "low_stock" | "out_of_stock";
+
+export interface InventoryStatusBreakdown {
+  category: InventoryStockCategory;
+  label: string;
+  count: number;
+  percentage: number;
+  color: string;
 }

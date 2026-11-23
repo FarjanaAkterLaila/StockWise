@@ -47,4 +47,42 @@ export const GlobalStyles = createGlobalStyle`
   input, select, textarea {
     font-family: inherit;
   }
+
+  /* ------------------------------------------------------------- */
+  /* PRINT STYLES: Clean 1-page receipt printing                   */
+  /* ------------------------------------------------------------- */
+  @page {
+    size: auto;
+    margin: 10mm;
+  }
+
+  @media print {
+    /* Hide the entire React root app when printing a receipt */
+    body.printing-receipt #root,
+    body:has(#printable-receipt) #root {
+      display: none;
+    }
+
+    body {
+      background: ${({ theme }) => theme.colors.background};
+      color: ${({ theme }) => theme.colors.textPrimary};
+      margin: 0;
+      padding: 0;
+      height: auto;
+      min-height: 0;
+      overflow: visible;
+    }
+
+    /* Print color accuracy */
+    * {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* Hide buttons and no-print helpers */
+    .no-print,
+    button {
+      display: none;
+    }
+  }
 `;

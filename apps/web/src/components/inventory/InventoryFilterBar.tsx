@@ -5,16 +5,14 @@ import {
   STOCK_FILTER_OPTIONS,
   APP_STRINGS,
 } from "@/utils/constants";
+import { CustomSelect } from "@/components/common/CustomSelect";
 import {
   FilterBarCard,
   FilterControlsRow,
   SearchField,
   SearchInput,
   FilterSelectsGroup,
-  SelectBox,
-  StyledSelect,
   ClearFilterBtn,
-  ResultsCountRow,
 } from "./Inventory.styles";
 
 interface InventoryFilterBarProps {
@@ -24,8 +22,6 @@ interface InventoryFilterBarProps {
   onCategoryChange: (value: string) => void;
   selectedStockFilter: string;
   onStockFilterChange: (value: string) => void;
-  totalFilteredCount: number;
-  totalAllCount: number;
   hasActiveFilters: boolean;
   onResetFilters: () => void;
 }
@@ -37,8 +33,6 @@ export const InventoryFilterBar: React.FC<InventoryFilterBarProps> = ({
   onCategoryChange,
   selectedStockFilter,
   onStockFilterChange,
-  totalFilteredCount,
-  totalAllCount,
   hasActiveFilters,
   onResetFilters,
 }) => {
@@ -56,33 +50,26 @@ export const InventoryFilterBar: React.FC<InventoryFilterBarProps> = ({
         </SearchField>
 
         <FilterSelectsGroup>
-          <SelectBox>
-            <Filter size={15} />
-            <StyledSelect
-              value={selectedCategory}
-              onChange={(e) => onCategoryChange(e.target.value)}
-            >
-              {HARDWARE_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat === "All" ? "All Hardware Categories" : cat}
-                </option>
-              ))}
-            </StyledSelect>
-          </SelectBox>
+          <CustomSelect
+            value={selectedCategory}
+            onChange={onCategoryChange}
+            icon={<Filter size={14} />}
+            ariaLabel="Filter hardware by category"
+            options={HARDWARE_CATEGORIES.map((cat) => ({
+              value: cat,
+              label: cat === "All" ? "All Hardware Categories" : cat,
+            }))}
+          />
 
-          <SelectBox>
-            <StyledSelect
-              style={{ paddingLeft: "14px" }}
-              value={selectedStockFilter}
-              onChange={(e) => onStockFilterChange(e.target.value)}
-            >
-              {STOCK_FILTER_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </StyledSelect>
-          </SelectBox>
+          <CustomSelect
+            value={selectedStockFilter}
+            onChange={onStockFilterChange}
+            ariaLabel="Filter hardware by stock level"
+            options={STOCK_FILTER_OPTIONS.map((opt) => ({
+              value: opt.value,
+              label: opt.label,
+            }))}
+          />
 
           {hasActiveFilters && (
             <ClearFilterBtn onClick={onResetFilters} type="button">
@@ -92,14 +79,6 @@ export const InventoryFilterBar: React.FC<InventoryFilterBarProps> = ({
           )}
         </FilterSelectsGroup>
       </FilterControlsRow>
-
-      <ResultsCountRow>
-        <span>
-          Showing <strong>{totalFilteredCount}</strong> of{" "}
-          <strong>{totalAllCount}</strong> hardware items
-        </span>
-        {hasActiveFilters && <span>Filters active</span>}
-      </ResultsCountRow>
     </FilterBarCard>
   );
 };

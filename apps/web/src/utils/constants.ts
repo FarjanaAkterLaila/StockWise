@@ -4,6 +4,7 @@ export const KEYBOARD_KEYS = {
 
 export const DOM_EVENTS = {
   KEYDOWN: "keydown",
+  MOUSEDOWN: "mousedown",
 } as const;
 
 export const NAV_MODULES = {
@@ -13,6 +14,12 @@ export const NAV_MODULES = {
   INVENTORY: "inventory",
   ACCOUNTS: "accounts",
 } as const;
+
+export type NavSubModule =
+  | typeof NAV_MODULES.SALES
+  | typeof NAV_MODULES.PURCHASE
+  | typeof NAV_MODULES.INVENTORY
+  | typeof NAV_MODULES.ACCOUNTS;
 
 export const BADGE_VARIANTS = {
   SUCCESS: "success",

@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import { CHEVRON_DOWN_SVG_MUTED, CHEVRON_DOWN_SVG_PRIMARY } from "@/icons";
 
 export const InventoryContainer = styled.div`
   display: flex;
@@ -238,6 +239,35 @@ export const ResultsCountRow = styled.div`
   justify-content: space-between;
   border-top: 1px solid ${({ theme }) => theme.colors.borderSubtle};
   padding-top: 10px;
+`;
+
+export const TableFooterBar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background-color: ${({ theme }) => theme.colors.backgroundSubtle};
+  border-top: 1px solid ${({ theme }) => theme.colors.border};
+  font-size: 12px;
+  color: ${({ theme }) => theme.colors.textMuted};
+  box-sizing: border-box;
+`;
+
+export const FooterCountText = styled.span`
+  strong {
+    color: ${({ theme }) => theme.colors.textPrimary};
+    font-weight: 700;
+  }
+`;
+
+export const ActiveFilterBadge = styled.span`
+  font-size: 11px;
+  font-weight: 600;
+  color: ${({ theme }) => theme.colors.primary};
+  background-color: ${({ theme }) => theme.colors.primaryLight};
+  border: 1px solid ${({ theme }) => theme.colors.primaryBorder};
+  padding: 2px 8px;
+  border-radius: ${({ theme }) => theme.radius.full};
 `;
 
 export const TableContainer = styled.div`
@@ -507,18 +537,32 @@ export const FormInput = styled.input`
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 9px 12px;
+  padding: 10px 14px;
   font-size: 13.5px;
+  font-family: inherit;
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radius.md};
-  background-color: ${({ theme }) => theme.colors.backgroundSubtle};
+  background-color: ${({ theme }) => theme.colors.background};
   color: ${({ theme }) => theme.colors.textPrimary};
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+
+  &::placeholder {
+    color: ${({ theme }) => theme.colors.textMuted};
+  }
+
+  &:hover {
+    border-color: ${({ theme }) => theme.colors.hoverBorder};
+    background-color: ${({ theme }) => theme.colors.backgroundSubtle};
+  }
+
   &:focus {
     outline: none;
     border-color: ${({ theme }) => theme.colors.primary};
     background-color: ${({ theme }) => theme.colors.background};
-    box-shadow: ${({ theme }) => theme.shadows.focusPrimary};
+    box-shadow:
+      0 0 0 3px ${({ theme }) => theme.colors.primaryFocusRing},
+      0 1px 2px rgba(15, 23, 42, 0.05);
   }
 `;
 
@@ -526,16 +570,47 @@ export const FormSelect = styled.select`
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 9px 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 10px 36px 10px 14px;
   font-size: 13.5px;
+  font-weight: 500;
+  font-family: inherit;
+  line-height: 1.4;
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radius.md};
-  background-color: ${({ theme }) => theme.colors.backgroundSubtle};
+  background-color: ${({ theme }) => theme.colors.background};
+  background-image: url("${CHEVRON_DOWN_SVG_MUTED}");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 15px;
   color: ${({ theme }) => theme.colors.textPrimary};
   cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+
+  &:hover {
+    border-color: ${({ theme }) => theme.colors.hoverBorder};
+    background-color: ${({ theme }) => theme.colors.backgroundSubtle};
+    background-image: url("${CHEVRON_DOWN_SVG_PRIMARY}");
+  }
+
   &:focus {
     outline: none;
     border-color: ${({ theme }) => theme.colors.primary};
+    background-color: ${({ theme }) => theme.colors.background};
+    box-shadow:
+      0 0 0 3px ${({ theme }) => theme.colors.primaryFocusRing},
+      0 1px 2px rgba(15, 23, 42, 0.05);
+    background-image: url("${CHEVRON_DOWN_SVG_PRIMARY}");
+  }
+
+  option {
+    background-color: ${({ theme }) => theme.colors.background};
+    color: ${({ theme }) => theme.colors.textPrimary};
+    font-size: 13.5px;
+    padding: 10px 14px;
   }
 `;
 

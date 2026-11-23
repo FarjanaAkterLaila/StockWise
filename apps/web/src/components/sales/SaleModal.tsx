@@ -15,6 +15,7 @@ import {
   type SaleItemField,
 } from "@/utils/sale.utils";
 import { GenericModal } from "@/components/common/GenericModal";
+import { CustomSelect } from "@/components/common/CustomSelect";
 import { formatCurrency, formatTime } from "@/utils/formatters";
 import { Plus, Trash2 } from "lucide-react";
 import {
@@ -23,7 +24,6 @@ import {
   FormGroup,
   FormLabel,
   FormInput,
-  FormSelect,
   FormError,
   ItemLinesSection,
   ItemLinesHeader,
@@ -192,16 +192,16 @@ export const SaleModal: React.FC<SaleModalProps> = ({
             <FormLabel>
               Customer Profile <span className="required">*</span>
             </FormLabel>
-            <FormSelect
+            <CustomSelect
+              fullWidth
               value={formData.customerId || ""}
-              onChange={(e) => handleCustomerSelect(e.target.value)}
-            >
-              {MOCK_CUSTOMERS.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.customerType})
-                </option>
-              ))}
-            </FormSelect>
+              onChange={handleCustomerSelect}
+              placeholder="Select customer profile..."
+              options={MOCK_CUSTOMERS.map((c) => ({
+                value: c.id,
+                label: `${c.name} (${c.customerType})`,
+              }))}
+            />
           </FormGroup>
           <FormGroup>
             <FormLabel>Customer Name</FormLabel>
@@ -252,16 +252,16 @@ export const SaleModal: React.FC<SaleModalProps> = ({
               (parseFloat(item.unitPrice) || 0);
             return (
               <ItemLineRow key={item.id}>
-                <FormSelect
+                <CustomSelect
+                  fullWidth
                   value={item.productId}
-                  onChange={(e) => handleItemProductChange(idx, e.target.value)}
-                >
-                  {INITIAL_PRODUCTS.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.sku})
-                    </option>
-                  ))}
-                </FormSelect>
+                  onChange={(val) => handleItemProductChange(idx, val)}
+                  placeholder="Select hardware component..."
+                  options={INITIAL_PRODUCTS.map((p) => ({
+                    value: p.id,
+                    label: `${p.name} (${p.sku})`,
+                  }))}
+                />
                 <FormInput
                   type="number"
                   min="1"
@@ -330,21 +330,20 @@ export const SaleModal: React.FC<SaleModalProps> = ({
           </FormGroup>
           <FormGroup>
             <FormLabel>Payment Method</FormLabel>
-            <FormSelect
+            <CustomSelect
+              fullWidth
               value={formData.paymentMethod}
-              onChange={(e) =>
+              onChange={(val) =>
                 setFormData({
                   ...formData,
-                  paymentMethod: e.target.value as PaymentMethod,
+                  paymentMethod: val as PaymentMethod,
                 })
               }
-            >
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </FormSelect>
+              options={PAYMENT_METHODS.map((m) => ({
+                value: m,
+                label: m,
+              }))}
+            />
           </FormGroup>
           <FormGroup>
             <FormLabel>Paid Amount (৳)</FormLabel>

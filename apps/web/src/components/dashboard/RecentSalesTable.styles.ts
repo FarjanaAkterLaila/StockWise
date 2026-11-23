@@ -6,6 +6,7 @@ export const ControlsRow = styled.div`
   justify-content: space-between;
   gap: 14px;
   margin-bottom: 16px;
+
   ${({ theme }) => theme.media.mobile} {
     flex-direction: column;
     align-items: stretch;
@@ -15,6 +16,7 @@ export const ControlsRow = styled.div`
 export const SearchBox = styled.div`
   position: relative;
   flex: 1;
+
   svg {
     position: absolute;
     left: 10px;
@@ -33,6 +35,7 @@ export const TableSearchInput = styled.input`
   background-color: ${({ theme }) => theme.colors.backgroundSubtle};
   color: ${({ theme }) => theme.colors.textPrimary};
   transition: all 0.2s ease;
+
   &:focus {
     outline: none;
     background-color: ${({ theme }) => theme.colors.background};
@@ -40,32 +43,10 @@ export const TableSearchInput = styled.input`
   }
 `;
 
-export const FilterBox = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background-color: ${({ theme }) => theme.colors.backgroundSubtle};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.radius.md};
-  padding: 4px 10px;
-  svg {
-    color: ${({ theme }) => theme.colors.textMuted};
-  }
-`;
-
-export const FilterSelect = styled.select`
-  border: none;
-  background: transparent;
-  font-size: 12px;
-  font-weight: 600;
-  color: ${({ theme }) => theme.colors.textSecondary};
-  cursor: pointer;
-  outline: none;
-`;
-
 export const TableWrapper = styled.div`
   overflow-x: auto;
 `;
+
 export const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
@@ -103,6 +84,7 @@ export const InvoiceBlock = styled.div`
   display: flex;
   flex-direction: column;
 `;
+
 export const InvoiceNumber = styled.span`
   font-family: ${({ theme }) => theme.typography.fontFamily.mono};
   font-weight: 700;
@@ -191,6 +173,7 @@ export const ActionIconButton = styled.button`
   border-radius: ${({ theme }) => theme.radius.sm};
   cursor: pointer;
   transition: all 0.2s ease;
+
   &:hover {
     background-color: ${({ theme }) => theme.colors.hoverSubtle};
     color: ${({ theme }) => theme.colors.primary};
@@ -216,6 +199,7 @@ export const HeaderLinkButton = styled.button`
   cursor: pointer;
   padding: 4px 8px;
   border-radius: ${({ theme }) => theme.radius.sm};
+
   &:hover {
     background-color: ${({ theme }) => theme.colors.primaryLight};
   }

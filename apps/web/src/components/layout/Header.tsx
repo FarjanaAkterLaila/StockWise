@@ -1,4 +1,5 @@
 import React from "react";
+import { useTheme } from "styled-components";
 import type { NavModule } from "@/types";
 import { MODULE_TITLES } from "@/utils/navigation.utils";
 import {
@@ -45,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleSidebar,
   onOpenQuickSale,
 }) => {
+  const theme = useTheme();
   const currentInfo = MODULE_TITLES[activeModule];
 
   return (
@@ -111,7 +113,7 @@ export const Header: React.FC<HeaderProps> = ({
             </ProfileRole>
           </ProfileInfo>
 
-          <ChevronDown size={14} color="#94a3b8" />
+          <ChevronDown size={14} color={theme.colors.textMuted} />
         </ProfileButton>
       </HeaderRight>
     </HeaderContainer>

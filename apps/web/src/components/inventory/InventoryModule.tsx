@@ -138,14 +138,13 @@ export const InventoryModule: React.FC = () => {
         onCategoryChange={setSelectedCategory}
         selectedStockFilter={stockFilter}
         onStockFilterChange={setStockFilter}
-        totalFilteredCount={filteredProducts.length}
-        totalAllCount={products.length}
         hasActiveFilters={hasActiveFilters}
         onResetFilters={handleResetFilters}
       />
 
       <InventoryTable
         products={filteredProducts}
+        totalAllCount={products.length}
         hasActiveFilters={hasActiveFilters}
         onResetFilters={handleResetFilters}
         onEdit={(prod) => setEditingProduct(prod)}

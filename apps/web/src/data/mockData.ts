@@ -6,4 +6,9 @@ export {
 export { INITIAL_SALES, RECENT_SALES } from "./sales.mock";
 export { MOCK_CUSTOMERS } from "./customers.mock";
 export { METRIC_SUMMARIES, SHOP_QUICK_STATS } from "./metrics.mock";
+export {
+  MOCK_MONTHLY_SALES_PURCHASE,
+  MOCK_REVENUE_TREND_DATA,
+  MOCK_INVENTORY_STATUS_BREAKDOWN,
+} from "./dashboardCharts.mock";
 export { HARDWARE_CATEGORIES } from "@/utils/constants";

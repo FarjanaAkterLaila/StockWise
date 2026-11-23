@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { NavModule, LowStockProduct } from "@/types";
+import { NAV_MODULES } from "@/utils/constants";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 import { InventoryModule } from "@/components/inventory/InventoryModule";
@@ -13,15 +14,17 @@ import {
 } from "@/data/mockData";
 
 export function App() {
-  const [activeModule, setActiveModule] = useState<NavModule>("dashboard");
+  const [activeModule, setActiveModule] = useState<NavModule>(
+    NAV_MODULES.DASHBOARD,
+  );
 
   const handleQuickSale = () => {
-    setActiveModule("sales");
+    setActiveModule(NAV_MODULES.SALES);
   };
 
   const handleRestockProduct = (product: LowStockProduct) => {
     if (product) {
-      setActiveModule("purchase");
+      setActiveModule(NAV_MODULES.PURCHASE);
     }
   };
 
@@ -31,7 +34,7 @@ export function App() {
       onSelectModule={setActiveModule}
       onQuickSale={handleQuickSale}
     >
-      {activeModule === "dashboard" ? (
+      {activeModule === NAV_MODULES.DASHBOARD ? (
         <DashboardOverview
           metrics={METRIC_SUMMARIES}
           sales={RECENT_SALES}
@@ -41,14 +44,14 @@ export function App() {
           onQuickSale={handleQuickSale}
           onRestockProduct={handleRestockProduct}
         />
-      ) : activeModule === "inventory" ? (
+      ) : activeModule === NAV_MODULES.INVENTORY ? (
         <InventoryModule />
-      ) : activeModule === "sales" ? (
+      ) : activeModule === NAV_MODULES.SALES ? (
         <SalesModule />
       ) : (
         <ModulePlaceholder
           module={activeModule}
-          onNavigateHome={() => setActiveModule("dashboard")}
+          onNavigateHome={() => setActiveModule(NAV_MODULES.DASHBOARD)}
         />
       )}
     </AppLayout>

@@ -134,14 +134,13 @@ export const SalesModule: React.FC = () => {
         onStatusChange={setSelectedStatus}
         selectedPaymentStatus={selectedPaymentStatus}
         onPaymentStatusChange={setSelectedPaymentStatus}
-        totalFilteredCount={filteredSales.length}
-        totalAllCount={sales.length}
         hasActiveFilters={hasActiveFilters}
         onResetFilters={handleResetFilters}
       />
 
       <SalesTable
         sales={filteredSales}
+        totalAllCount={sales.length}
         hasActiveFilters={hasActiveFilters}
         onResetFilters={handleResetFilters}
         onEdit={(sale) => setEditingSale(sale)}

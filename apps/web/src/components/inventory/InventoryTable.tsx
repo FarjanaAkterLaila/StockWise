@@ -16,10 +16,14 @@ import {
   EmptyTitle,
   EmptyDesc,
   ClearFilterBtn,
+  TableFooterBar,
+  FooterCountText,
+  ActiveFilterBadge,
 } from "./Inventory.styles";
 
 interface InventoryTableProps {
   products: Product[];
+  totalAllCount?: number;
   hasActiveFilters: boolean;
   onResetFilters: () => void;
   onEdit: (product: Product) => void;
@@ -28,6 +32,7 @@ interface InventoryTableProps {
 
 export const InventoryTable: React.FC<InventoryTableProps> = ({
   products,
+  totalAllCount,
   hasActiveFilters,
   onResetFilters,
   onEdit,
@@ -80,6 +85,16 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
           </TableBody>
         </Table>
       </TableResponsiveWrapper>
+
+      <TableFooterBar>
+        <FooterCountText>
+          Showing <strong>{products.length}</strong> of{" "}
+          <strong>{totalAllCount ?? products.length}</strong> hardware items
+        </FooterCountText>
+        {hasActiveFilters && (
+          <ActiveFilterBadge>Filters active</ActiveFilterBadge>
+        )}
+      </TableFooterBar>
     </TableContainer>
   );
 };

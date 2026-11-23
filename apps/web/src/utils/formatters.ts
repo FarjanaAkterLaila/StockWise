@@ -5,6 +5,22 @@ export const formatCurrency = (amount: number): string => {
   })}`;
 };
 
+export const formatCompactCurrency = (amount: number): string => {
+  if (amount >= 10000000) {
+    const val = (amount / 10000000).toFixed(amount % 10000000 === 0 ? 0 : 1);
+    return `৳${val}Cr`;
+  }
+  if (amount >= 1000000) {
+    const val = (amount / 1000000).toFixed(amount % 1000000 === 0 ? 0 : 1);
+    return `৳${val}M`;
+  }
+  if (amount >= 1000) {
+    const val = (amount / 1000).toFixed(amount % 1000 === 0 ? 0 : 1);
+    return `৳${val}k`;
+  }
+  return `৳${amount}`;
+};
+
 export const formatDate = (dateStringOrDate: string | Date): string => {
   if (!dateStringOrDate) return "";
   const d = new Date(dateStringOrDate);

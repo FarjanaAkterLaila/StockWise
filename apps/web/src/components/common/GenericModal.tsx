@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type { ModalVariant, ModalSize } from "@/types";
 import {
@@ -66,7 +67,7 @@ export const GenericModal = ({
 
   const showDefaultFooter = Boolean(onConfirm || confirmText);
 
-  return (
+  const modalContent = (
     <Overlay $isOpen={isOpen} onClick={onClose}>
       <Dialog $size={size} onClick={(e) => e.stopPropagation()}>
         {(title || showCloseButton) && (
@@ -109,4 +110,8 @@ export const GenericModal = ({
       </Dialog>
     </Overlay>
   );
+
+  return typeof document !== "undefined"
+    ? createPortal(modalContent, document.body)
+    : modalContent;
 };

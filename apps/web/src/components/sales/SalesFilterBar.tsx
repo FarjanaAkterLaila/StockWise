@@ -5,16 +5,14 @@ import {
   PAYMENT_STATUS_OPTIONS,
   APP_STRINGS,
 } from "@/utils/constants";
+import { CustomSelect } from "@/components/common/CustomSelect";
 import {
   FilterBarCard,
   FilterControlsRow,
   SearchField,
   SearchInput,
   FilterSelectsGroup,
-  SelectBox,
-  StyledSelect,
   ClearFilterBtn,
-  ResultsCountRow,
 } from "./Sales.styles";
 
 interface SalesFilterBarProps {
@@ -24,8 +22,6 @@ interface SalesFilterBarProps {
   onStatusChange: (value: string) => void;
   selectedPaymentStatus: string;
   onPaymentStatusChange: (value: string) => void;
-  totalFilteredCount: number;
-  totalAllCount: number;
   hasActiveFilters: boolean;
   onResetFilters: () => void;
 }
@@ -37,8 +33,6 @@ export const SalesFilterBar: React.FC<SalesFilterBarProps> = ({
   onStatusChange,
   selectedPaymentStatus,
   onPaymentStatusChange,
-  totalFilteredCount,
-  totalAllCount,
   hasActiveFilters,
   onResetFilters,
 }) => {
@@ -56,33 +50,26 @@ export const SalesFilterBar: React.FC<SalesFilterBarProps> = ({
         </SearchField>
 
         <FilterSelectsGroup>
-          <SelectBox>
-            <Filter size={15} />
-            <StyledSelect
-              value={selectedStatus}
-              onChange={(e) => onStatusChange(e.target.value)}
-            >
-              {SALE_STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </StyledSelect>
-          </SelectBox>
+          <CustomSelect
+            value={selectedStatus}
+            onChange={onStatusChange}
+            icon={<Filter size={14} />}
+            ariaLabel="Filter sales by status"
+            options={SALE_STATUS_OPTIONS.map((opt) => ({
+              value: opt.value,
+              label: opt.label,
+            }))}
+          />
 
-          <SelectBox>
-            <StyledSelect
-              style={{ paddingLeft: "14px" }}
-              value={selectedPaymentStatus}
-              onChange={(e) => onPaymentStatusChange(e.target.value)}
-            >
-              {PAYMENT_STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </StyledSelect>
-          </SelectBox>
+          <CustomSelect
+            value={selectedPaymentStatus}
+            onChange={onPaymentStatusChange}
+            ariaLabel="Filter sales by payment status"
+            options={PAYMENT_STATUS_OPTIONS.map((opt) => ({
+              value: opt.value,
+              label: opt.label,
+            }))}
+          />
 
           {hasActiveFilters && (
             <ClearFilterBtn onClick={onResetFilters} type="button">
@@ -92,14 +79,6 @@ export const SalesFilterBar: React.FC<SalesFilterBarProps> = ({
           )}
         </FilterSelectsGroup>
       </FilterControlsRow>
-
-      <ResultsCountRow>
-        <span>
-          Showing <strong>{totalFilteredCount}</strong> of{" "}
-          <strong>{totalAllCount}</strong> sales invoices
-        </span>
-        {hasActiveFilters && <span>Filters active</span>}
-      </ResultsCountRow>
     </FilterBarCard>
   );
 };

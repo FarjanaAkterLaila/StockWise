@@ -3,6 +3,7 @@ import type { MetricSummary } from "@/types";
 import {
   Banknote,
   ShoppingCart,
+  ShoppingBag,
   Package,
   AlertTriangle,
   TrendingUp,
@@ -28,6 +29,7 @@ interface MetricCardProps {
 const ICON_MAP = {
   "dollar-sign": Banknote,
   "shopping-cart": ShoppingCart,
+  "shopping-bag": ShoppingBag,
   package: Package,
   "alert-triangle": AlertTriangle,
   "trending-up": TrendingUp,

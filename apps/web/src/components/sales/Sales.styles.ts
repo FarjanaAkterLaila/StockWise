@@ -1,6 +1,6 @@
 import styled from "styled-components";
+import { CHEVRON_DOWN_SVG_MUTED, CHEVRON_DOWN_SVG_PRIMARY } from "@/icons";
 
-/* 1. Module Container & Header */
 export const SalesContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -55,7 +55,6 @@ export const CreateSaleBtn = styled.button`
   }
 `;
 
-/* 2. Sales Stats / KPI Cards */
 export const StatsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -120,7 +119,6 @@ export const StatValue = styled.span`
   margin-top: 2px;
 `;
 
-/* 3. Filter Bar */
 export const FilterBarCard = styled.div`
   background-color: ${({ theme }) => theme.colors.background};
   border: 1px solid ${({ theme }) => theme.colors.borderCard};
@@ -225,7 +223,35 @@ export const ResultsCountRow = styled.div`
   padding-top: 10px;
 `;
 
-/* 4. Table & Empty State */
+export const TableFooterBar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background-color: ${({ theme }) => theme.colors.backgroundSubtle};
+  border-top: 1px solid ${({ theme }) => theme.colors.border};
+  font-size: 12px;
+  color: ${({ theme }) => theme.colors.textMuted};
+  box-sizing: border-box;
+`;
+
+export const FooterCountText = styled.span`
+  strong {
+    color: ${({ theme }) => theme.colors.textPrimary};
+    font-weight: 700;
+  }
+`;
+
+export const ActiveFilterBadge = styled.span`
+  font-size: 11px;
+  font-weight: 600;
+  color: ${({ theme }) => theme.colors.primary};
+  background-color: ${({ theme }) => theme.colors.primaryLight};
+  border: 1px solid ${({ theme }) => theme.colors.primaryBorder};
+  padding: 2px 8px;
+  border-radius: ${({ theme }) => theme.radius.full};
+`;
+
 export const TableContainer = styled.div`
   background-color: ${({ theme }) => theme.colors.background};
   border: 1px solid ${({ theme }) => theme.colors.borderCard};
@@ -290,7 +316,6 @@ export const EmptyDesc = styled.p`
   line-height: 1.5;
 `;
 
-/* 5. Table Row Components */
 export const TableRow = styled.tr`
   border-bottom: 1px solid ${({ theme }) => theme.colors.border};
   transition: background-color 0.15s ease;
@@ -320,6 +345,11 @@ export const InvoiceNum = styled.span`
 export const TimeText = styled.span`
   font-size: 11px;
   color: ${({ theme }) => theme.colors.textMuted};
+`;
+export const DateText = styled.span`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${({ theme }) => theme.colors.textDark};
 `;
 export const CustomerCell = styled.div`
   display: flex;
@@ -409,7 +439,6 @@ export const ActionBtn = styled.button<{
   }
 `;
 
-/* 6. Sale Modal Form Components */
 export const ModalForm = styled.form`
   display: flex;
   flex-direction: column;
@@ -457,18 +486,32 @@ export const FormInput = styled.input`
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 8px 12px;
+  padding: 9px 12px;
   font-size: 13px;
+  font-family: inherit;
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radius.md};
-  background-color: ${({ theme }) => theme.colors.backgroundSubtle};
+  background-color: ${({ theme }) => theme.colors.background};
   color: ${({ theme }) => theme.colors.textPrimary};
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+
+  &::placeholder {
+    color: ${({ theme }) => theme.colors.textMuted};
+  }
+
+  &:hover {
+    border-color: ${({ theme }) => theme.colors.hoverBorder};
+    background-color: ${({ theme }) => theme.colors.backgroundSubtle};
+  }
+
   &:focus {
     outline: none;
     border-color: ${({ theme }) => theme.colors.primary};
     background-color: ${({ theme }) => theme.colors.background};
-    box-shadow: ${({ theme }) => theme.shadows.focusPrimary};
+    box-shadow:
+      0 0 0 3px ${({ theme }) => theme.colors.primaryFocusRing},
+      0 1px 2px rgba(15, 23, 42, 0.05);
   }
 `;
 export const FormSelect = styled.select`
@@ -476,19 +519,50 @@ export const FormSelect = styled.select`
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
-  padding: 8px 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 9px 34px 9px 12px;
   font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  line-height: 1.4;
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radius.md};
-  background-color: ${({ theme }) => theme.colors.backgroundSubtle};
+  background-color: ${({ theme }) => theme.colors.background};
+  background-image: url("${CHEVRON_DOWN_SVG_MUTED}");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 15px;
   color: ${({ theme }) => theme.colors.textPrimary};
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
   cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+
+  &:hover {
+    border-color: ${({ theme }) => theme.colors.hoverBorder};
+    background-color: ${({ theme }) => theme.colors.backgroundSubtle};
+    background-image: url("${CHEVRON_DOWN_SVG_PRIMARY}");
+  }
+
   &:focus {
     outline: none;
     border-color: ${({ theme }) => theme.colors.primary};
+    background-color: ${({ theme }) => theme.colors.background};
+    box-shadow:
+      0 0 0 3px ${({ theme }) => theme.colors.primaryFocusRing},
+      0 1px 2px rgba(15, 23, 42, 0.05);
+    background-image: url("${CHEVRON_DOWN_SVG_PRIMARY}");
+  }
+
+  option {
+    background-color: ${({ theme }) => theme.colors.background};
+    color: ${({ theme }) => theme.colors.textPrimary};
+    font-size: 13px;
+    padding: 8px 12px;
   }
 `;
 export const FormError = styled.span`

@@ -16,10 +16,14 @@ import {
   EmptyTitle,
   EmptyDesc,
   ClearFilterBtn,
+  TableFooterBar,
+  FooterCountText,
+  ActiveFilterBadge,
 } from "./Sales.styles";
 
 interface SalesTableProps {
   sales: Sale[];
+  totalAllCount?: number;
   hasActiveFilters: boolean;
   onResetFilters: () => void;
   onEdit: (sale: Sale) => void;
@@ -28,6 +32,7 @@ interface SalesTableProps {
 
 export const SalesTable: React.FC<SalesTableProps> = ({
   sales,
+  totalAllCount,
   hasActiveFilters,
   onResetFilters,
   onEdit,
@@ -80,6 +85,16 @@ export const SalesTable: React.FC<SalesTableProps> = ({
           </TableBody>
         </Table>
       </TableResponsiveWrapper>
+
+      <TableFooterBar>
+        <FooterCountText>
+          Showing <strong>{sales.length}</strong> of{" "}
+          <strong>{totalAllCount ?? sales.length}</strong> sales invoices
+        </FooterCountText>
+        {hasActiveFilters && (
+          <ActiveFilterBadge>Filters active</ActiveFilterBadge>
+        )}
+      </TableFooterBar>
     </TableContainer>
   );
 };
