@@ -5,6 +5,7 @@ import {
   ShoppingBag,
   Package,
   WalletCards,
+  Users,
 } from "lucide-react";
 import type { NavModule, NavSubModule } from "@/types";
 import { NAV_MODULES } from "@/utils/constants";
@@ -29,6 +30,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
     icon: Package,
   },
   { id: NAV_MODULES.ACCOUNTS, label: "Accounts", icon: WalletCards },
+  { id: NAV_MODULES.USERS, label: "User Management", icon: Users },
 ];
 
 export const MODULE_TITLES: Record<
@@ -54,5 +56,9 @@ export const MODULE_TITLES: Record<
   [NAV_MODULES.ACCOUNTS]: {
     title: "Financial Accounts",
     subtitle: "Expense ledger, cash drawer balance, and store margin analytics",
+  },
+  [NAV_MODULES.USERS]: {
+    title: "User Management",
+    subtitle: "Manage operator accounts and role-based access permissions",
   },
 };

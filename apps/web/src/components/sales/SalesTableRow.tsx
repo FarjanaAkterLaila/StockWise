@@ -28,8 +28,8 @@ import {
 interface SalesTableRowProps {
   sale: Sale;
   onView: (sale: Sale) => void;
-  onEdit: (sale: Sale) => void;
-  onDelete: (sale: Sale) => void;
+  onEdit?: (sale: Sale) => void;
+  onDelete?: (sale: Sale) => void;
 }
 
 export const SalesTableRow: React.FC<SalesTableRowProps> = ({
@@ -137,22 +137,26 @@ export const SalesTableRow: React.FC<SalesTableRowProps> = ({
           >
             <Eye size={15} />
           </ActionBtn>
-          <ActionBtn
-            $variant="edit"
-            onClick={() => onEdit(sale)}
-            title={`Edit Invoice ${sale.invoiceNumber}`}
-            type="button"
-          >
-            <Pencil size={15} />
-          </ActionBtn>
-          <ActionBtn
-            $variant="delete"
-            onClick={() => onDelete(sale)}
-            title={`Delete Invoice ${sale.invoiceNumber}`}
-            type="button"
-          >
-            <Trash2 size={15} />
-          </ActionBtn>
+          {onEdit && (
+            <ActionBtn
+              $variant="edit"
+              onClick={() => onEdit(sale)}
+              title={`Edit Invoice ${sale.invoiceNumber}`}
+              type="button"
+            >
+              <Pencil size={15} />
+            </ActionBtn>
+          )}
+          {onDelete && (
+            <ActionBtn
+              $variant="delete"
+              onClick={() => onDelete(sale)}
+              title={`Delete Invoice ${sale.invoiceNumber}`}
+              type="button"
+            >
+              <Trash2 size={15} />
+            </ActionBtn>
+          )}
         </ActionButtonsGroup>
       </TableCell>
     </TableRow>

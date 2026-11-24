@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { DEFAULT_VALUES, APP_STRINGS } from "@/utils/constants";
+import { hasPermission } from "@/utils/permissions";
 import { PurchaseStats } from "./PurchaseStats";
 import { PurchaseFilterBar } from "./PurchaseFilterBar";
 import { PurchaseTable } from "./PurchaseTable";
@@ -30,6 +31,9 @@ import {
 export const PurchaseModule: React.FC = () => {
   const { user } = useAuth();
   const { showSuccess, showError } = useToast();
+  const canCreate = hasPermission(user?.role, "purchase", "create");
+  const canEdit = hasPermission(user?.role, "purchase", "edit");
+  const canDelete = hasPermission(user?.role, "purchase", "delete");
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -139,6 +143,10 @@ export const PurchaseModule: React.FC = () => {
 
     try {
       if (purchaseData.id) {
+        if (!canEdit) {
+          showError("Access Denied", "You do not have permission to edit purchases.");
+          return false;
+        }
         try {
           await updatePurchase(purchaseData.id, {
             purchaseNumber: purchaseData.purchaseNumber,
@@ -176,6 +184,10 @@ export const PurchaseModule: React.FC = () => {
           return false;
         }
       } else {
+        if (!canCreate) {
+          showError("Access Denied", "You do not have permission to create purchases.");
+          return false;
+        }
         try {
           const created = await createPurchase(
             {
@@ -239,6 +251,11 @@ export const PurchaseModule: React.FC = () => {
 
   const handleConfirmDelete = async () => {
     if (!deletingPurchase) return;
+    if (!canDelete) {
+      showError("Access Denied", "You do not have permission to delete purchases.");
+      setDeletingPurchase(null);
+      return;
+    }
     const poNumber = deletingPurchase.purchaseNumber;
     const id = deletingPurchase.id;
     try {
@@ -264,15 +281,17 @@ export const PurchaseModule: React.FC = () => {
           <PageTitle>{APP_STRINGS.purchaseTitle}</PageTitle>
           <PageSubtitle>{APP_STRINGS.purchaseSubtitle}</PageSubtitle>
         </TitleWrap>
-        <HeaderActions>
-          <CreatePurchaseBtn
-            onClick={() => setIsCreateModalOpen(true)}
-            type="button"
-          >
-            <Plus size={16} />
-            <span>{APP_STRINGS.createPurchaseBtn}</span>
-          </CreatePurchaseBtn>
-        </HeaderActions>
+        {canCreate && (
+          <HeaderActions>
+            <CreatePurchaseBtn
+              onClick={() => setIsCreateModalOpen(true)}
+              type="button"
+            >
+              <Plus size={16} />
+              <span>{APP_STRINGS.createPurchaseBtn}</span>
+            </CreatePurchaseBtn>
+          </HeaderActions>
+        )}
       </TopActionHeader>
 
       {loading ? (
@@ -307,8 +326,8 @@ export const PurchaseModule: React.FC = () => {
             hasActiveFilters={hasActiveFilters}
             onResetFilters={handleResetFilters}
             onView={(p: Purchase) => setViewingPurchase(p)}
-            onEdit={(p: Purchase) => setEditingPurchase(p)}
-            onDelete={(p: Purchase) => setDeletingPurchase(p)}
+            onEdit={canEdit ? (p: Purchase) => setEditingPurchase(p) : undefined}
+            onDelete={canDelete ? (p: Purchase) => setDeletingPurchase(p) : undefined}
           />
         </>
       )}

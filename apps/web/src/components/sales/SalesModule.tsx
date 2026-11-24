@@ -4,6 +4,7 @@ import { fetchSales, createSale, updateSale, deleteSale } from "@/services/sales
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { DEFAULT_VALUES, APP_STRINGS } from "@/utils/constants";
+import { hasPermission, normalizeRole } from "@/utils/permissions";
 import { SalesStats } from "./SalesStats";
 import { SalesFilterBar } from "./SalesFilterBar";
 import { SalesTable } from "./SalesTable";
@@ -25,6 +26,10 @@ import {
 export const SalesModule: React.FC = () => {
   const { user } = useAuth();
   const { showSuccess, showError } = useToast();
+  const canCreate = hasPermission(user?.role, "sales", "create");
+  const canEdit = hasPermission(user?.role, "sales", "edit");
+  const canDelete = hasPermission(user?.role, "sales", "delete");
+  const isStaff = normalizeRole(user?.role) === "staff";
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,16 +64,21 @@ export const SalesModule: React.FC = () => {
     };
   }, []);
 
+  const visibleSales = useMemo(() => {
+    if (!isStaff) return sales;
+    return sales.filter((sale) => sale.createdBy === user?.id);
+  }, [sales, isStaff, user?.id]);
+
   const stats = useMemo(() => {
-    const totalInvoices = sales.length;
-    const totalRevenue = sales.reduce((acc, s) => acc + s.totalAmount, 0);
-    const totalPaid = sales.reduce((acc, s) => acc + s.paidAmount, 0);
-    const totalDue = sales.reduce((acc, s) => acc + s.dueAmount, 0);
+    const totalInvoices = visibleSales.length;
+    const totalRevenue = visibleSales.reduce((acc, s) => acc + s.totalAmount, 0);
+    const totalPaid = visibleSales.reduce((acc, s) => acc + s.paidAmount, 0);
+    const totalDue = visibleSales.reduce((acc, s) => acc + s.dueAmount, 0);
     return { totalInvoices, totalRevenue, totalPaid, totalDue };
-  }, [sales]);
+  }, [visibleSales]);
 
   const filteredSales = useMemo(() => {
-    return sales.filter((sale) => {
+    return visibleSales.filter((sale) => {
       const q = searchTerm.toLowerCase().trim();
       const matchesSearch =
         !q ||
@@ -90,12 +100,12 @@ export const SalesModule: React.FC = () => {
 
       return matchesSearch && matchesStatus && matchesPayment;
     });
-  }, [sales, searchTerm, selectedStatus, selectedPaymentStatus]);
+  }, [visibleSales, searchTerm, selectedStatus, selectedPaymentStatus]);
 
   const hasActiveFilters = Boolean(
     searchTerm.trim() ||
-      selectedStatus !== DEFAULT_VALUES.FILTER_ALL ||
-      selectedPaymentStatus !== DEFAULT_VALUES.FILTER_ALL,
+    selectedStatus !== DEFAULT_VALUES.FILTER_ALL ||
+    selectedPaymentStatus !== DEFAULT_VALUES.FILTER_ALL,
   );
 
   const handleResetFilters = () => {
@@ -113,6 +123,10 @@ export const SalesModule: React.FC = () => {
     },
   ) => {
     if (saleData.id) {
+      if (!canEdit) {
+        showError("Access Denied", "You do not have permission to edit sales.");
+        return;
+      }
       try {
         await updateSale(saleData.id, {
           notes: saleData.notes,
@@ -134,6 +148,10 @@ export const SalesModule: React.FC = () => {
         );
       }
     } else {
+      if (!canCreate) {
+        showError("Access Denied", "You do not have permission to create sales.");
+        return;
+      }
       try {
         await createSale(
           {
@@ -166,12 +184,12 @@ export const SalesModule: React.FC = () => {
         // Fetch fresh sales list
         fetchSales()
           .then((updated) => setSales(updated))
-          .catch(() => {});
+          .catch(() => { });
       } catch (err: unknown) {
         showError(
           "Transaction Failed",
           (err as Error).message ||
-            "Failed to process sale transaction in database",
+          "Failed to process sale transaction in database",
         );
       }
     }
@@ -179,6 +197,11 @@ export const SalesModule: React.FC = () => {
 
   const handleConfirmDelete = async () => {
     if (!deletingSale) return;
+    if (!canDelete) {
+      showError("Access Denied", "You do not have permission to delete sales.");
+      setDeletingSale(null);
+      return;
+    }
     const invNumber = deletingSale.invoiceNumber;
     const id = deletingSale.id;
     try {
@@ -204,15 +227,17 @@ export const SalesModule: React.FC = () => {
           <PageTitle>{APP_STRINGS.salesTitle}</PageTitle>
           <PageSubtitle>{APP_STRINGS.salesSubtitle}</PageSubtitle>
         </TitleWrap>
-        <HeaderActions>
-          <CreateSaleBtn
-            onClick={() => setIsCreateModalOpen(true)}
-            type="button"
-          >
-            <Plus size={16} />
-            <span>{APP_STRINGS.createSaleBtn}</span>
-          </CreateSaleBtn>
-        </HeaderActions>
+        {canCreate && (
+          <HeaderActions>
+            <CreateSaleBtn
+              onClick={() => setIsCreateModalOpen(true)}
+              type="button"
+            >
+              <Plus size={16} />
+              <span>{APP_STRINGS.createSaleBtn}</span>
+            </CreateSaleBtn>
+          </HeaderActions>
+        )}
       </TopActionHeader>
 
       {loading ? (
@@ -245,8 +270,8 @@ export const SalesModule: React.FC = () => {
             hasActiveFilters={hasActiveFilters}
             onResetFilters={handleResetFilters}
             onView={(s: Sale) => setViewingSale(s)}
-            onEdit={(s: Sale) => setEditingSale(s)}
-            onDelete={(s: Sale) => setDeletingSale(s)}
+            onEdit={canEdit ? (s: Sale) => setEditingSale(s) : undefined}
+            onDelete={canDelete ? (s: Sale) => setDeletingSale(s) : undefined}
           />
         </>
       )}

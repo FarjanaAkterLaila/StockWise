@@ -1,4 +1,4 @@
-export type DbUserRole = "admin" | "manager" | "cashier" | "staff";
+export type DbUserRole = "admin" | "manager" | "staff";
 export type DbProductStatus = "active" | "inactive" | "archived";
 export type DbPurchaseStatus = "ordered" | "received" | "pending" | "cancelled";
 export type DbSaleStatus = "draft" | "completed" | "cancelled" | "refunded";
@@ -24,9 +24,10 @@ export interface ProfileRow {
   id: string;
   full_name: string | null;
   email: string | null;
-  role: DbUserRole;
+  role: DbUserRole | string;
   phone: string | null;
   avatar_url: string | null;
+  is_active?: boolean | null;
   created_at: string;
   updated_at: string;
 }

@@ -1,6 +1,8 @@
 import React from "react";
 import type { NavModule } from "@/types";
 import { NAV_ITEMS } from "@/utils/navigation.utils";
+import { useAuth } from "@/context/AuthContext";
+import { canAccessModule } from "@/utils/permissions";
 import {
   Monitor,
   Cpu,
@@ -55,6 +57,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   onClose,
 }) => {
+  const { user } = useAuth();
+  const visibleNavItems = NAV_ITEMS.filter((item) =>
+    canAccessModule(user?.role, item.id),
+  );
+
   return (
     <>
       <Backdrop $isOpen={isOpen} onClick={onClose} aria-hidden="true" />
@@ -90,7 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <NavSection>
           <NavHeading>MAIN MENU</NavHeading>
           <NavMenuList>
-            {NAV_ITEMS.map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeModule === item.id;
 

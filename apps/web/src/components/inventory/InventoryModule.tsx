@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from "react";
 import type { Product } from "@/types";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { hasPermission } from "@/utils/permissions";
 import {
   fetchProducts,
   createProduct,
@@ -25,6 +27,10 @@ import {
 } from "./Inventory.styles";
 
 export const InventoryModule: React.FC = () => {
+  const { user } = useAuth();
+  const canCreate = hasPermission(user?.role, "inventory", "create");
+  const canEdit = hasPermission(user?.role, "inventory", "edit");
+  const canDelete = hasPermission(user?.role, "inventory", "delete");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -112,6 +118,10 @@ export const InventoryModule: React.FC = () => {
   ) => {
     try {
       if (formData.id) {
+        if (!canEdit) {
+          showError("Access Denied", "You do not have permission to edit products.");
+          return;
+        }
         const updated = await updateProduct(formData.id, formData);
         setProducts((prev) =>
           prev.map((item) =>
@@ -121,6 +131,10 @@ export const InventoryModule: React.FC = () => {
         setEditingProduct(null);
         showSuccess("Product Updated", `"${formData.name}" has been updated.`);
       } else {
+        if (!canCreate) {
+          showError("Access Denied", "You do not have permission to create products.");
+          return;
+        }
         const created = await createProduct(formData);
         setProducts((prev) => [created, ...prev]);
         setIsAddModalOpen(false);
@@ -136,6 +150,11 @@ export const InventoryModule: React.FC = () => {
 
   const handleConfirmDelete = async () => {
     if (deletingProduct) {
+      if (!canDelete) {
+        showError("Access Denied", "You do not have permission to delete products.");
+        setDeletingProduct(null);
+        return;
+      }
       const prodName = deletingProduct.name;
       try {
         await deleteProduct(deletingProduct.id);
@@ -160,10 +179,12 @@ export const InventoryModule: React.FC = () => {
             Multiplan Computer City real-time stock levels &amp; pricing
           </PageSubtitle>
         </TitleWrap>
-        <AddProductBtn onClick={() => setIsAddModalOpen(true)} type="button">
-          <Plus size={16} />
-          <span>Add New Product</span>
-        </AddProductBtn>
+        {canCreate && (
+          <AddProductBtn onClick={() => setIsAddModalOpen(true)} type="button">
+            <Plus size={16} />
+            <span>Add New Product</span>
+          </AddProductBtn>
+        )}
       </TopActionHeader>
 
       {loading ? (
@@ -195,8 +216,8 @@ export const InventoryModule: React.FC = () => {
             products={filteredProducts}
             hasActiveFilters={hasActiveFilters}
             onResetFilters={handleResetFilters}
-            onEdit={(p) => setEditingProduct(p)}
-            onDelete={(p) => setDeletingProduct(p)}
+            onEdit={canEdit ? (p) => setEditingProduct(p) : undefined}
+            onDelete={canDelete ? (p) => setDeletingProduct(p) : undefined}
           />
         </>
       )}

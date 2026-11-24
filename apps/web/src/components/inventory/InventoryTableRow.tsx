@@ -33,8 +33,8 @@ import {
 
 interface InventoryTableRowProps {
   product: Product;
-  onEdit: (product: Product) => void;
-  onDelete: (product: Product) => void;
+  onEdit?: (product: Product) => void;
+  onDelete?: (product: Product) => void;
 }
 
 export const InventoryTableRow: React.FC<InventoryTableRowProps> = ({
@@ -135,22 +135,26 @@ export const InventoryTableRow: React.FC<InventoryTableRowProps> = ({
 
       <TableCell $align="right">
         <ActionButtonsGroup>
-          <ActionBtn
-            $variant="edit"
-            onClick={() => onEdit(product)}
-            title={`Edit ${product.name}`}
-            type="button"
-          >
-            <Pencil size={15} />
-          </ActionBtn>
-          <ActionBtn
-            $variant="delete"
-            onClick={() => onDelete(product)}
-            title={`Delete ${product.name}`}
-            type="button"
-          >
-            <Trash2 size={15} />
-          </ActionBtn>
+          {onEdit && (
+            <ActionBtn
+              $variant="edit"
+              onClick={() => onEdit(product)}
+              title={`Edit ${product.name}`}
+              type="button"
+            >
+              <Pencil size={15} />
+            </ActionBtn>
+          )}
+          {onDelete && (
+            <ActionBtn
+              $variant="delete"
+              onClick={() => onDelete(product)}
+              title={`Delete ${product.name}`}
+              type="button"
+            >
+              <Trash2 size={15} />
+            </ActionBtn>
+          )}
         </ActionButtonsGroup>
       </TableCell>
     </TableRow>

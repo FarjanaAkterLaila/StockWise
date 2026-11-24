@@ -27,8 +27,8 @@ import {
 interface PurchaseTableRowProps {
   purchase: Purchase;
   onView: (purchase: Purchase) => void;
-  onEdit: (purchase: Purchase) => void;
-  onDelete: (purchase: Purchase) => void;
+  onEdit?: (purchase: Purchase) => void;
+  onDelete?: (purchase: Purchase) => void;
 }
 
 export const PurchaseTableRow: React.FC<PurchaseTableRowProps> = ({
@@ -138,22 +138,26 @@ export const PurchaseTableRow: React.FC<PurchaseTableRowProps> = ({
           >
             <Eye size={15} />
           </ActionBtn>
-          <ActionBtn
-            $variant="edit"
-            onClick={() => onEdit(purchase)}
-            title={`Edit Purchase ${purchase.purchaseNumber}`}
-            type="button"
-          >
-            <Pencil size={15} />
-          </ActionBtn>
-          <ActionBtn
-            $variant="delete"
-            onClick={() => onDelete(purchase)}
-            title={`Delete Purchase ${purchase.purchaseNumber}`}
-            type="button"
-          >
-            <Trash2 size={15} />
-          </ActionBtn>
+          {onEdit && (
+            <ActionBtn
+              $variant="edit"
+              onClick={() => onEdit(purchase)}
+              title={`Edit Purchase ${purchase.purchaseNumber}`}
+              type="button"
+            >
+              <Pencil size={15} />
+            </ActionBtn>
+          )}
+          {onDelete && (
+            <ActionBtn
+              $variant="delete"
+              onClick={() => onDelete(purchase)}
+              title={`Delete Purchase ${purchase.purchaseNumber}`}
+              type="button"
+            >
+              <Trash2 size={15} />
+            </ActionBtn>
+          )}
         </ActionButtonsGroup>
       </TableCell>
     </TableRow>

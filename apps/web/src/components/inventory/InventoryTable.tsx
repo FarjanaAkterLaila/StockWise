@@ -10,8 +10,8 @@ interface InventoryTableProps {
   totalAllCount?: number;
   hasActiveFilters: boolean;
   onResetFilters: () => void;
-  onEdit: (product: Product) => void;
-  onDelete: (product: Product) => void;
+  onEdit?: (product: Product) => void;
+  onDelete?: (product: Product) => void;
 }
 
 const INVENTORY_COLUMNS: TableColumn[] = [

@@ -11,8 +11,8 @@ interface SalesTableProps {
   hasActiveFilters: boolean;
   onResetFilters: () => void;
   onView: (sale: Sale) => void;
-  onEdit: (sale: Sale) => void;
-  onDelete: (sale: Sale) => void;
+  onEdit?: (sale: Sale) => void;
+  onDelete?: (sale: Sale) => void;
 }
 
 const SALES_COLUMNS: TableColumn[] = [

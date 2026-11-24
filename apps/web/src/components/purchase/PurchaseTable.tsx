@@ -11,8 +11,8 @@ interface PurchaseTableProps {
   hasActiveFilters: boolean;
   onResetFilters: () => void;
   onView: (purchase: Purchase) => void;
-  onEdit: (purchase: Purchase) => void;
-  onDelete: (purchase: Purchase) => void;
+  onEdit?: (purchase: Purchase) => void;
+  onDelete?: (purchase: Purchase) => void;
 }
 
 const PURCHASE_COLUMNS: TableColumn[] = [

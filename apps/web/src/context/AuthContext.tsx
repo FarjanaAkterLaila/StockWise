@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { normalizeRole, type AppRole } from "@/utils/permissions";
 
 export interface AuthUser {
   id: string;
   email: string;
   fullName: string;
-  role: "admin" | "manager" | "staff" | "cashier";
+  role: AppRole;
 }
 
 interface AuthContextType {
@@ -16,6 +17,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,19 +35,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     metaName?: string,
   ): Promise<AuthUser> => {
     try {
-      const { data: profile } = await supabase
+      let { data: profile, error } = await supabase
         .from("profiles")
-        .select("id, full_name, role")
+        .select("id, full_name, role, is_active")
         .eq("id", userId)
         .maybeSingle();
+
+      if (error && error.message.includes("is_active")) {
+        const fallback = await supabase
+          .from("profiles")
+          .select("id, full_name, role")
+          .eq("id", userId)
+          .maybeSingle();
+        profile = fallback.data
+          ? { ...fallback.data, is_active: true }
+          : null;
+        error = fallback.error;
+      }
+
+      if (profile && profile.is_active === false) {
+        throw new Error("ACCOUNT_DEACTIVATED");
+      }
 
       return {
         id: userId,
         email,
         fullName: profile?.full_name || metaName || email.split("@")[0],
-        role: (profile?.role as AuthUser["role"]) || "staff",
+        role: normalizeRole(profile?.role),
       };
-    } catch {
+    } catch (err) {
+      if ((err as Error)?.message === "ACCOUNT_DEACTIVATED") {
+        throw err;
+      }
       return {
         id: userId,
         email,
@@ -74,7 +95,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           setToken(null);
         }
       } catch (err) {
-        console.error("Auth initialization error:", err);
+        if ((err as Error)?.message === "ACCOUNT_DEACTIVATED") {
+          await supabase.auth.signOut().catch(() => {});
+        } else {
+          console.error("Auth initialization error:", err);
+        }
         setUser(null);
         setToken(null);
       } finally {
@@ -88,13 +113,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        setToken(session.access_token);
-        const authUser = await fetchUserProfile(
-          session.user.id,
-          session.user.email || "",
-          session.user.user_metadata?.full_name,
-        );
-        setUser(authUser);
+        try {
+          const authUser = await fetchUserProfile(
+            session.user.id,
+            session.user.email || "",
+            session.user.user_metadata?.full_name,
+          );
+          setToken(session.access_token);
+          setUser(authUser);
+        } catch {
+          await supabase.auth.signOut().catch(() => {});
+          setUser(null);
+          setToken(null);
+        }
       } else {
         setUser(null);
         setToken(null);
@@ -116,13 +147,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       throw new Error(error.message);
     }
     if (data.session && data.user) {
-      setToken(data.session.access_token);
-      const authUser = await fetchUserProfile(
-        data.user.id,
-        data.user.email || email,
-        data.user.user_metadata?.full_name,
-      );
-      setUser(authUser);
+      try {
+        const authUser = await fetchUserProfile(
+          data.user.id,
+          data.user.email || email,
+          data.user.user_metadata?.full_name,
+        );
+        setToken(data.session.access_token);
+        setUser(authUser);
+      } catch (err) {
+        if ((err as Error)?.message === "ACCOUNT_DEACTIVATED") {
+          await supabase.auth.signOut().catch(() => {});
+          setUser(null);
+          setToken(null);
+          throw new Error("Your account is deactivated. Contact an administrator.", {
+            cause: err,
+          });
+        }
+        throw err;
+      }
     }
   };
 
@@ -159,6 +202,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const refreshProfile = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session?.user) {
+      try {
+        const authUser = await fetchUserProfile(
+          session.user.id,
+          session.user.email || "",
+          session.user.user_metadata?.full_name,
+        );
+        setToken(session.access_token);
+        setUser(authUser);
+      } catch {
+        await logout();
+      }
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -169,6 +231,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         login,
         signup,
         logout,
+        refreshProfile,
       }}
     >
       {children}

@@ -1,7 +1,19 @@
 export type NavModule =
-  "dashboard" | "sales" | "purchase" | "inventory" | "accounts";
+  "dashboard" | "sales" | "purchase" | "inventory" | "accounts" | "users";
 
-export type NavSubModule = "sales" | "purchase" | "inventory" | "accounts";
+export type NavSubModule = "sales" | "purchase" | "inventory" | "accounts" | "users";
+
+export type UserRole = "admin" | "manager" | "staff";
+
+export interface UserAccount {
+  id: string;
+  fullName: string;
+  email: string;
+  role: UserRole;
+  phone: string;
+  isActive: boolean;
+  createdAt: string;
+}
 
 export type ProductStatus = "active" | "inactive";
 
@@ -21,12 +33,12 @@ export interface MetricSummary {
   isPositive: boolean;
   period: string;
   iconName:
-    | "dollar-sign"
-    | "shopping-cart"
-    | "shopping-bag"
-    | "package"
-    | "alert-triangle"
-    | "trending-up";
+  | "dollar-sign"
+  | "shopping-cart"
+  | "shopping-bag"
+  | "package"
+  | "alert-triangle"
+  | "trending-up";
   badgeText?: string;
 }
 
@@ -88,6 +100,7 @@ export interface Sale {
   paymentMethod: PaymentMethod;
   status: SaleStatus;
   notes?: string;
+  createdBy?: string;
 }
 
 export interface RecentSale {

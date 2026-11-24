@@ -13,13 +13,15 @@ export const NAV_MODULES = {
   PURCHASE: "purchase",
   INVENTORY: "inventory",
   ACCOUNTS: "accounts",
+  USERS: "users",
 } as const;
 
 export type NavSubModule =
   | typeof NAV_MODULES.SALES
   | typeof NAV_MODULES.PURCHASE
   | typeof NAV_MODULES.INVENTORY
-  | typeof NAV_MODULES.ACCOUNTS;
+  | typeof NAV_MODULES.ACCOUNTS
+  | typeof NAV_MODULES.USERS;
 
 export const BADGE_VARIANTS = {
   SUCCESS: "success",

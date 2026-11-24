@@ -258,6 +258,7 @@ export const fetchSales = async (): Promise<Sale[]> => {
       paymentHistory: paymentsMap[s.id]?.history || [],
       status: (s.status?.toLowerCase() as SaleStatus) || "completed",
       notes: cleanNotes,
+      createdBy: s.created_by || undefined,
     };
   });
 };

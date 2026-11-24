@@ -128,6 +128,14 @@ const MODULE_META: Record<
       { label: "Drawer Cash Balance", value: "৳145,500.00" },
     ],
   },
+  users: {
+    title: "User Management",
+    subtitle: "Operator Accounts & Roles",
+    description: "Manage StockWise operator accounts and permissions.",
+    icon: Package,
+    features: [],
+    stats: [],
+  },
 };
 
 export const ModulePlaceholder: React.FC<ModulePlaceholderProps> = ({
