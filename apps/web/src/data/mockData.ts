@@ -13,4 +13,11 @@ export {
   MOCK_REVENUE_TREND_DATA,
   MOCK_INVENTORY_STATUS_BREAKDOWN,
 } from "./dashboardCharts.mock";
+export {
+  INITIAL_EXPENSES,
+  INITIAL_INCOMES,
+  INITIAL_CUSTOMER_PAYMENTS,
+  INITIAL_SUPPLIER_PAYMENTS,
+  MOCK_MONTHLY_FINANCIALS,
+} from "./accounts.mock";
 export { HARDWARE_CATEGORIES } from "@/utils/constants";

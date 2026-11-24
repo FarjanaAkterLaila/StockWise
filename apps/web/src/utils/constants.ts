@@ -200,4 +200,61 @@ export const APP_STRINGS = {
   deletePurchaseConfirm: "Delete Order",
   createPurchase: "Create Purchase Order",
   savePurchase: "Update Purchase Order",
+
+  // Accounts Module
+  accountsTitle: "Financial Accounts & Ledger",
+  accountsSubtitle:
+    "Cash flow management, income/expense tracking, customer receivables, and supplier payables",
+  recordExpenseBtn: "Record Expense",
+  recordIncomeBtn: "Record Income",
+  expenseSearchPlaceholder: "Search by expense title, recipient, description...",
+  incomeSearchPlaceholder: "Search by reference, income source, payer...",
+  customerPaymentSearchPlaceholder: "Search by customer name, invoice, phone...",
+  supplierPaymentSearchPlaceholder: "Search by distributor/supplier, PO number...",
+  emptyExpensesTitle: "No Expenses Found",
+  emptyExpensesDesc: "No expense records match your current filters. Clear the filter settings or add a new expense.",
+  emptyIncomeTitle: "No Income Records Found",
+  emptyIncomeDesc: "No income transactions match your current filters. Clear the filter settings or record new income.",
+  deleteExpenseTitle: "Delete Expense Record?",
+  deleteExpenseConfirm: "Delete Expense",
+  createExpense: "Record Expense",
+  saveExpense: "Update Expense",
+  createIncome: "Record Income",
 } as const;
+
+export const EXPENSE_CATEGORIES = [
+  "All",
+  "Rent & Utilities",
+  "Salaries & Wages",
+  "Shop Operations",
+  "Marketing & Ads",
+  "Logistics & Delivery",
+  "Maintenance & Repairs",
+  "General",
+] as const;
+
+export const INCOME_SOURCES = [
+  "All",
+  "POS Sales",
+  "PC Assembly Service",
+  "Hardware Repair & Servicing",
+  "Corporate IT Contract",
+  "Recycling & Scrap",
+  "Other",
+] as const;
+
+export const ACCOUNTS_TABS = {
+  ANALYTICS: "analytics",
+  EXPENSES: "expenses",
+  INCOME: "income",
+  CUSTOMER_PAYMENTS: "customer-payments",
+  SUPPLIER_PAYMENTS: "supplier-payments",
+} as const;
+
+export type AccountsTabId =
+  | typeof ACCOUNTS_TABS.ANALYTICS
+  | typeof ACCOUNTS_TABS.EXPENSES
+  | typeof ACCOUNTS_TABS.INCOME
+  | typeof ACCOUNTS_TABS.CUSTOMER_PAYMENTS
+  | typeof ACCOUNTS_TABS.SUPPLIER_PAYMENTS;
+

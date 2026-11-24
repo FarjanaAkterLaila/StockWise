@@ -6,6 +6,7 @@ import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 import { InventoryModule } from "@/components/inventory/InventoryModule";
 import { SalesModule } from "@/components/sales/SalesModule";
 import { PurchaseModule } from "@/components/purchase/PurchaseModule";
+import { AccountsModule } from "@/components/accounts/AccountsModule";
 import { ModulePlaceholder } from "@/components/common/ModulePlaceholder";
 import {
   METRIC_SUMMARIES,
@@ -51,6 +52,8 @@ export function App() {
         <SalesModule />
       ) : activeModule === NAV_MODULES.PURCHASE ? (
         <PurchaseModule />
+      ) : activeModule === NAV_MODULES.ACCOUNTS ? (
+        <AccountsModule />
       ) : (
         <ModulePlaceholder
           module={activeModule}

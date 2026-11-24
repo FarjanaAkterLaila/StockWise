@@ -194,3 +194,79 @@ export interface Purchase {
   status: PurchaseStatus;
   notes?: string;
 }
+
+export type ExpenseCategory =
+  | "Rent & Utilities"
+  | "Salaries & Wages"
+  | "Shop Operations"
+  | "Marketing & Ads"
+  | "Logistics & Delivery"
+  | "Maintenance & Repairs"
+  | "General";
+
+export interface Expense {
+  id: string;
+  title: string;
+  category: ExpenseCategory;
+  amount: number;
+  date: string;
+  paymentMethod: PaymentMethod;
+  description: string;
+  referenceNumber?: string;
+  recipient?: string;
+}
+
+export type IncomeSource =
+  | "POS Sales"
+  | "PC Assembly Service"
+  | "Hardware Repair & Servicing"
+  | "Corporate IT Contract"
+  | "Recycling & Scrap"
+  | "Other";
+
+export interface Income {
+  id: string;
+  source: IncomeSource;
+  referenceNumber: string;
+  date: string;
+  amount: number;
+  paymentMethod: PaymentMethod;
+  payerName?: string;
+  description?: string;
+}
+
+export interface CustomerPaymentRecord {
+  id: string;
+  invoiceNumber: string;
+  customerName: string;
+  customerType: CustomerType;
+  customerPhone?: string;
+  date: string;
+  paymentMethod: PaymentMethod;
+  totalAmount: number;
+  paidAmount: number;
+  dueAmount: number;
+  paymentStatus: PaymentStatus;
+}
+
+export interface SupplierPaymentRecord {
+  id: string;
+  purchaseNumber: string;
+  supplierName: string;
+  date: string;
+  paymentMethod: PaymentMethod;
+  totalAmount: number;
+  paidAmount: number;
+  dueAmount: number;
+  paymentStatus: PaymentStatus;
+}
+
+export interface MonthlyFinancialSummary {
+  month: string;
+  monthFull: string;
+  income: number;
+  expense: number;
+  netProfit: number;
+  marginPercentage: number;
+}
+
