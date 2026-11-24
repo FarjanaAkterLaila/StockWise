@@ -1,12 +1,15 @@
 import { useState, useMemo } from "react";
 import type { SupplierPaymentRecord } from "@/types";
 import { DEFAULT_VALUES } from "@/utils/constants";
+import { isWithinDateRange } from "@/utils/accounts.utils";
 
 export const useSupplierPayments = (payments: SupplierPaymentRecord[]) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>(
     DEFAULT_VALUES.FILTER_ALL,
   );
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [viewingPayment, setViewingPayment] =
     useState<SupplierPaymentRecord | null>(null);
 
@@ -16,23 +19,29 @@ export const useSupplierPayments = (payments: SupplierPaymentRecord[]) => {
       const matchesSearch =
         !q ||
         item.supplierName.toLowerCase().includes(q) ||
-        item.purchaseNumber.toLowerCase().includes(q);
+        item.purchaseNumber.toLowerCase().includes(q) ||
+        (item.referenceNumber && item.referenceNumber.toLowerCase().includes(q)) ||
+        (item.notes && item.notes.toLowerCase().includes(q));
 
       const matchesStatus =
         selectedStatus === DEFAULT_VALUES.FILTER_ALL ||
         item.paymentStatus === selectedStatus;
 
-      return matchesSearch && matchesStatus;
+      const matchesDate = isWithinDateRange(item.date, dateFrom, dateTo);
+
+      return matchesSearch && matchesStatus && matchesDate;
     });
-  }, [payments, searchTerm, selectedStatus]);
+  }, [payments, searchTerm, selectedStatus, dateFrom, dateTo]);
 
   const hasActiveFilters = Boolean(
-    searchTerm.trim() || selectedStatus !== DEFAULT_VALUES.FILTER_ALL,
+    searchTerm.trim() || selectedStatus !== DEFAULT_VALUES.FILTER_ALL || dateFrom || dateTo,
   );
 
   const handleResetFilters = () => {
     setSearchTerm("");
     setSelectedStatus(DEFAULT_VALUES.FILTER_ALL);
+    setDateFrom("");
+    setDateTo("");
   };
 
   return {
@@ -40,6 +49,10 @@ export const useSupplierPayments = (payments: SupplierPaymentRecord[]) => {
     setSearchTerm,
     selectedStatus,
     setSelectedStatus,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
     viewingPayment,
     setViewingPayment,
     filteredPayments,

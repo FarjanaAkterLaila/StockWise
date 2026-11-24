@@ -1,7 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import type {
   Expense,
-  Income,
   IncomeSource,
   CustomerPaymentRecord,
   SupplierPaymentRecord,
@@ -14,9 +13,9 @@ import {
   createExpense,
   updateExpense,
   deleteExpense,
-  createIncome,
   fetchCustomerPayments,
   fetchSupplierPayments,
+  fetchTotalPurchasePayable,
 } from "@/services/accounts.service";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
@@ -29,8 +28,8 @@ export const useAccounts = () => {
   );
 
   const [isCreateExpenseOpen, setIsCreateExpenseOpen] = useState(false);
-  const [isCreateIncomeOpen, setIsCreateIncomeOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [customerPayments, setCustomerPayments] = useState<
@@ -39,39 +38,50 @@ export const useAccounts = () => {
   const [supplierPayments, setSupplierPayments] = useState<
     SupplierPaymentRecord[]
   >([]);
+  const [totalPurchasePayable, setTotalPurchasePayable] = useState(0);
+
+  const reloadAccounts = useCallback(async (): Promise<boolean> => {
+    try {
+      const [expData, custPayData, suppPayData, payableData] = await Promise.all([
+        fetchExpenses(),
+        fetchCustomerPayments(),
+        fetchSupplierPayments(),
+        fetchTotalPurchasePayable(),
+      ]);
+      setExpenses(expData);
+      setCustomerPayments(custPayData);
+      setSupplierPayments(suppPayData);
+      setTotalPurchasePayable(payableData);
+      setLoadError(null);
+      return true;
+    } catch (err: unknown) {
+      setLoadError((err as Error).message || "Unable to load Accounts data.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    Promise.all([
-      fetchExpenses().catch(() => []),
-      fetchCustomerPayments().catch(() => []),
-      fetchSupplierPayments().catch(() => []),
-    ])
-      .then(([expData, custPayData, suppPayData]) => {
-        if (!isMounted) return;
-        setExpenses(expData);
-        setCustomerPayments(custPayData);
-        setSupplierPayments(suppPayData);
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
+    const timeoutId = window.setTimeout(() => void reloadAccounts(), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [reloadAccounts]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const retryLoad = useCallback(() => {
+    setLoading(true);
+    return reloadAccounts();
+  }, [reloadAccounts]);
 
   const incomes = useMemo(() => {
     return customerPayments.map((cp) => ({
       id: cp.id,
       source: "POS Sales" as IncomeSource,
-      referenceNumber: cp.invoiceNumber,
+      referenceNumber: cp.referenceNumber || cp.invoiceNumber,
       date: cp.date,
       amount: cp.paidAmount,
       paymentMethod: cp.paymentMethod,
       payerName: cp.customerName,
-      description: `Payment for invoice ${cp.invoiceNumber}`,
+      description: cp.notes || `Payment for invoice ${cp.invoiceNumber}`,
     }));
   }, [customerPayments]);
 
@@ -118,66 +128,53 @@ export const useAccounts = () => {
   }, [customerPayments, expenses, supplierPayments]);
 
   const overviewMetrics = useMemo(() => {
-    return calculateAccountsOverview(
-      customerPayments,
-      incomes,
-      expenses,
-      supplierPayments,
-    );
-  }, [customerPayments, incomes, expenses, supplierPayments]);
+    return calculateAccountsOverview(customerPayments, expenses, supplierPayments, totalPurchasePayable);
+  }, [customerPayments, expenses, supplierPayments, totalPurchasePayable]);
 
-  const handleSaveExpense = async (newOrUpdatedExpense: Expense) => {
+  const handleSaveExpense = async (newOrUpdatedExpense: Expense): Promise<boolean> => {
     try {
-      if (newOrUpdatedExpense.id) {
-        await updateExpense(newOrUpdatedExpense.id, newOrUpdatedExpense);
+      const isEditing = Boolean(newOrUpdatedExpense.id);
+      const saved = isEditing
+        ? await updateExpense(newOrUpdatedExpense.id, newOrUpdatedExpense)
+        : await createExpense(newOrUpdatedExpense, user?.id);
+      setExpenses((prev) => isEditing
+        ? prev.map((expense) => expense.id === saved.id ? saved : expense)
+        : [saved, ...prev]);
+      void reloadAccounts();
+      if (isEditing) {
         showSuccess(
           "Expense Updated",
           `"${newOrUpdatedExpense.title}" voucher updated.`,
         );
       } else {
-        await createExpense(newOrUpdatedExpense, user?.id);
         showSuccess(
           "Expense Recorded",
           `"${newOrUpdatedExpense.title}" voucher saved.`,
         );
       }
-      const updated = await fetchExpenses();
-      setExpenses(updated);
+      return true;
     } catch (err: unknown) {
       showError(
         "Expense Failed",
         (err as Error).message || "Failed to save expense in database",
       );
+      return false;
     }
   };
 
-  const handleDeleteExpense = async (expenseId: string) => {
+  const handleDeleteExpense = async (expenseId: string): Promise<boolean> => {
     try {
       await deleteExpense(expenseId);
       setExpenses((prev) => prev.filter((e) => e.id !== expenseId));
+      void reloadAccounts();
       showSuccess("Expense Deleted", "Expense voucher removed successfully.");
+      return true;
     } catch (err: unknown) {
       showError(
         "Delete Failed",
         (err as Error).message || "Failed to delete expense from database",
       );
-    }
-  };
-
-  const handleSaveIncome = async (newIncome: Income) => {
-    try {
-      await createIncome(newIncome, user?.id);
-      const updated = await fetchCustomerPayments();
-      setCustomerPayments(updated);
-      showSuccess(
-        "Income Recorded",
-        `Direct income from "${newIncome.source}" saved.`,
-      );
-    } catch (err: unknown) {
-      showError(
-        "Income Failed",
-        (err as Error).message || "Failed to save income in database",
-      );
+      return false;
     }
   };
 
@@ -185,24 +182,17 @@ export const useAccounts = () => {
     setIsCreateExpenseOpen(true);
   };
 
-  const handleOpenRecordIncome = () => {
-    setIsCreateIncomeOpen(true);
-  };
-
   const handleCloseRecordExpense = () => {
     setIsCreateExpenseOpen(false);
   };
 
-  const handleCloseRecordIncome = () => {
-    setIsCreateIncomeOpen(false);
-  };
-
   return {
     loading,
+    loadError,
+    retryLoad,
     activeTab,
     setActiveTab,
     isCreateExpenseOpen,
-    isCreateIncomeOpen,
     expenses,
     incomes,
     customerPayments,
@@ -211,10 +201,7 @@ export const useAccounts = () => {
     overviewMetrics,
     handleSaveExpense,
     handleDeleteExpense,
-    handleSaveIncome,
     handleOpenRecordExpense,
-    handleOpenRecordIncome,
     handleCloseRecordExpense,
-    handleCloseRecordIncome,
   };
 };

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Purchase } from "@/types";
 import {
   fetchPurchases,
@@ -47,6 +47,7 @@ export const PurchaseModule: React.FC = () => {
   const [viewingPurchase, setViewingPurchase] = useState<Purchase | null>(null);
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   const [deletingPurchase, setDeletingPurchase] = useState<Purchase | null>(null);
+  const savingPurchaseRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -127,49 +128,24 @@ export const PurchaseModule: React.FC = () => {
   };
 
   const handleSavePurchase = async (
-    purchaseData: Omit<Purchase, "id"> & { id?: string; newPaymentAmount?: number },
-  ) => {
-    if (purchaseData.id) {
-      try {
-        await updatePurchase(purchaseData.id, {
-          purchaseNumber: purchaseData.purchaseNumber,
-          supplierId: purchaseData.supplierId,
-          supplierName: purchaseData.supplierName,
-          date: purchaseData.date,
-          paymentMethod: purchaseData.paymentMethod,
-          items: purchaseData.items.map((i) => ({
-            productId: i.productId,
-            productName: i.productName,
-            sku: i.sku,
-            quantity: i.quantity,
-            unitPrice: i.unitPrice,
-            subtotal: i.subtotal,
-          })),
-          notes: purchaseData.notes,
-          totalAmount: purchaseData.grandTotal,
-          paidAmount: purchaseData.newPaymentAmount,
-          discountAmount: purchaseData.discountAmount,
-          vatRate: purchaseData.vatRate,
-          vatAmount: purchaseData.vatAmount,
-          status: purchaseData.status,
-        });
-        const updated = await fetchPurchases();
-        setPurchases(updated);
-        setEditingPurchase(null);
-        showSuccess("Purchase Updated", "Purchase order details updated.");
-      } catch (err: unknown) {
-        showError(
-          "Update Failed",
-          (err as Error).message || "Failed to update purchase order.",
-        );
-      }
-    } else {
-      try {
-        const created = await createPurchase(
-          {
+    purchaseData: Omit<Purchase, "id"> & {
+      id?: string;
+      newPaymentAmount?: number;
+      paymentReference?: string;
+    },
+  ): Promise<boolean> => {
+    if (savingPurchaseRef.current) return false;
+    savingPurchaseRef.current = true;
+
+    try {
+      if (purchaseData.id) {
+        try {
+          await updatePurchase(purchaseData.id, {
             purchaseNumber: purchaseData.purchaseNumber,
             supplierId: purchaseData.supplierId,
             supplierName: purchaseData.supplierName,
+            date: purchaseData.date,
+            paymentMethod: purchaseData.paymentMethod,
             items: purchaseData.items.map((i) => ({
               productId: i.productId,
               productName: i.productName,
@@ -178,44 +154,86 @@ export const PurchaseModule: React.FC = () => {
               unitPrice: i.unitPrice,
               subtotal: i.subtotal,
             })),
+            notes: purchaseData.notes,
             totalAmount: purchaseData.grandTotal,
-            paidAmount: purchaseData.paidAmount,
+            newPaymentAmount: purchaseData.newPaymentAmount,
+            paymentReference: purchaseData.paymentReference,
             discountAmount: purchaseData.discountAmount,
             vatRate: purchaseData.vatRate,
             vatAmount: purchaseData.vatAmount,
-            paymentMethod: purchaseData.paymentMethod,
             status: purchaseData.status,
-            notes: purchaseData.notes,
-          },
-          user?.id,
-        );
+          });
+          const updated = await fetchPurchases();
+          setPurchases(updated);
+          setEditingPurchase(null);
+          showSuccess("Purchase Updated", "Purchase order details updated.");
+          return true;
+        } catch (err: unknown) {
+          showError(
+            "Update Failed",
+            (err as Error).message || "Failed to update purchase order.",
+          );
+          return false;
+        }
+      } else {
+        try {
+          const created = await createPurchase(
+            {
+              purchaseNumber: purchaseData.purchaseNumber,
+              supplierId: purchaseData.supplierId,
+              supplierName: purchaseData.supplierName,
+              items: purchaseData.items.map((i) => ({
+                productId: i.productId,
+                productName: i.productName,
+                sku: i.sku,
+                quantity: i.quantity,
+                unitPrice: i.unitPrice,
+                subtotal: i.subtotal,
+              })),
+              totalAmount: purchaseData.grandTotal,
+              paidAmount: purchaseData.paidAmount,
+              paymentReference: purchaseData.paymentReference,
+              discountAmount: purchaseData.discountAmount,
+              vatRate: purchaseData.vatRate,
+              vatAmount: purchaseData.vatAmount,
+              paymentMethod: purchaseData.paymentMethod,
+              status: purchaseData.status,
+              notes: purchaseData.notes,
+            },
+            user?.id,
+          );
 
-        // 1. Immediately update UI state so new purchase displays instantly without reload
-        setPurchases((prev) => [
-          created,
-          ...prev.filter((p) => p.id !== created.id),
-        ]);
-        // 2. Close modal immediately
-        setIsCreateModalOpen(false);
-        // 3. Display success toast
-        showSuccess(
-          "Purchase Order Created",
-          `PO #${created.purchaseNumber} created successfully.`,
-        );
+          // 1. Immediately update UI state so new purchase displays instantly without reload
+          setPurchases((prev) => [
+            created,
+            ...prev.filter((p) => p.id !== created.id),
+          ]);
+          // 2. Close modal immediately
+          setIsCreateModalOpen(false);
+          // 3. Display success toast
+          showSuccess(
+            "Purchase Order Created",
+            `PO #${created.purchaseNumber} created successfully.`,
+          );
 
-        // 4. Background refresh to sync any server-computed fields
-        fetchPurchases()
-          .then((fresh) => {
-            if (fresh && fresh.length > 0) setPurchases(fresh);
-          })
-          .catch((e) => console.warn("Background fetch warning:", e));
-      } catch (err: unknown) {
-        showError(
-          "Purchase Order Failed",
-          (err as Error).message ||
-            "Failed to create purchase order in database",
-        );
+          // 4. Background refresh to sync any server-computed fields
+          fetchPurchases()
+            .then((fresh) => {
+              if (fresh && fresh.length > 0) setPurchases(fresh);
+            })
+            .catch((e) => console.warn("Background fetch warning:", e));
+          return true;
+        } catch (err: unknown) {
+          showError(
+            "Purchase Order Failed",
+            (err as Error).message ||
+              "Failed to create purchase order in database",
+          );
+          return false;
+        }
       }
+    } finally {
+      savingPurchaseRef.current = false;
     }
   };
 

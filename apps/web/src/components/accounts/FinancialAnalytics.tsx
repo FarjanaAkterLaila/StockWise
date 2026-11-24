@@ -55,8 +55,9 @@ import {
 interface FinancialAnalyticsProps {
   monthlyData?: MonthlyFinancialSummary[];
   expenses?: Expense[];
-  totalRevenue?: number;
+  totalIncome?: number;
   totalExpenses?: number;
+  totalPurchasePayments?: number;
 }
 
 const RANGE_OPTIONS = [
@@ -67,8 +68,9 @@ const RANGE_OPTIONS = [
 export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
   monthlyData = [],
   expenses = [],
-  totalRevenue = 0,
+  totalIncome = 0,
   totalExpenses = 0,
+  totalPurchasePayments = 0,
 }) => {
   const theme = useTheme();
 
@@ -87,10 +89,10 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
     hoveredItem,
   } = useFinancialAnalytics(monthlyData, expenses);
 
-  const netOperatingProfit = totalRevenue - totalExpenses;
+  const netOperatingProfit = totalIncome - totalExpenses - totalPurchasePayments;
   const netMarginPercent =
-    totalRevenue > 0
-      ? Math.round((netOperatingProfit / totalRevenue) * 100)
+    totalIncome > 0
+      ? Math.round((netOperatingProfit / totalIncome) * 100)
       : 0;
 
   return (
@@ -306,12 +308,20 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
         <PnLSection>
           <PnLSectionTitle>Revenue &amp; Inflows</PnLSectionTitle>
           <PnLRow>
-            <PnLLabel>POS Sales &amp; Collections</PnLLabel>
-            <PnLValue>{formatCurrency(totalRevenue)}</PnLValue>
+            <PnLLabel>Received Sales Payments</PnLLabel>
+            <PnLValue>{formatCurrency(totalIncome)}</PnLValue>
           </PnLRow>
           <PnLRow>
-            <PnLLabel $bold>Total Gross Inflow</PnLLabel>
-            <PnLValue $bold>{formatCurrency(totalRevenue)}</PnLValue>
+            <PnLLabel $bold>Total Income</PnLLabel>
+            <PnLValue $bold>{formatCurrency(totalIncome)}</PnLValue>
+          </PnLRow>
+        </PnLSection>
+
+        <PnLSection>
+          <PnLSectionTitle>Purchase Payments</PnLSectionTitle>
+          <PnLRow>
+            <PnLLabel>Supplier payments recorded</PnLLabel>
+            <PnLValue>{formatCurrency(totalPurchasePayments)}</PnLValue>
           </PnLRow>
         </PnLSection>
 
@@ -340,7 +350,7 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
 
         <PnLTotalRow>
           <PnLTotalLabel>
-            <span>Net Operating Margin</span>
+            <span>Net Cash Flow</span>
             <PnLMarginSubtext>
               ({netMarginPercent}% overall profitability)
             </PnLMarginSubtext>

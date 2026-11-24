@@ -2,11 +2,10 @@ import type {
   CustomerPaymentRecord,
   SupplierPaymentRecord,
   Expense,
-  Income,
-  IncomeSource,
   ExpenseCategory,
   MonthlyFinancialSummary,
 } from "@/types";
+import { PAYMENT_METHODS } from "@/utils/constants";
 import type { TableColumn } from "@/components/common/DataTable";
 import {
   Banknote,
@@ -66,6 +65,46 @@ export const PAYMENT_ICON_MAP: Record<string, LucideIcon> = {
   Card: CreditCard,
   "Bank Transfer": Building2,
   MFS: Smartphone,
+  Cheque: Banknote,
+  Other: CreditCard,
+};
+
+export const ACCOUNTS_PAYMENT_METHODS = [...PAYMENT_METHODS, "Cheque", "Other"] as const;
+
+export const isWithinDateRange = (date: string, from: string, to: string): boolean =>
+  (!from || date >= from) && (!to || date <= to);
+
+export const formatAccountsDate = (date?: string | null): string => {
+  if (!date || typeof date !== "string") return "";
+
+  const trimmed = date.trim();
+  if (!trimmed) return "";
+
+  // 1. Check YYYY-MM-DD or ISO timestamp (e.g. 2026-11-24 or 2026-11-24T...)
+  const isoMatch = /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/.exec(trimmed);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
+  }
+
+  // 2. Check MM/DD/YY or MM/DD/YYYY (e.g. 11/24/26 or 11/24/2026)
+  const usMatch = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/.exec(trimmed);
+  if (usMatch) {
+    const [, month, day, rawYear] = usMatch;
+    const year = rawYear.length === 2 ? `20${rawYear}` : rawYear;
+    return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
+  }
+
+  // 3. Fallback for any other valid date string without UTC timezone shift
+  const parsed = new Date(trimmed);
+  if (!isNaN(parsed.getTime())) {
+    const day = String(parsed.getDate()).padStart(2, "0");
+    const month = String(parsed.getMonth() + 1).padStart(2, "0");
+    const year = parsed.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  return trimmed;
 };
 
 export const PAYMENT_STATUS_VARIANT_MAP: Record<
@@ -90,73 +129,44 @@ export const CATEGORY_VARIANT_MAP: Record<
   General: "neutral",
 };
 
-export const SOURCE_VARIANT_MAP: Record<
-  IncomeSource,
-  "success" | "primary" | "warning" | "info" | "neutral"
-> = {
+export const SOURCE_VARIANT_MAP: Record<string, "success" | "primary" | "warning" | "info" | "neutral"> = {
   "POS Sales": "primary",
-  "PC Assembly Service": "success",
-  "Hardware Repair & Servicing": "info",
-  "Corporate IT Contract": "warning",
-  "Recycling & Scrap": "neutral",
-  Other: "neutral",
 };
 
 export interface AccountsOverviewMetrics {
-  totalRevenue: number;
+  totalIncome: number;
   totalExpenses: number;
-  totalReceived: number;
+  totalPurchasePayments: number;
   totalPayable: number;
-  netProfit: number;
+  netCashFlow: number;
   marginPercentage: number;
 }
 
 export const calculateAccountsOverview = (
   customerPayments: CustomerPaymentRecord[],
-  incomes: Income[],
   expenses: Expense[],
   supplierPayments: SupplierPaymentRecord[],
+  totalPayable = 0,
 ): AccountsOverviewMetrics => {
-  const totalPosRevenue = customerPayments.reduce(
-    (acc, p) => acc + p.totalAmount,
+  const totalIncome = customerPayments.reduce(
+    (acc, payment) => acc + (Number(payment.paidAmount) || 0),
     0,
   );
-  const totalOtherIncome = incomes
-    .filter((i) => i.source !== "POS Sales")
-    .reduce((acc, i) => acc + i.amount, 0);
-  const totalRevenue = totalPosRevenue + totalOtherIncome;
-
-  const totalOperatingExpenses = expenses.reduce((acc, e) => acc + e.amount, 0);
-  const totalPurchaseExpenses = supplierPayments.reduce(
-    (acc, p) => acc + p.totalAmount,
+  const totalExpenses = expenses.reduce((acc, expense) => acc + (Number(expense.amount) || 0), 0);
+  const totalPurchasePayments = supplierPayments.reduce(
+    (acc, payment) => acc + (Number(payment.paidAmount) || 0),
     0,
   );
-  const totalExpenses = totalOperatingExpenses + totalPurchaseExpenses;
-
-  const totalCustomerCollected = customerPayments.reduce(
-    (acc, p) => acc + p.paidAmount,
-    0,
-  );
-  const totalDirectIncome = incomes
-    .filter((i) => i.source !== "POS Sales")
-    .reduce((acc, i) => acc + i.amount, 0);
-  const totalReceived = totalCustomerCollected + totalDirectIncome;
-
-  const totalPayable = supplierPayments.reduce(
-    (acc, p) => acc + p.dueAmount,
-    0,
-  );
-
-  const netProfit = totalRevenue - totalExpenses;
+  const netCashFlow = totalIncome - totalExpenses - totalPurchasePayments;
   const marginPercentage =
-    totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0;
+    totalIncome > 0 ? Math.round((netCashFlow / totalIncome) * 100) : 0;
 
   return {
-    totalRevenue,
+    totalIncome,
     totalExpenses,
-    totalReceived,
+    totalPurchasePayments,
     totalPayable,
-    netProfit,
+    netCashFlow,
     marginPercentage,
   };
 };
@@ -273,8 +283,4 @@ export const calculateFinancialChartLayout = (
 
 export const generateIncomeReference = (): string => {
   return `INC-SRV-${Math.floor(1000 + Math.random() * 9000)}`;
-};
-
-export const generateExpenseReference = (): string => {
-  return `EXP-2026-${Math.floor(1000 + Math.random() * 9000)}`;
 };

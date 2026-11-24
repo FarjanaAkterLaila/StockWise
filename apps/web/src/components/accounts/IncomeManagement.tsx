@@ -1,11 +1,13 @@
 import React from "react";
 import type { Income } from "@/types";
-import { formatCurrency, formatDate } from "@/utils/formatters";
-import { INCOME_SOURCES, PAYMENT_METHODS, DEFAULT_VALUES } from "@/utils/constants";
+import { formatCurrency } from "@/utils/formatters";
+import { INCOME_SOURCES, DEFAULT_VALUES } from "@/utils/constants";
 import {
   INCOME_COLUMNS,
+  ACCOUNTS_PAYMENT_METHODS,
   PAYMENT_ICON_MAP,
   SOURCE_VARIANT_MAP,
+  formatAccountsDate,
 } from "@/utils/accounts.utils";
 import { useIncomeManagement } from "@/hooks/useIncomeManagement";
 import { DataTable } from "@/components/common/DataTable";
@@ -16,7 +18,6 @@ import {
   Search,
   Filter,
   RotateCcw,
-  Plus,
   Coins,
   Eye,
   Building2,
@@ -32,7 +33,6 @@ import {
   SearchInput,
   FilterSelectsGroup,
   ClearFilterBtn,
-  InlineCreateBtn,
   TableRow,
   TableCell,
   ActionButtonsGroup,
@@ -66,12 +66,10 @@ import {
 
 interface IncomeManagementProps {
   incomes: Income[];
-  onOpenCreate: () => void;
 }
 
 export const IncomeManagement: React.FC<IncomeManagementProps> = ({
   incomes,
-  onOpenCreate,
 }) => {
   const {
     searchTerm,
@@ -119,7 +117,7 @@ export const IncomeManagement: React.FC<IncomeManagementProps> = ({
               ariaLabel="Filter income by payment method"
               options={[
                 { value: DEFAULT_VALUES.FILTER_ALL, label: "All Payment Methods" },
-                ...PAYMENT_METHODS.map((m) => ({ value: m, label: m })),
+                ...ACCOUNTS_PAYMENT_METHODS.map((m) => ({ value: m, label: m })),
               ]}
             />
 
@@ -130,13 +128,6 @@ export const IncomeManagement: React.FC<IncomeManagementProps> = ({
               </ClearFilterBtn>
             )}
 
-            <InlineCreateBtn
-              type="button"
-              onClick={onOpenCreate}
-            >
-              <Plus size={15} />
-              <span>Record Income</span>
-            </InlineCreateBtn>
           </FilterSelectsGroup>
         </FilterControlsRow>
       </FilterBarCard>
@@ -150,7 +141,7 @@ export const IncomeManagement: React.FC<IncomeManagementProps> = ({
         onResetFilters={handleResetFilters}
         emptyIcon={<Coins size={28} />}
         emptyTitle="No Income Transactions Found"
-        emptyDesc="No revenue records match your current search or source filters. Try resetting the filters or add a new income transaction."
+        emptyDesc="Sales income appears here after a received payment is recorded against a sale."
       >
         {filteredIncomes.map((inc) => {
           const PayIcon = PAYMENT_ICON_MAP[inc.paymentMethod] || CreditCard;
@@ -159,7 +150,7 @@ export const IncomeManagement: React.FC<IncomeManagementProps> = ({
               <TableCell>
                 <CellStack>
                   <CellPrimaryText>{inc.referenceNumber}</CellPrimaryText>
-                  <CellDateText>{formatDate(inc.date)}</CellDateText>
+                  <CellDateText>{formatAccountsDate(inc.date)}</CellDateText>
                 </CellStack>
               </TableCell>
 
@@ -270,7 +261,7 @@ export const IncomeManagement: React.FC<IncomeManagementProps> = ({
               <VoucherMetaValue>
                 <VoucherMetaItem>
                   <Calendar size={13} />
-                  <span>{formatDate(viewingIncome.date)}</span>
+                  <span>{formatAccountsDate(viewingIncome.date)}</span>
                 </VoucherMetaItem>
               </VoucherMetaValue>
             </VoucherMetaCard>

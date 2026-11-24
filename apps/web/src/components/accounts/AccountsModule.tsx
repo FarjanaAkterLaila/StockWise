@@ -9,7 +9,6 @@ import { IncomeManagement } from "./IncomeManagement";
 import { CustomerPayments } from "./CustomerPayments";
 import { SupplierPayments } from "./SupplierPayments";
 import { ExpenseModal } from "./ExpenseModal";
-import { IncomeModal } from "./IncomeModal";
 import { BarChart3, Receipt, Coins, Users, Truck, Plus } from "lucide-react";
 import {
   AccountsContainer,
@@ -19,7 +18,6 @@ import {
   PageSubtitle,
   HeaderActions,
   RecordExpenseBtn,
-  RecordIncomeBtn,
   TabNav,
   TabItem,
   TabBadge,
@@ -29,10 +27,11 @@ import {
 export const AccountsModule: React.FC = () => {
   const {
     loading,
+    loadError,
+    retryLoad,
     activeTab,
     setActiveTab,
     isCreateExpenseOpen,
-    isCreateIncomeOpen,
     expenses,
     incomes,
     customerPayments,
@@ -41,11 +40,8 @@ export const AccountsModule: React.FC = () => {
     overviewMetrics,
     handleSaveExpense,
     handleDeleteExpense,
-    handleSaveIncome,
     handleOpenRecordExpense,
-    handleOpenRecordIncome,
     handleCloseRecordExpense,
-    handleCloseRecordIncome,
   } = useAccounts();
 
   return (
@@ -57,11 +53,6 @@ export const AccountsModule: React.FC = () => {
         </TitleWrap>
 
         <HeaderActions>
-          <RecordIncomeBtn type="button" onClick={handleOpenRecordIncome}>
-            <Plus size={16} />
-            <span>{APP_STRINGS.recordIncomeBtn}</span>
-          </RecordIncomeBtn>
-
           <RecordExpenseBtn type="button" onClick={handleOpenRecordExpense}>
             <Plus size={16} />
             <span>{APP_STRINGS.recordExpenseBtn}</span>
@@ -74,14 +65,19 @@ export const AccountsModule: React.FC = () => {
           message="Loading financial ledger..."
           subtext="Fetching live expenses, customer receipts, and vendor payouts"
         />
+      ) : loadError ? (
+        <div role="alert" style={{ padding: 20, borderRadius: 12, border: "1px solid #ef4444" }}>
+          <p>Accounts data could not be loaded: {loadError}</p>
+          <button type="button" onClick={() => void retryLoad()}>Retry</button>
+        </div>
       ) : (
         <>
           <AccountsOverviewStats
-            totalRevenue={overviewMetrics.totalRevenue}
+            totalIncome={overviewMetrics.totalIncome}
             totalExpenses={overviewMetrics.totalExpenses}
-            totalReceived={overviewMetrics.totalReceived}
+            totalPurchasePayments={overviewMetrics.totalPurchasePayments}
             totalPayable={overviewMetrics.totalPayable}
-            netProfit={overviewMetrics.netProfit}
+            netCashFlow={overviewMetrics.netCashFlow}
             marginPercentage={overviewMetrics.marginPercentage}
           />
 
@@ -149,8 +145,9 @@ export const AccountsModule: React.FC = () => {
               <FinancialAnalytics
                 monthlyData={monthlyFinancials}
                 expenses={expenses}
-                totalRevenue={overviewMetrics.totalRevenue}
+                totalIncome={overviewMetrics.totalIncome}
                 totalExpenses={overviewMetrics.totalExpenses}
+                totalPurchasePayments={overviewMetrics.totalPurchasePayments}
               />
             )}
 
@@ -166,7 +163,6 @@ export const AccountsModule: React.FC = () => {
             {activeTab === ACCOUNTS_TABS.INCOME && (
               <IncomeManagement
                 incomes={incomes}
-                onOpenCreate={handleOpenRecordIncome}
               />
             )}
 
@@ -189,13 +185,6 @@ export const AccountsModule: React.FC = () => {
         />
       )}
 
-      {isCreateIncomeOpen && (
-        <IncomeModal
-          isOpen={isCreateIncomeOpen}
-          onClose={handleCloseRecordIncome}
-          onSave={handleSaveIncome}
-        />
-      )}
     </AccountsContainer>
   );
 };

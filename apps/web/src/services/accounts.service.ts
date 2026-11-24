@@ -3,62 +3,109 @@ import type {
   Expense,
   CustomerPaymentRecord,
   SupplierPaymentRecord,
-  PaymentMethod,
+  AccountsPaymentMethod,
   ExpenseCategory,
   CustomerType,
-  PaymentStatus,
 } from "@/types";
-import type { ExpenseRow, PaymentRow, DbPaymentMethod } from "@/types/database.types";
+import { EXPENSE_CATEGORIES } from "@/utils/constants";
+import type { ExpenseRow, PaymentRow } from "@/types/database.types";
+
+const isDateOnly = (value: string): boolean => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const [, year, month, day] = match;
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  return date.getUTCFullYear() === Number(year)
+    && date.getUTCMonth() === Number(month) - 1
+    && date.getUTCDate() === Number(day);
+};
+
+const mapPaymentMethod = (method: unknown): AccountsPaymentMethod => {
+  if (typeof method !== "string") return "Other";
+  switch (method.trim().toLowerCase().replace(/[\s-]+/g, "_")) {
+    case "cash": return "Cash";
+    case "card": return "Card";
+    case "bank_transfer":
+    case "bank": return "Bank Transfer";
+    case "mfs":
+    case "mobile_money":
+    case "mobile": return "MFS";
+    case "cheque": return "Cheque";
+    case "other": return "Other";
+    default: return method.trim();
+  }
+};
+
+const toDbPaymentMethod = (method: AccountsPaymentMethod): string => {
+  switch (method) {
+    case "Cash": return "cash";
+    case "Card": return "card";
+    case "Bank Transfer": return "bank_transfer";
+    case "MFS": return "mobile_money";
+    case "Cheque": return "cheque";
+    case "Other": return "other";
+    default: return method.trim();
+  }
+};
+
+const validateExpenseInput = (data: {
+  title?: string;
+  category?: string;
+  amount?: number;
+  date?: string;
+  paymentMethod?: string;
+}): void => {
+  if (!data.title?.trim() || data.title.trim().length < 3) throw new Error("Enter an expense title with at least 3 characters.");
+  if (!data.category || !EXPENSE_CATEGORIES.includes(data.category as typeof EXPENSE_CATEGORIES[number]) || data.category === "All") {
+    throw new Error("Select a valid expense category.");
+  }
+  if (!Number.isFinite(Number(data.amount)) || Number(data.amount) <= 0) throw new Error("Expense amount must be greater than zero.");
+  if (!data.date || !isDateOnly(data.date)) throw new Error("Enter a valid expense date.");
+  if (!data.paymentMethod?.trim()) throw new Error("Select a payment method.");
+};
 
 interface CustomerPaymentRowWithRelations extends PaymentRow {
-  customers: { id: string; name: string; phone: string | null } | null;
   sales: {
     invoice_number: string;
     total_amount: number;
     sale_date: string;
+    customer_id: string | null;
+    customers: { name: string; phone: string | null } | null;
   } | null;
 }
 
 interface SupplierPaymentRowWithRelations extends PaymentRow {
-  suppliers: { id: string; name: string } | null;
   purchases: {
+    id?: string;
     purchase_number: string;
     total_amount: number;
-    paid_amount: number;
-    due_amount: number;
-    payment_status: string;
     purchase_date: string;
+    status?: string | null;
+    supplier_id: string | null;
+    suppliers: { name: string } | null;
   } | null;
 }
 
 export const fetchExpenses = async (): Promise<Expense[]> => {
   const { data, error } = await supabase
     .from("expenses")
-    .select("*")
+    .select("id, title, category, amount, expense_date, payment_method")
     .order("expense_date", { ascending: false });
 
   if (error) throw new Error(error.message);
 
-  const rows = (data || []) as unknown as ExpenseRow[];
+  return ((data || []) as unknown as ExpenseRow[]).map(mapExpenseRow);
+};
 
-  return rows.map((e) => {
-    let method: PaymentMethod = "Bank Transfer";
-    if (e.payment_method === "Cash") method = "Cash";
-    else if (e.payment_method === "Card") method = "Card";
-    else if (e.payment_method === "MFS") method = "MFS";
-
-    return {
-      id: e.id,
-      title: e.title,
-      category: (e.category as ExpenseCategory) || "General",
-      amount: Number(e.amount) || 0,
-      date: e.expense_date,
-      paymentMethod: method,
-      description: e.notes || "",
-      recipient: e.notes || "Store Ops",
-      referenceNumber: e.reference_number || `EXP-${e.id.slice(0, 6)}`,
-    };
-  });
+const mapExpenseRow = (row: ExpenseRow): Expense => {
+  return {
+    id: row.id,
+    title: row.title,
+    category: (row.category as ExpenseCategory) || "General",
+    amount: Number(row.amount) || 0,
+    date: row.expense_date,
+    paymentMethod: mapPaymentMethod(row.payment_method),
+  };
 };
 
 export const createExpense = async (
@@ -68,141 +115,57 @@ export const createExpense = async (
     amount: number;
     date?: string;
     paymentMethod?: string;
-    description?: string;
-    recipient?: string;
-    referenceNumber?: string;
   },
   userId?: string,
 ): Promise<Expense> => {
-  const refNo =
-    data.referenceNumber || `EXP-${Date.now().toString().slice(-6)}`;
+  validateExpenseInput(data);
 
   const expensePayload: Record<string, unknown> = {
     title: data.title.trim(),
     category: data.category.trim(),
     amount: Number(data.amount),
-    expense_date: data.date || new Date().toISOString().split("T")[0],
-    payment_method: data.paymentMethod || "Bank Transfer",
-    reference_number: refNo,
-    notes: data.description || data.recipient || null,
+    expense_date: data.date,
+    payment_method: toDbPaymentMethod(data.paymentMethod as AccountsPaymentMethod),
   };
   if (userId) {
     expensePayload.created_by = userId;
   }
 
-  let { data: exp, error } = await supabase
+  const { data: exp, error } = await supabase
     .from("expenses")
     .insert(expensePayload)
-    .select()
+    .select("id, title, category, amount, expense_date, payment_method")
     .single();
 
-  while (error && error.message.includes("Could not find the '")) {
-    const match = error.message.match(/Could not find the '([^']+)' column/);
-    if (match && match[1] && match[1] in expensePayload) {
-      delete expensePayload[match[1]];
-      const retry = await supabase
-        .from("expenses")
-        .insert(expensePayload)
-        .select()
-        .single();
-      exp = retry.data;
-      error = retry.error;
-    } else {
-      break;
-    }
-  }
-
   if (error) throw new Error(error.message);
-
-  const row = exp as unknown as ExpenseRow;
-
-  let method: PaymentMethod = "Bank Transfer";
-  if (row.payment_method === "Cash") method = "Cash";
-  else if (row.payment_method === "Card") method = "Card";
-  else if (row.payment_method === "MFS") method = "MFS";
-
-  return {
-    id: row.id,
-    title: row.title,
-    category: (row.category as ExpenseCategory) || "General",
-    amount: Number(row.amount),
-    date: row.expense_date,
-    paymentMethod: method,
-    description: row.notes || "",
-    recipient: data.recipient || row.notes || "Store Ops",
-    referenceNumber: row.reference_number || refNo,
-  };
+  if (!exp) throw new Error("Expense was saved but Supabase returned no row.");
+  return mapExpenseRow(exp as unknown as ExpenseRow);
 };
 
 export const updateExpense = async (
   id: string,
-  data: Partial<{
-    title: string;
-    category: string;
-    amount: number;
-    date?: string;
-    paymentMethod?: string;
-    description?: string;
-    recipient?: string;
-    referenceNumber?: string;
-  }>,
+  data: Expense,
 ): Promise<Expense> => {
+  validateExpenseInput(data);
   const payload: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
+    title: data.title.trim(),
+    category: data.category,
+    amount: Number(data.amount),
+    expense_date: data.date,
+    payment_method: toDbPaymentMethod(data.paymentMethod),
   };
-  if (data.title !== undefined) payload.title = data.title.trim();
-  if (data.category !== undefined) payload.category = data.category.trim();
-  if (data.amount !== undefined) payload.amount = Number(data.amount);
-  if (data.date !== undefined) payload.expense_date = data.date;
-  if (data.paymentMethod !== undefined) payload.payment_method = data.paymentMethod;
-  if (data.referenceNumber !== undefined) payload.reference_number = data.referenceNumber;
-  if (data.description !== undefined || data.recipient !== undefined) {
-    payload.notes = data.description || data.recipient || null;
-  }
 
-  let { data: exp, error } = await supabase
+  const { data: exp, error } = await supabase
     .from("expenses")
     .update(payload)
     .eq("id", id)
-    .select()
+    .select("id, title, category, amount, expense_date, payment_method")
     .single();
 
-  while (error && error.message.includes("Could not find the '")) {
-    const match = error.message.match(/Could not find the '([^']+)' column/);
-    if (match && match[1] && match[1] in payload) {
-      delete payload[match[1]];
-      const retry = await supabase
-        .from("expenses")
-        .update(payload)
-        .eq("id", id)
-        .select()
-        .single();
-      exp = retry.data;
-      error = retry.error;
-    } else {
-      break;
-    }
-  }
-
   if (error) throw new Error(error.message);
-
-  const row = exp as unknown as ExpenseRow;
-  let method: PaymentMethod = "Bank Transfer";
-  if (row.payment_method === "Cash") method = "Cash";
-  else if (row.payment_method === "Card") method = "Card";
-  else if (row.payment_method === "MFS") method = "MFS";
-
-  return {
-    id: row.id,
-    title: row.title,
-    category: (row.category as ExpenseCategory) || "General",
-    amount: Number(row.amount),
-    date: row.expense_date,
-    paymentMethod: method,
-    description: row.notes || "",
-    recipient: data.recipient || row.notes || "Store Ops",
-    referenceNumber: row.reference_number || `EXP-${row.id.slice(0, 6)}`,
-  };
+  if (!exp) throw new Error("Expense update returned no row.");
+  return mapExpenseRow(exp as unknown as ExpenseRow);
 };
 
 export const deleteExpense = async (id: string): Promise<void> => {
@@ -216,10 +179,14 @@ export const fetchCustomerPayments = async (): Promise<
   const { data, error } = await supabase
     .from("payments")
     .select(
-      "*, customers:customer_id (id, name, phone), sales:sale_id (invoice_number, total_amount, sale_date)",
+      "id, sale_id, purchase_id, payment_type, amount, payment_date, payment_method, reference_number, notes, created_at, sales:sale_id (invoice_number, total_amount, sale_date, customer_id, customers:customer_id (name, phone))",
     )
-    .in("payment_type", ["received", "sale"])
-    .order("payment_date", { ascending: false });
+    .eq("payment_type", "received")
+    .is("purchase_id", null)
+    .not("sale_id", "is", null)
+    .order("payment_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false });
 
   if (error) throw new Error(error.message);
 
@@ -236,84 +203,30 @@ export const fetchCustomerPayments = async (): Promise<
   }
 
   return rows.map((p) => {
-    let method: PaymentMethod = "Cash";
-    if (p.payment_method === "mobile_money") method = "MFS";
-    else if (p.payment_method === "card") method = "Card";
-    else if (p.payment_method === "bank_transfer") method = "Bank Transfer";
-
-    const d = new Date(p.payment_date || p.created_at);
-    const date = d.toISOString().split("T")[0];
+    const sale = p.sales;
+    const paidForSale = receivedBySale.get(p.sale_id || "") || 0;
+    const totalAmount = Number(sale?.total_amount) || 0;
 
     return {
       id: p.id,
-      invoiceNumber: p.sales?.invoice_number || `INV-${p.id.slice(0, 6)}`,
-      customerName: p.customers?.name || "Customer",
+      invoiceNumber: sale?.invoice_number || `INV-${p.id.slice(0, 6)}`,
+      customerName: sale?.customers?.name || "Walk-in Customer",
       customerType: "Retail" as CustomerType,
-      customerPhone: p.customers?.phone || undefined,
-      date,
-      paymentMethod: method,
-      totalAmount: Number(p.sales?.total_amount) || Number(p.amount) || 0,
+      customerPhone: sale?.customers?.phone || undefined,
+      date: typeof p.payment_date === "string" ? p.payment_date.slice(0, 10) : "",
+      paymentMethod: mapPaymentMethod(p.payment_method),
+      referenceNumber: p.reference_number || undefined,
+      notes: p.notes || undefined,
+      totalAmount,
       paidAmount: Number(p.amount) || 0,
-      dueAmount: p.sales
-        ? Math.max(0, Number(p.sales.total_amount) - (receivedBySale.get(p.sale_id || "") || 0))
-        : 0,
-      paymentStatus: !p.sales
+      dueAmount: Math.max(0, totalAmount - paidForSale),
+      paymentStatus: paidForSale >= totalAmount
         ? "paid"
-        : (receivedBySale.get(p.sale_id || "") || 0) >= Number(p.sales.total_amount)
-          ? "paid"
-          : (receivedBySale.get(p.sale_id || "") || 0) > 0
-            ? "partial"
-            : "unpaid",
+        : paidForSale > 0
+          ? "partial"
+          : "unpaid",
     };
   });
-};
-
-export const createIncome = async (
-  incomeData: {
-    source: string;
-    amount: number;
-    date: string;
-    paymentMethod: string;
-    payerName?: string;
-    description?: string;
-    referenceNumber?: string;
-  },
-  userId?: string,
-): Promise<void> => {
-  let method: DbPaymentMethod = "cash";
-  const low = (incomeData.paymentMethod || "").toLowerCase();
-  if (low.includes("card")) method = "card";
-  else if (low.includes("bank")) method = "bank_transfer";
-  else if (low.includes("mfs") || low.includes("mobile"))
-    method = "mobile_money";
-
-  const incomePayload: Record<string, unknown> = {
-    payment_number:
-      incomeData.referenceNumber ||
-      `PAY-INC-${Date.now().toString().slice(-6)}`,
-    payment_type: "sale",
-    amount: Number(incomeData.amount),
-    payment_date: incomeData.date || new Date().toISOString(),
-    payment_method: method,
-    notes: incomeData.description || incomeData.payerName || "Direct Income",
-  };
-  if (userId) {
-    incomePayload.created_by = userId;
-  }
-
-  let { error } = await supabase.from("payments").insert(incomePayload);
-  while (error && error.message.includes("Could not find the '")) {
-    const match = error.message.match(/Could not find the '([^']+)' column/);
-    if (match && match[1] && match[1] in incomePayload) {
-      delete incomePayload[match[1]];
-      const retry = await supabase.from("payments").insert(incomePayload);
-      error = retry.error;
-    } else {
-      break;
-    }
-  }
-
-  if (error) throw new Error(error.message);
 };
 
 export const fetchSupplierPayments = async (): Promise<
@@ -322,31 +235,100 @@ export const fetchSupplierPayments = async (): Promise<
   const { data, error } = await supabase
     .from("payments")
     .select(
-      "*, suppliers:supplier_id (id, name), purchases:purchase_id (purchase_number, total_amount, paid_amount, due_amount, payment_status, purchase_date)",
+      "id, sale_id, purchase_id, payment_type, amount, payment_date, payment_method, reference_number, notes, created_at, purchases:purchase_id (id, purchase_number, total_amount, purchase_date, status, supplier_id, suppliers:supplier_id (name))",
     )
-    .in("payment_type", ["paid", "purchase"])
-    .order("payment_date", { ascending: false });
+    .eq("payment_type", "paid")
+    .is("sale_id", null)
+    .not("purchase_id", "is", null)
+    .order("payment_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false });
 
   if (error) throw new Error(error.message);
 
-  const rows = (data || []) as unknown as SupplierPaymentRowWithRelations[];
+  const rawRows = (data || []) as unknown as SupplierPaymentRowWithRelations[];
+
+  // Filter out payments attached to deleted purchases or cancelled orders
+  const validRows = rawRows.filter(
+    (row) => row.purchases && row.purchases.status?.toLowerCase() !== "cancelled",
+  );
+
+  // Deduplicate payment records by ID so each transaction appears exactly once
+  const seenIds = new Set<string>();
+  const rows: SupplierPaymentRowWithRelations[] = [];
+  for (const row of validRows) {
+    if (!seenIds.has(row.id)) {
+      seenIds.add(row.id);
+      rows.push(row);
+    }
+  }
+
+  // Calculate total paid across all actual payments for each purchase order
+  const paidByPurchase = new Map<string, number>();
+  for (const row of rows) {
+    if (row.purchase_id) {
+      paidByPurchase.set(
+        row.purchase_id,
+        (paidByPurchase.get(row.purchase_id) || 0) + Number(row.amount || 0),
+      );
+    }
+  }
 
   return rows.map((p) => {
-    const d = new Date(p.payment_date || p.created_at);
-    const date = d.toISOString().split("T")[0];
+    const totalAmount = Number(p.purchases?.total_amount) || 0;
+    const paidForPurchase = paidByPurchase.get(p.purchase_id || "") || 0;
 
     return {
       id: p.id,
+      purchaseId: p.purchase_id || undefined,
       purchaseNumber:
         p.purchases?.purchase_number || `PO-${p.id.slice(0, 6)}`,
-      supplierName: p.suppliers?.name || "Supplier",
-      date,
-      paymentMethod: "Bank Transfer" as PaymentMethod,
-      totalAmount: Number(p.purchases?.total_amount) || Number(p.amount) || 0,
+      supplierName: p.purchases?.suppliers?.name || "Supplier",
+      date: typeof p.payment_date === "string" ? p.payment_date.slice(0, 10) : "",
+      paymentMethod: mapPaymentMethod(p.payment_method),
+      referenceNumber: p.reference_number || undefined,
+      notes: p.notes || undefined,
+      totalAmount,
       paidAmount: Number(p.amount) || 0,
-      dueAmount: Number(p.purchases?.due_amount) || 0,
-      paymentStatus:
-        (p.purchases?.payment_status?.toLowerCase() as PaymentStatus) || "paid",
+      dueAmount: Math.max(0, totalAmount - paidForPurchase),
+      paymentStatus: paidForPurchase <= 0
+        ? "unpaid"
+        : paidForPurchase >= totalAmount
+          ? "paid"
+          : "partial",
     };
   });
+};
+
+export const fetchTotalPurchasePayable = async (): Promise<number> => {
+  const [{ data: purchases, error: purchasesError }, { data: payments, error: paymentsError }] =
+    await Promise.all([
+      supabase.from("purchases").select("id, total_amount, status").neq("status", "cancelled"),
+      supabase
+        .from("payments")
+        .select("purchase_id, amount")
+        .eq("payment_type", "paid")
+        .is("sale_id", null)
+        .not("purchase_id", "is", null),
+    ]);
+
+  if (purchasesError) throw new Error(purchasesError.message);
+  if (paymentsError) throw new Error(paymentsError.message);
+
+  const activePurchaseIds = new Set((purchases || []).map((p) => p.id));
+
+  const paidByPurchase = new Map<string, number>();
+  for (const payment of payments || []) {
+    if (!payment.purchase_id || !activePurchaseIds.has(payment.purchase_id)) continue;
+    paidByPurchase.set(
+      payment.purchase_id,
+      (paidByPurchase.get(payment.purchase_id) || 0) + Number(payment.amount || 0),
+    );
+  }
+
+  return (purchases || []).reduce((totalDue, purchase) => {
+    const total = Number(purchase.total_amount) || 0;
+    const paid = paidByPurchase.get(purchase.id) || 0;
+    return totalDue + Math.max(0, total - paid);
+  }, 0);
 };

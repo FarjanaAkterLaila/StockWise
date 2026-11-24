@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import type { Expense, ExpenseCategory, PaymentMethod } from "@/types";
-import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from "@/utils/constants";
-import { generateExpenseReference } from "@/utils/accounts.utils";
+import type { AccountsPaymentMethod, Expense, ExpenseCategory } from "@/types";
+import { EXPENSE_CATEGORIES } from "@/utils/constants";
+import { ACCOUNTS_PAYMENT_METHODS } from "@/utils/accounts.utils";
 import { validateExpenseForm, type ExpenseFormData } from "@/validations/expense.validation";
 import { ModalForm } from "@/components/common/ModalForm";
 import { CustomSelect } from "@/components/common/CustomSelect";
@@ -10,14 +10,13 @@ import {
   FormGroup,
   FormLabel,
   FormInput,
-  FormTextarea,
   FormError,
 } from "./Accounts.styles";
 
 interface ExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (expense: Expense) => void;
+  onSave: (expense: Expense) => Promise<boolean>;
   initialExpense?: Expense | null;
 }
 
@@ -35,35 +34,33 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
     amount: initialExpense ? String(initialExpense.amount) : "",
     date: initialExpense?.date || new Date().toISOString().split("T")[0],
     paymentMethod: initialExpense?.paymentMethod || "Bank Transfer",
-    description: initialExpense?.description || "",
-    recipient: initialExpense?.recipient || "",
-    referenceNumber:
-      initialExpense?.referenceNumber || generateExpenseReference(),
   }));
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
     const errors = validateExpenseForm(formData);
     setFormErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
     const expenseRecord: Expense = {
-      id: initialExpense ? initialExpense.id : `exp-${Date.now()}`,
+      id: initialExpense?.id || "",
       title: formData.title.trim(),
       category: formData.category,
       amount: parseFloat(formData.amount),
       date: formData.date,
       paymentMethod: formData.paymentMethod,
-      description: formData.description.trim(),
-      recipient: formData.recipient?.trim() || "Store Operational Expense",
-      referenceNumber:
-        formData.referenceNumber || generateExpenseReference(),
     };
 
-    onSave(expenseRecord);
-    onClose();
+    setIsSaving(true);
+    try {
+      if (await onSave(expenseRecord)) onClose();
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -115,6 +112,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
           <FormLabel>Expense Amount (৳) *</FormLabel>
           <FormInput
             type="number"
+            min="0.01"
+            step="0.01"
             placeholder="0.00"
             value={formData.amount}
             onChange={(e) =>
@@ -146,10 +145,10 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
             onChange={(val) =>
               setFormData((prev) => ({
                 ...prev,
-                paymentMethod: val as PaymentMethod,
+                paymentMethod: val as AccountsPaymentMethod,
               }))
             }
-            options={PAYMENT_METHODS.map((m) => ({ value: m, label: m }))}
+            options={ACCOUNTS_PAYMENT_METHODS.map((m) => ({ value: m, label: m }))}
           />
           {formErrors.paymentMethod && (
             <FormError>{formErrors.paymentMethod}</FormError>
@@ -157,46 +156,6 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         </FormGroup>
       </FormRow>
 
-      <FormRow>
-        <FormGroup>
-          <FormLabel>Paid To / Recipient</FormLabel>
-          <FormInput
-            type="text"
-            placeholder="e.g. DESCO, Landlord, Steadfast Courier, Staff..."
-            value={formData.recipient}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, recipient: e.target.value }))
-            }
-          />
-        </FormGroup>
-
-        <FormGroup>
-          <FormLabel>Reference / Voucher Number</FormLabel>
-          <FormInput
-            type="text"
-            placeholder="e.g. EXP-2026-0120"
-            value={formData.referenceNumber}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                referenceNumber: e.target.value,
-              }))
-            }
-          />
-        </FormGroup>
-      </FormRow>
-
-      <FormGroup>
-        <FormLabel>Description / Expense Purpose</FormLabel>
-        <FormTextarea
-          rows={3}
-          placeholder="Provide context or notes regarding this store expenditure..."
-          value={formData.description}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, description: e.target.value }))
-          }
-        />
-      </FormGroup>
     </ModalForm>
   );
 };

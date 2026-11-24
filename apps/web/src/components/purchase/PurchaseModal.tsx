@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import type {
   Purchase,
   PaymentMethod,
@@ -49,9 +49,22 @@ import {
 interface PurchaseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (purchaseData: Omit<Purchase, "id"> & { id?: string; newPaymentAmount?: number }) => void;
+  onSave: (
+    purchaseData: Omit<Purchase, "id"> & {
+      id?: string;
+      newPaymentAmount?: number;
+      paymentReference?: string;
+    },
+  ) => Promise<boolean | void> | void;
   initialPurchase?: Purchase | null;
 }
+
+const createPaymentReference = (): string => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `PAY-PO-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  }
+  return `PAY-PO-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+};
 
 const PURCHASE_STATUS_MODAL_OPTIONS = [
   { value: "received", label: "Received (Stock Intake Complete)" },
@@ -81,6 +94,9 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
     Boolean(!initialPurchase?.supplierId && initialPurchase?.supplierName),
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const paymentReferenceRef = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -116,6 +132,11 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
     initialPurchase?.paidAmount,
     newPaymentAmount,
   ]);
+
+  const remainingDue = Math.max(
+    0,
+    calculations.grandTotal - (initialPurchase?.paidAmount || 0),
+  );
 
   const supplierOptions = useMemo(() => {
     const list = suppliers
@@ -261,8 +282,10 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+
     const validationErrors = validatePurchaseForm(formData);
     const enteredPayment = isEditing
       ? (newPaymentAmount.trim() === "" ? 0 : Number(newPaymentAmount))
@@ -270,7 +293,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
     if (!Number.isFinite(enteredPayment) || enteredPayment < 0) {
       validationErrors.paidAmount = "Payment must be a valid non-negative amount";
     }
-    if (isEditing && enteredPayment > Math.max(0, calculations.grandTotal - (initialPurchase?.paidAmount || 0))) {
+    if (isEditing && enteredPayment > remainingDue) {
       validationErrors.paidAmount = "New payment cannot exceed the remaining due";
     }
     if (Object.keys(validationErrors).length > 0) {
@@ -293,7 +316,15 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
       grandTotal,
     );
 
-    const purchasePayload: Omit<Purchase, "id"> & { id?: string; newPaymentAmount?: number } = {
+    if (enteredPayment > 0 && !paymentReferenceRef.current) {
+      paymentReferenceRef.current = createPaymentReference();
+    }
+
+    const purchasePayload: Omit<Purchase, "id"> & {
+      id?: string;
+      newPaymentAmount?: number;
+      paymentReference?: string;
+    } = {
       ...(initialPurchase?.id ? { id: initialPurchase.id } : {}),
       purchaseNumber: formData.purchaseNumber,
       supplierId: formData.supplierId,
@@ -320,6 +351,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
       grandTotal,
       paidAmount,
       newPaymentAmount: isEditing ? enteredPayment : undefined,
+      paymentReference: enteredPayment > 0 ? paymentReferenceRef.current || undefined : undefined,
       dueAmount,
       paymentStatus,
       paymentMethod: formData.paymentMethod,
@@ -327,7 +359,17 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
       notes: formData.notes,
     };
 
-    onSave(purchasePayload);
+    submittingRef.current = true;
+    setIsSubmitting(true);
+    try {
+      const saved = await onSave(purchasePayload);
+      if (saved !== false) {
+        paymentReferenceRef.current = null;
+      }
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -344,8 +386,13 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
           : "Procurement purchase order and inventory intake specification"
       }
       onSubmit={handleSubmit}
+      isSubmitting={isSubmitting}
       submitText={
-        isEditing ? APP_STRINGS.savePurchase : APP_STRINGS.createPurchase
+        isSubmitting
+          ? "Saving..."
+          : isEditing
+            ? APP_STRINGS.savePurchase
+            : APP_STRINGS.createPurchase
       }
       cancelText={APP_STRINGS.cancel}
     >
@@ -615,15 +662,19 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
               min="0"
               step="0.01"
               value={isEditing ? newPaymentAmount : formData.paidAmount}
-              max={isEditing ? Math.max(0, calculations.grandTotal - (initialPurchase?.paidAmount || 0)) : calculations.grandTotal}
-              onChange={(e) => isEditing
-                ? setNewPaymentAmount(e.target.value)
-                :
-                setFormData((prev) => ({
-                  ...prev,
-                  paidAmount: e.target.value,
-                }))
-              }
+              max={isEditing ? remainingDue : calculations.grandTotal}
+              disabled={isEditing && remainingDue <= 0}
+              onChange={(e) => {
+                paymentReferenceRef.current = null;
+                if (isEditing) {
+                  setNewPaymentAmount(e.target.value);
+                } else {
+                  setFormData((prev) => ({
+                    ...prev,
+                    paidAmount: e.target.value,
+                  }));
+                }
+              }}
             />
             {errors.paidAmount && <FormError>{errors.paidAmount}</FormError>}
           </FormGroup>

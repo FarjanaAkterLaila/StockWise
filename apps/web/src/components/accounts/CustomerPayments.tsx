@@ -1,11 +1,12 @@
 import React from "react";
 import type { CustomerPaymentRecord } from "@/types";
-import { formatCurrency, formatDate } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/formatters";
 import { PAYMENT_STATUS_OPTIONS } from "@/utils/constants";
 import {
   CUSTOMER_PAYMENT_COLUMNS,
   PAYMENT_ICON_MAP,
   PAYMENT_STATUS_VARIANT_MAP,
+  formatAccountsDate,
 } from "@/utils/accounts.utils";
 import { useCustomerPayments } from "@/hooks/useCustomerPayments";
 import { DataTable } from "@/components/common/DataTable";
@@ -153,11 +154,14 @@ export const CustomerPayments: React.FC<CustomerPaymentsProps> = ({
               </TableCell>
 
               <TableCell>
-                <CellCodeText>{p.invoiceNumber}</CellCodeText>
+                <CellStack>
+                  <CellCodeText>{p.invoiceNumber}</CellCodeText>
+                  {p.referenceNumber && <CellSecondaryText>Ref: {p.referenceNumber}</CellSecondaryText>}
+                </CellStack>
               </TableCell>
 
               <TableCell>
-                <CellDateText>{formatDate(p.date)}</CellDateText>
+                <CellDateText>{formatAccountsDate(p.date)}</CellDateText>
               </TableCell>
 
               <TableCell>
@@ -282,7 +286,7 @@ export const CustomerPayments: React.FC<CustomerPaymentsProps> = ({
               <VoucherMetaValue>
                 <VoucherMetaItem>
                   <Calendar size={13} />
-                  <span>{formatDate(viewingPayment.date)}</span>
+                  <span>{formatAccountsDate(viewingPayment.date)}</span>
                 </VoucherMetaItem>
               </VoucherMetaValue>
             </VoucherMetaCard>
@@ -296,6 +300,17 @@ export const CustomerPayments: React.FC<CustomerPaymentsProps> = ({
                 </VoucherMetaItem>
               </VoucherMetaValue>
             </VoucherMetaCard>
+            {viewingPayment.referenceNumber && (
+              <VoucherMetaCard>
+                <VoucherMetaLabel>Payment Reference</VoucherMetaLabel>
+                <VoucherMetaValue>
+                  <VoucherMetaItem>
+                    <Receipt size={13} />
+                    <span>{viewingPayment.referenceNumber}</span>
+                  </VoucherMetaItem>
+                </VoucherMetaValue>
+              </VoucherMetaCard>
+            )}
 
             <VoucherMetaCard>
               <VoucherMetaLabel>Current Ledger Status</VoucherMetaLabel>

@@ -33,6 +33,7 @@ export interface MetricSummary {
 export type PaymentStatus = "paid" | "partial" | "unpaid";
 export type SaleStatus = "completed" | "draft" | "cancelled";
 export type PaymentMethod = "Cash" | "Card" | "Bank Transfer" | "MFS";
+export type AccountsPaymentMethod = PaymentMethod | "Cheque" | "Other" | (string & {});
 export type CustomerType = "Retail" | "Wholesale" | "Walk-in";
 
 export interface Customer {
@@ -223,8 +224,9 @@ export interface Expense {
   category: ExpenseCategory;
   amount: number;
   date: string;
-  paymentMethod: PaymentMethod;
-  description: string;
+  paymentMethod: AccountsPaymentMethod;
+  /** Legacy fixture fields; the current expenses table has no columns for these values. */
+  description?: string;
   referenceNumber?: string;
   recipient?: string;
 }
@@ -243,7 +245,7 @@ export interface Income {
   referenceNumber: string;
   date: string;
   amount: number;
-  paymentMethod: PaymentMethod;
+  paymentMethod: AccountsPaymentMethod;
   payerName?: string;
   description?: string;
 }
@@ -255,7 +257,9 @@ export interface CustomerPaymentRecord {
   customerType: CustomerType;
   customerPhone?: string;
   date: string;
-  paymentMethod: PaymentMethod;
+  paymentMethod: AccountsPaymentMethod;
+  referenceNumber?: string;
+  notes?: string;
   totalAmount: number;
   paidAmount: number;
   dueAmount: number;
@@ -264,10 +268,13 @@ export interface CustomerPaymentRecord {
 
 export interface SupplierPaymentRecord {
   id: string;
+  purchaseId?: string;
   purchaseNumber: string;
   supplierName: string;
   date: string;
-  paymentMethod: PaymentMethod;
+  paymentMethod: AccountsPaymentMethod;
+  referenceNumber?: string;
+  notes?: string;
   totalAmount: number;
   paidAmount: number;
   dueAmount: number;

@@ -170,9 +170,6 @@ export interface ExpenseRow {
   amount: number;
   expense_date: string;
   payment_method: string | null;
-  reference_number: string | null;
-  receipt_url: string | null;
-  notes: string | null;
   created_by?: string | null;
   created_at: string;
   updated_at: string;

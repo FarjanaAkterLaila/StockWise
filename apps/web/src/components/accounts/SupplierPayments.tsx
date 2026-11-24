@@ -1,11 +1,12 @@
 import React from "react";
 import type { SupplierPaymentRecord } from "@/types";
-import { formatCurrency, formatDate } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/formatters";
 import { PAYMENT_STATUS_OPTIONS } from "@/utils/constants";
 import {
   SUPPLIER_PAYMENT_COLUMNS,
   PAYMENT_ICON_MAP,
   PAYMENT_STATUS_VARIANT_MAP,
+  formatAccountsDate,
 } from "@/utils/accounts.utils";
 import { useSupplierPayments } from "@/hooks/useSupplierPayments";
 import { DataTable } from "@/components/common/DataTable";
@@ -69,6 +70,15 @@ interface SupplierPaymentsProps {
 export const SupplierPayments: React.FC<SupplierPaymentsProps> = ({
   payments,
 }) => {
+  const uniquePayments = React.useMemo(() => {
+    const seen = new Set<string>();
+    return (payments || []).filter((p) => {
+      if (!p?.id || seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+  }, [payments]);
+
   const {
     searchTerm,
     setSearchTerm,
@@ -79,7 +89,7 @@ export const SupplierPayments: React.FC<SupplierPaymentsProps> = ({
     filteredPayments,
     hasActiveFilters,
     handleResetFilters,
-  } = useSupplierPayments(payments);
+  } = useSupplierPayments(uniquePayments);
 
   return (
     <>
@@ -119,7 +129,7 @@ export const SupplierPayments: React.FC<SupplierPaymentsProps> = ({
       <DataTable
         columns={SUPPLIER_PAYMENT_COLUMNS}
         itemCount={filteredPayments.length}
-        totalAllCount={payments.length}
+        totalAllCount={uniquePayments.length}
         itemLabel="supplier payment records"
         hasActiveFilters={hasActiveFilters}
         onResetFilters={handleResetFilters}
@@ -139,11 +149,14 @@ export const SupplierPayments: React.FC<SupplierPaymentsProps> = ({
               </TableCell>
 
               <TableCell>
-                <CellCodeText>{p.purchaseNumber}</CellCodeText>
+                <CellStack>
+                  <CellCodeText>{p.purchaseNumber}</CellCodeText>
+                  {p.referenceNumber && <CellSecondaryText>Ref: {p.referenceNumber}</CellSecondaryText>}
+                </CellStack>
               </TableCell>
 
               <TableCell>
-                <CellDateText>{formatDate(p.date)}</CellDateText>
+                <CellDateText>{formatAccountsDate(p.date)}</CellDateText>
               </TableCell>
 
               <TableCell>
@@ -256,7 +269,7 @@ export const SupplierPayments: React.FC<SupplierPaymentsProps> = ({
               <VoucherMetaValue>
                 <VoucherMetaItem>
                   <Calendar size={13} />
-                  <span>{formatDate(viewingPayment.date)}</span>
+                  <span>{formatAccountsDate(viewingPayment.date)}</span>
                 </VoucherMetaItem>
               </VoucherMetaValue>
             </VoucherMetaCard>
@@ -270,6 +283,17 @@ export const SupplierPayments: React.FC<SupplierPaymentsProps> = ({
                 </VoucherMetaItem>
               </VoucherMetaValue>
             </VoucherMetaCard>
+            {viewingPayment.referenceNumber && (
+              <VoucherMetaCard>
+                <VoucherMetaLabel>Payment Reference</VoucherMetaLabel>
+                <VoucherMetaValue>
+                  <VoucherMetaItem>
+                    <FileText size={13} />
+                    <span>{viewingPayment.referenceNumber}</span>
+                  </VoucherMetaItem>
+                </VoucherMetaValue>
+              </VoucherMetaCard>
+            )}
 
             <VoucherMetaCard>
               <VoucherMetaLabel>Settlement Status</VoucherMetaLabel>

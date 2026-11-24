@@ -1,10 +1,11 @@
 import { useState, useMemo } from "react";
 import type { Expense } from "@/types";
 import { DEFAULT_VALUES } from "@/utils/constants";
+import { isWithinDateRange } from "@/utils/accounts.utils";
 
 export const useExpenseManagement = (
   expenses: Expense[],
-  onDeleteExpense?: (expenseId: string) => void,
+  onDeleteExpense?: (expenseId: string) => Promise<boolean>,
 ) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>(
@@ -13,6 +14,8 @@ export const useExpenseManagement = (
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>(
     DEFAULT_VALUES.FILTER_ALL,
   );
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [viewingExpense, setViewingExpense] = useState<Expense | null>(null);
@@ -24,10 +27,7 @@ export const useExpenseManagement = (
       const matchesSearch =
         !q ||
         item.title.toLowerCase().includes(q) ||
-        (item.referenceNumber &&
-          item.referenceNumber.toLowerCase().includes(q)) ||
-        (item.recipient && item.recipient.toLowerCase().includes(q)) ||
-        item.description.toLowerCase().includes(q);
+        item.id.toLowerCase().includes(q);
 
       const matchesCategory =
         selectedCategory === DEFAULT_VALUES.FILTER_ALL ||
@@ -37,26 +37,30 @@ export const useExpenseManagement = (
         selectedPaymentMethod === DEFAULT_VALUES.FILTER_ALL ||
         item.paymentMethod === selectedPaymentMethod;
 
-      return matchesSearch && matchesCategory && matchesMethod;
+      const matchesDate = isWithinDateRange(item.date, dateFrom, dateTo);
+
+      return matchesSearch && matchesCategory && matchesMethod && matchesDate;
     });
-  }, [expenses, searchTerm, selectedCategory, selectedPaymentMethod]);
+  }, [expenses, searchTerm, selectedCategory, selectedPaymentMethod, dateFrom, dateTo]);
 
   const hasActiveFilters = Boolean(
     searchTerm.trim() ||
       selectedCategory !== DEFAULT_VALUES.FILTER_ALL ||
-      selectedPaymentMethod !== DEFAULT_VALUES.FILTER_ALL,
+      selectedPaymentMethod !== DEFAULT_VALUES.FILTER_ALL ||
+      dateFrom || dateTo,
   );
 
   const handleResetFilters = () => {
     setSearchTerm("");
     setSelectedCategory(DEFAULT_VALUES.FILTER_ALL);
     setSelectedPaymentMethod(DEFAULT_VALUES.FILTER_ALL);
+    setDateFrom("");
+    setDateTo("");
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deletingExpense && onDeleteExpense) {
-      onDeleteExpense(deletingExpense.id);
-      setDeletingExpense(null);
+      if (await onDeleteExpense(deletingExpense.id)) setDeletingExpense(null);
     }
   };
 
@@ -67,6 +71,10 @@ export const useExpenseManagement = (
     setSelectedCategory,
     selectedPaymentMethod,
     setSelectedPaymentMethod,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
     editingExpense,
     setEditingExpense,
     viewingExpense,

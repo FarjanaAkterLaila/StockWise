@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import type { Income } from "@/types";
 import { DEFAULT_VALUES } from "@/utils/constants";
+import { isWithinDateRange } from "@/utils/accounts.utils";
 
 export const useIncomeManagement = (incomes: Income[]) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -10,6 +11,8 @@ export const useIncomeManagement = (incomes: Income[]) => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>(
     DEFAULT_VALUES.FILTER_ALL,
   );
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const [viewingIncome, setViewingIncome] = useState<Income | null>(null);
 
@@ -31,20 +34,25 @@ export const useIncomeManagement = (incomes: Income[]) => {
         selectedPaymentMethod === DEFAULT_VALUES.FILTER_ALL ||
         item.paymentMethod === selectedPaymentMethod;
 
-      return matchesSearch && matchesSource && matchesMethod;
+      const matchesDate = isWithinDateRange(item.date, dateFrom, dateTo);
+
+      return matchesSearch && matchesSource && matchesMethod && matchesDate;
     });
-  }, [incomes, searchTerm, selectedSource, selectedPaymentMethod]);
+  }, [incomes, searchTerm, selectedSource, selectedPaymentMethod, dateFrom, dateTo]);
 
   const hasActiveFilters = Boolean(
     searchTerm.trim() ||
       selectedSource !== DEFAULT_VALUES.FILTER_ALL ||
-      selectedPaymentMethod !== DEFAULT_VALUES.FILTER_ALL,
+      selectedPaymentMethod !== DEFAULT_VALUES.FILTER_ALL ||
+      dateFrom || dateTo,
   );
 
   const handleResetFilters = () => {
     setSearchTerm("");
     setSelectedSource(DEFAULT_VALUES.FILTER_ALL);
     setSelectedPaymentMethod(DEFAULT_VALUES.FILTER_ALL);
+    setDateFrom("");
+    setDateTo("");
   };
 
   return {
@@ -54,6 +62,10 @@ export const useIncomeManagement = (incomes: Income[]) => {
     setSelectedSource,
     selectedPaymentMethod,
     setSelectedPaymentMethod,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
     viewingIncome,
     setViewingIncome,
     filteredIncomes,

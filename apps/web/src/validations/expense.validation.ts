@@ -1,14 +1,12 @@
-import type { ExpenseCategory, PaymentMethod } from "@/types";
+import type { AccountsPaymentMethod, ExpenseCategory } from "@/types";
+import { EXPENSE_CATEGORIES } from "@/utils/constants";
 
 export interface ExpenseFormData {
   title: string;
   category: ExpenseCategory;
   amount: string;
   date: string;
-  paymentMethod: PaymentMethod;
-  description: string;
-  recipient?: string;
-  referenceNumber?: string;
+  paymentMethod: AccountsPaymentMethod;
 }
 
 export const validateExpenseForm = (
@@ -22,16 +20,24 @@ export const validateExpenseForm = (
     errors.title = "Title must be at least 3 characters";
   }
 
-  if (!data.category) {
+  if (!data.category || !EXPENSE_CATEGORIES.includes(data.category)) {
     errors.category = "Category is required";
   }
 
-  const amt = parseFloat(data.amount);
-  if (isNaN(amt) || amt <= 0) {
+  const amt = Number(data.amount);
+  if (!Number.isFinite(amt) || amt <= 0) {
     errors.amount = "Valid expense amount is required (greater than 0)";
   }
 
-  if (!data.date.trim()) {
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(data.date);
+  const dateParts = dateMatch?.slice(1).map(Number);
+  const dateObject = dateParts
+    ? new Date(Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2]))
+    : null;
+  if (!dateObject
+    || dateObject.getUTCFullYear() !== dateParts?.[0]
+    || dateObject.getUTCMonth() !== (dateParts?.[1] ?? 0) - 1
+    || dateObject.getUTCDate() !== dateParts?.[2]) {
     errors.date = "Date is required";
   }
 
