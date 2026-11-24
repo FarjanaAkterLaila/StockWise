@@ -28,13 +28,15 @@ export const SelectTrigger = styled.button<{
   width: ${({ $fullWidth }) => ($fullWidth ? "100%" : "auto")};
   min-width: 0;
   box-sizing: border-box;
+  height: 38px;
+  min-height: 38px;
   background-color: ${({ $fullWidth, theme }) =>
     $fullWidth ? theme.colors.background : theme.colors.backgroundSubtle};
   border: 1px solid
     ${({ $isOpen, theme }) =>
       $isOpen ? theme.colors.primary : theme.colors.border};
   border-radius: ${({ theme }) => theme.radius.md};
-  padding: ${({ $fullWidth }) => ($fullWidth ? "9px 13px" : "7px 12px")};
+  padding: ${({ $fullWidth }) => ($fullWidth ? "0 13px" : "0 12px")};
   font-size: ${({ $fullWidth }) => ($fullWidth ? "13px" : "12.5px")};
   font-weight: ${({ $fullWidth }) => ($fullWidth ? "500" : "600")};
   color: ${({ theme }) => theme.colors.textPrimary};

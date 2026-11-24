@@ -54,6 +54,15 @@ export interface SaleItem {
   subtotal: number;
 }
 
+export interface SalePaymentRecord {
+  id: string;
+  amount: number;
+  paymentMethod: string;
+  paymentDate: string;
+  referenceNumber?: string;
+  notes?: string;
+}
+
 export interface Sale {
   id: string;
   invoiceNumber: string;
@@ -62,6 +71,10 @@ export interface Sale {
   customerType: CustomerType;
   customerPhone?: string;
   date: string;
+  paymentDate?: string;
+  lastPaymentReferenceNumber?: string;
+  lastPaymentNotes?: string;
+  paymentHistory?: SalePaymentRecord[];
   time?: string;
   items: SaleItem[];
   subtotal: number;

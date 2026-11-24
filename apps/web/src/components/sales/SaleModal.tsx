@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
-import type { Sale, PaymentMethod, Customer, Product } from "@/types";
+import { useState, useMemo, useEffect, useRef } from "react";
+import type { Sale, PaymentMethod, Customer, Product, CustomerType } from "@/types";
 import { fetchCustomers } from "@/services/customers.service";
 import { fetchProducts } from "@/services/products.service";
 import { PAYMENT_METHODS, APP_STRINGS } from "@/utils/constants";
@@ -41,7 +41,12 @@ import {
 interface SaleModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (saleData: Omit<Sale, "id"> & { id?: string }) => void;
+  onSave: (saleData: Omit<Sale, "id"> & {
+    id?: string;
+    newPaymentAmount?: number;
+    paymentDate?: string;
+    paymentReferenceNumber?: string;
+  }) => void;
   initialSale?: Sale | null;
 }
 
@@ -54,9 +59,13 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   const isEditing = Boolean(initialSale);
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isAddingNewCustomer, setIsAddingNewCustomer] = useState(false);
   const [formData, setFormData] = useState<SaleFormData>(() =>
     getInitialSaleFormData(initialSale),
   );
+  const [newPaymentAmount, setNewPaymentAmount] = useState("0");
+  const [paymentDate, setPaymentDate] = useState(() => initialSale?.paymentDate || "");
+  const paymentReferenceNumber = useRef<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -76,17 +85,28 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   }, []);
 
   const customerOptions = useMemo(() => {
-    const list = customers.map((c) => ({
-      value: c.id,
-      label: `${c.name} (${c.phone && c.phone !== "N/A" ? c.phone : c.customerType})`,
-    }));
+    const list = [
+      {
+        value: "",
+        label: "Walk-in Customer (Cash / Retail)",
+      },
+      {
+        value: "__add_new_customer__",
+        label: "➕ Add New Customer (Create Profile)",
+      },
+      ...customers.map((c) => ({
+        value: c.id,
+        label: `${c.name} (${c.phone && c.phone !== "N/A" ? c.phone : c.customerType})`,
+      })),
+    ];
 
     if (
       formData.customerId &&
+      formData.customerId !== "cust-walkin" &&
       !list.some((opt) => opt.value === formData.customerId)
     ) {
       const existingInRaw = customers.find((c) => c.id === formData.customerId);
-      list.unshift({
+      list.push({
         value: formData.customerId,
         label: existingInRaw
           ? existingInRaw.name
@@ -126,16 +146,49 @@ export const SaleModal: React.FC<SaleModalProps> = ({
       formData.items,
       formData.discountAmount,
       formData.taxAmount,
-      formData.paidAmount,
+      isEditing
+        ? String((Number(initialSale?.paidAmount) || 0) + (Number(newPaymentAmount) || 0))
+        : formData.paidAmount,
     );
   }, [
     formData.items,
     formData.discountAmount,
     formData.taxAmount,
     formData.paidAmount,
+    isEditing,
+    initialSale?.paidAmount,
+    newPaymentAmount,
   ]);
 
   const handleCustomerSelect = (customerId: string) => {
+    if (customerId === "__add_new_customer__") {
+      setIsAddingNewCustomer(true);
+      setFormData((prev) => ({
+        ...prev,
+        customerId: "",
+        customerName:
+          prev.customerName === "Walk-in Customer" ? "" : prev.customerName,
+        customerType: "Retail",
+        customerPhone: "",
+      }));
+      return;
+    }
+
+    setIsAddingNewCustomer(false);
+
+    if (!customerId || customerId === "cust-walkin") {
+      setFormData((prev) => ({
+        ...prev,
+        customerId: "",
+        customerName:
+          prev.customerName && prev.customerName !== "Walk-in Customer"
+            ? prev.customerName
+            : "Walk-in Customer",
+        customerType: "Retail",
+        customerPhone: "",
+      }));
+      return;
+    }
     const found = customers.find((c) => c.id === customerId);
     if (found) {
       setFormData((prev) => ({
@@ -190,9 +243,25 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const valErrors = validateSaleForm(formData);
+    const additionalPayment = isEditing
+      ? (newPaymentAmount.trim() ? Number(newPaymentAmount) : 0)
+      : 0;
+    const remainingDue = Math.max(
+      0,
+      calculations.totalAmount - (Number(initialSale?.paidAmount) || 0),
+    );
+    if (isEditing && (!Number.isFinite(additionalPayment) || additionalPayment < 0)) {
+      valErrors.paidAmount = "New payment must be a valid non-negative amount";
+    } else if (isEditing && additionalPayment > remainingDue) {
+      valErrors.paidAmount = "New payment cannot exceed the remaining due";
+    }
     if (Object.keys(valErrors).length > 0) {
       setErrors(valErrors);
       return;
+    }
+
+    if (isEditing && additionalPayment > 0 && !paymentReferenceNumber.current) {
+      paymentReferenceNumber.current = `PAY-SAL-${crypto.randomUUID()}`;
     }
 
     const { subtotal, discount, tax, totalAmount, paidAmount, dueAmount } =
@@ -223,6 +292,9 @@ export const SaleModal: React.FC<SaleModalProps> = ({
       taxAmount: tax,
       totalAmount,
       paidAmount,
+      newPaymentAmount: isEditing ? additionalPayment : undefined,
+      paymentDate: isEditing ? paymentDate : undefined,
+      paymentReferenceNumber: isEditing ? (paymentReferenceNumber.current || undefined) : undefined,
       dueAmount,
       paymentStatus,
       paymentMethod: formData.paymentMethod,
@@ -253,20 +325,23 @@ export const SaleModal: React.FC<SaleModalProps> = ({
       <FormRow $cols="1.2fr 1fr 1fr">
           <FormGroup>
             <FormLabel>
-              Customer Profile <span className="required">*</span>
+              Customer Profile (Select or Walk-in)
             </FormLabel>
             <CustomSelect
               fullWidth
-              value={formData.customerId || ""}
+              value={isAddingNewCustomer ? "__add_new_customer__" : (formData.customerId || "")}
               onChange={handleCustomerSelect}
               placeholder="Select customer profile..."
               options={customerOptions}
             />
           </FormGroup>
           <FormGroup>
-            <FormLabel>Customer Name</FormLabel>
+            <FormLabel>
+              {isAddingNewCustomer ? "New Customer Name" : "Customer Name"} <span className="required">*</span>
+            </FormLabel>
             <FormInput
               type="text"
+              placeholder={isAddingNewCustomer ? "e.g. Smart IT Solutions" : "Walk-in Customer"}
               value={formData.customerName}
               onChange={(e) =>
                 setFormData({ ...formData, customerName: e.target.value })
@@ -287,6 +362,37 @@ export const SaleModal: React.FC<SaleModalProps> = ({
             />
           </FormGroup>
         </FormRow>
+
+        {isAddingNewCustomer && (
+          <FormRow $cols="1fr 1fr">
+            <FormGroup>
+              <FormLabel>Customer Mobile / Phone</FormLabel>
+              <FormInput
+                type="text"
+                placeholder="e.g. 01712345678"
+                value={formData.customerPhone || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, customerPhone: e.target.value })
+                }
+              />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Customer Category</FormLabel>
+              <CustomSelect
+                fullWidth
+                value={formData.customerType || "Retail"}
+                onChange={(val) =>
+                  setFormData({ ...formData, customerType: val as CustomerType })
+                }
+                options={[
+                  { value: "Retail", label: "Retail (খুচরা ক্রেতা)" },
+                  { value: "Wholesale", label: "Wholesale (পাইকারি ক্রেতা)" },
+                  { value: "Corporate", label: "Corporate (প্রতিষ্ঠান / অফিস)" },
+                ]}
+              />
+            </FormGroup>
+          </FormRow>
+        )}
 
         <ItemLinesSection>
           <ItemLinesHeader>
@@ -360,7 +466,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
           })}
         </ItemLinesSection>
 
-        <FormRow $cols="1fr 1fr 1fr 1fr">
+        <FormRow $cols="repeat(5, minmax(0, 1fr))">
           <FormGroup>
             <FormLabel>Discount (৳)</FormLabel>
             <FormInput
@@ -406,15 +512,58 @@ export const SaleModal: React.FC<SaleModalProps> = ({
             <FormLabel>Paid Amount (৳)</FormLabel>
             <FormInput
               type="number"
-              step="1"
+              step={isEditing ? "0.01" : "1"}
               min="0"
-              value={formData.paidAmount}
+              max={
+                isEditing
+                  ? Math.max(
+                      0,
+                      calculations.totalAmount -
+                        (Number(initialSale?.paidAmount) || 0),
+                    )
+                  : calculations.totalAmount
+              }
+              value={isEditing ? newPaymentAmount : formData.paidAmount}
               onChange={(e) =>
-                setFormData({ ...formData, paidAmount: e.target.value })
+                isEditing
+                  ? setNewPaymentAmount(e.target.value)
+                  : setFormData({ ...formData, paidAmount: e.target.value })
               }
             />
           </FormGroup>
+          <FormGroup>
+            <FormLabel>Payment Date</FormLabel>
+            <FormInput
+              type="date"
+              value={isEditing ? paymentDate : formData.date}
+              onChange={(e) => {
+                if (isEditing) setPaymentDate(e.target.value);
+                setFormData({ ...formData, date: e.target.value });
+              }}
+            />
+          </FormGroup>
         </FormRow>
+
+        {isEditing && (initialSale?.lastPaymentReferenceNumber || initialSale?.lastPaymentNotes) && (
+          <FormRow $cols="1fr 1fr">
+            <FormGroup>
+              <FormLabel>Latest Saved Payment Reference</FormLabel>
+              <FormInput
+                type="text"
+                value={initialSale.lastPaymentReferenceNumber || "—"}
+                readOnly
+              />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Latest Saved Payment Notes</FormLabel>
+              <FormInput
+                type="text"
+                value={initialSale.lastPaymentNotes || "—"}
+                readOnly
+              />
+            </FormGroup>
+          </FormRow>
+        )}
 
         <TotalsCard>
           <TotalsRow>
@@ -435,12 +584,24 @@ export const SaleModal: React.FC<SaleModalProps> = ({
               {formatCurrency(calculations.totalAmount)}
             </TotalsAmount>
           </TotalsRow>
-          <TotalsRow>
+          {isEditing && <TotalsRow>
+            <span>Previously Paid:</span>
+            <TotalsAmount $variant="success">
+              {formatCurrency(initialSale?.paidAmount || 0)}
+            </TotalsAmount>
+          </TotalsRow>}
+          {isEditing && <TotalsRow>
+            <span>Total Paid After New Payment:</span>
+            <TotalsAmount $variant="success">
+              {formatCurrency(calculations.paidAmount)}
+            </TotalsAmount>
+          </TotalsRow>}
+          {!isEditing && <TotalsRow>
             <span>Collected / Paid:</span>
             <TotalsAmount $variant="success">
               {formatCurrency(calculations.paidAmount)}
             </TotalsAmount>
-          </TotalsRow>
+          </TotalsRow>}
           <TotalsRow>
             <span>Balance Due:</span>
             <TotalsAmount

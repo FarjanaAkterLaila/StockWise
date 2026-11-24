@@ -49,7 +49,7 @@ import {
 interface PurchaseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (purchaseData: Omit<Purchase, "id"> & { id?: string }) => void;
+  onSave: (purchaseData: Omit<Purchase, "id"> & { id?: string; newPaymentAmount?: number }) => void;
   initialPurchase?: Purchase | null;
 }
 
@@ -76,6 +76,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
   const [formData, setFormData] = useState<PurchaseFormData>(() =>
     getInitialPurchaseFormData(initialPurchase),
   );
+  const [newPaymentAmount, setNewPaymentAmount] = useState("0");
   const [isCustomSupplier, setIsCustomSupplier] = useState<boolean>(() =>
     Boolean(!initialPurchase?.supplierId && initialPurchase?.supplierName),
   );
@@ -102,13 +103,18 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
       formData.items,
       formData.discountAmount,
       formData.vatRate,
-      formData.paidAmount,
+      isEditing
+        ? String((initialPurchase?.paidAmount || 0) + (Number(newPaymentAmount) || 0))
+        : formData.paidAmount,
     );
   }, [
     formData.items,
     formData.discountAmount,
     formData.vatRate,
     formData.paidAmount,
+    isEditing,
+    initialPurchase?.paidAmount,
+    newPaymentAmount,
   ]);
 
   const supplierOptions = useMemo(() => {
@@ -258,6 +264,15 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const validationErrors = validatePurchaseForm(formData);
+    const enteredPayment = isEditing
+      ? (newPaymentAmount.trim() === "" ? 0 : Number(newPaymentAmount))
+      : Number(formData.paidAmount) || 0;
+    if (!Number.isFinite(enteredPayment) || enteredPayment < 0) {
+      validationErrors.paidAmount = "Payment must be a valid non-negative amount";
+    }
+    if (isEditing && enteredPayment > Math.max(0, calculations.grandTotal - (initialPurchase?.paidAmount || 0))) {
+      validationErrors.paidAmount = "New payment cannot exceed the remaining due";
+    }
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -278,7 +293,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
       grandTotal,
     );
 
-    const purchasePayload: Omit<Purchase, "id"> & { id?: string } = {
+    const purchasePayload: Omit<Purchase, "id"> & { id?: string; newPaymentAmount?: number } = {
       ...(initialPurchase?.id ? { id: initialPurchase.id } : {}),
       purchaseNumber: formData.purchaseNumber,
       supplierId: formData.supplierId,
@@ -304,6 +319,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
       vatAmount,
       grandTotal,
       paidAmount,
+      newPaymentAmount: isEditing ? enteredPayment : undefined,
       dueAmount,
       paymentStatus,
       paymentMethod: formData.paymentMethod,
@@ -494,7 +510,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
                 <FormInput
                   type="number"
                   min="0"
-                  step="50"
+                  step="0.01"
                   placeholder="Unit Cost"
                   value={item.unitPrice}
                   onChange={(e) =>
@@ -568,8 +584,8 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
                 marginBottom: "4px",
               }}
             >
-              <FormLabel style={{ margin: 0 }}>Paid Amount (BDT ৳)</FormLabel>
-              {calculations.grandTotal > 0 && (
+              <FormLabel style={{ margin: 0 }}>{isEditing ? "New Payment (BDT ৳)" : "Paid Amount (BDT ৳)"}</FormLabel>
+              {!isEditing && calculations.grandTotal > 0 && (
                 <button
                   type="button"
                   onClick={() =>
@@ -597,9 +613,12 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
             <FormInput
               type="number"
               min="0"
-              step="100"
-              value={formData.paidAmount}
-              onChange={(e) =>
+              step="0.01"
+              value={isEditing ? newPaymentAmount : formData.paidAmount}
+              max={isEditing ? Math.max(0, calculations.grandTotal - (initialPurchase?.paidAmount || 0)) : calculations.grandTotal}
+              onChange={(e) => isEditing
+                ? setNewPaymentAmount(e.target.value)
+                :
                 setFormData((prev) => ({
                   ...prev,
                   paidAmount: e.target.value,
@@ -622,7 +641,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
               <FormInput
                 type="number"
                 min="0"
-                step="100"
+                step="0.01"
                 value={formData.discountAmount}
                 onChange={(e) =>
                   setFormData((prev) => ({
@@ -672,9 +691,14 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
           </TotalsRow>
 
           <TotalsRow>
-            <span>Amount Paid:</span>
-            <span>{formatCurrency(calculations.paidAmount)}</span>
+            <span>{isEditing ? "Previously Paid:" : "Amount Paid:"}</span>
+            <span>{formatCurrency(isEditing ? initialPurchase?.paidAmount || 0 : calculations.paidAmount)}</span>
           </TotalsRow>
+
+          {isEditing && <TotalsRow>
+            <span>Total Paid After This Payment:</span>
+            <span>{formatCurrency(calculations.paidAmount)}</span>
+          </TotalsRow>}
 
           <TotalsRow>
             <span>Outstanding Due:</span>

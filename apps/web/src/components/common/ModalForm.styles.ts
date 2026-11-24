@@ -41,6 +41,9 @@ export const FormLabel = styled.label`
   font-size: 12.5px;
   font-weight: 700;
   color: ${({ theme }) => theme.colors.textPrimary};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 
   .required {
     color: ${({ theme }) => theme.colors.danger};
@@ -52,7 +55,9 @@ export const FormInput = styled.input`
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 10px 14px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0 14px;
   font-size: 13.5px;
   font-family: inherit;
   border: 1px solid ${({ theme }) => theme.colors.border};
@@ -61,6 +66,11 @@ export const FormInput = styled.input`
   color: ${({ theme }) => theme.colors.textPrimary};
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: ${({ theme }) => theme.shadows.sm};
+
+  &[type="date"] {
+    padding: 0 10px;
+    line-height: 36px;
+  }
 
   &::placeholder {
     color: ${({ theme }) => theme.colors.textMuted};
@@ -83,14 +93,16 @@ export const FormSelect = styled.select`
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  height: 38px;
+  min-height: 38px;
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  padding: 10px 36px 10px 14px;
+  padding: 0 36px 0 14px;
   font-size: 13.5px;
   font-weight: 500;
   font-family: inherit;
-  line-height: 1.4;
+  line-height: 36px;
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radius.md};
   background-color: ${({ theme }) => theme.colors.background};

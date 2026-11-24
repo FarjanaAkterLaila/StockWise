@@ -36,7 +36,7 @@ export const fetchDashboardStats = async (): Promise<DashboardStatsResult> => {
   const { data: salesData, error: salesErr } = await supabase
     .from("sales")
     .select(
-      "id, invoice_number, total_amount, paid_amount, payment_status, sale_date, created_at, customer_id, status, customers:customer_id (name)",
+      "id, invoice_number, total_amount, sale_date, created_at, customer_id, status, customers:customer_id (name)",
     )
     .neq("status", "cancelled")
     .order("created_at", { ascending: false });
@@ -47,6 +47,25 @@ export const fetchDashboardStats = async (): Promise<DashboardStatsResult> => {
   const sales = rawSales.filter(
     (s) => (s.status?.toLowerCase() || "completed") !== "cancelled",
   );
+
+  const paidBySale = new Map<string, number>();
+  if (sales.length > 0) {
+    const { data: paymentRows, error: paymentError } = await supabase
+      .from("payments")
+      .select("sale_id, amount")
+      .in("sale_id", sales.map((sale) => sale.id))
+      .is("purchase_id", null)
+      .eq("payment_type", "received");
+    if (paymentError) throw new Error(paymentError.message);
+    for (const payment of paymentRows || []) {
+      if (payment.sale_id) {
+        paidBySale.set(
+          payment.sale_id,
+          (paidBySale.get(payment.sale_id) || 0) + Number(payment.amount || 0),
+        );
+      }
+    }
+  }
 
   const totalRevenue = sales.reduce(
     (sum, s) => sum + (Number(s.total_amount) || 0),
@@ -88,6 +107,8 @@ export const fetchDashboardStats = async (): Promise<DashboardStatsResult> => {
   // 4. Recent Sales
   const recentSales: RecentSale[] = sales.slice(0, 5).map((s) => {
     const d = new Date(s.sale_date || s.created_at);
+    const paidAmount = paidBySale.get(s.id) || 0;
+    const totalAmount = Number(s.total_amount) || 0;
     return {
       id: s.id,
       invoiceNumber: s.invoice_number,
@@ -95,9 +116,15 @@ export const fetchDashboardStats = async (): Promise<DashboardStatsResult> => {
       customerType: "Retail",
       itemsSummary: "Hardware Items",
       itemCount: 1,
-      totalAmount: Number(s.total_amount) || 0,
-      paidAmount: Number(s.paid_amount) || 0,
-      paymentStatus: (s.payment_status?.toLowerCase() as PaymentStatus) || "paid",
+      totalAmount,
+      paidAmount,
+      paymentStatus: (
+        paidAmount >= totalAmount
+          ? "paid"
+          : paidAmount > 0
+            ? "partial"
+            : "unpaid"
+      ) as PaymentStatus,
       paymentMethod: "Cash",
       date: d.toISOString().split("T")[0],
       time: d.toLocaleTimeString("en-US", {

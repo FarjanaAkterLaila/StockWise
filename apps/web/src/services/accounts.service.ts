@@ -15,9 +15,6 @@ interface CustomerPaymentRowWithRelations extends PaymentRow {
   sales: {
     invoice_number: string;
     total_amount: number;
-    paid_amount: number;
-    due_amount: number;
-    payment_status: string;
     sale_date: string;
   } | null;
 }
@@ -219,14 +216,24 @@ export const fetchCustomerPayments = async (): Promise<
   const { data, error } = await supabase
     .from("payments")
     .select(
-      "*, customers:customer_id (id, name, phone), sales:sale_id (invoice_number, total_amount, paid_amount, due_amount, payment_status, sale_date)",
+      "*, customers:customer_id (id, name, phone), sales:sale_id (invoice_number, total_amount, sale_date)",
     )
-    .eq("payment_type", "sale")
+    .in("payment_type", ["received", "sale"])
     .order("payment_date", { ascending: false });
 
   if (error) throw new Error(error.message);
 
   const rows = (data || []) as unknown as CustomerPaymentRowWithRelations[];
+
+  const receivedBySale = new Map<string, number>();
+  for (const payment of rows) {
+    if (payment.sale_id && payment.payment_type === "received" && payment.purchase_id === null) {
+      receivedBySale.set(
+        payment.sale_id,
+        (receivedBySale.get(payment.sale_id) || 0) + Number(payment.amount || 0),
+      );
+    }
+  }
 
   return rows.map((p) => {
     let method: PaymentMethod = "Cash";
@@ -247,9 +254,16 @@ export const fetchCustomerPayments = async (): Promise<
       paymentMethod: method,
       totalAmount: Number(p.sales?.total_amount) || Number(p.amount) || 0,
       paidAmount: Number(p.amount) || 0,
-      dueAmount: Number(p.sales?.due_amount) || 0,
-      paymentStatus:
-        (p.sales?.payment_status?.toLowerCase() as PaymentStatus) || "paid",
+      dueAmount: p.sales
+        ? Math.max(0, Number(p.sales.total_amount) - (receivedBySale.get(p.sale_id || "") || 0))
+        : 0,
+      paymentStatus: !p.sales
+        ? "paid"
+        : (receivedBySale.get(p.sale_id || "") || 0) >= Number(p.sales.total_amount)
+          ? "paid"
+          : (receivedBySale.get(p.sale_id || "") || 0) > 0
+            ? "partial"
+            : "unpaid",
     };
   });
 };
@@ -310,7 +324,7 @@ export const fetchSupplierPayments = async (): Promise<
     .select(
       "*, suppliers:supplier_id (id, name), purchases:purchase_id (purchase_number, total_amount, paid_amount, due_amount, payment_status, purchase_date)",
     )
-    .eq("payment_type", "purchase")
+    .in("payment_type", ["paid", "purchase"])
     .order("payment_date", { ascending: false });
 
   if (error) throw new Error(error.message);

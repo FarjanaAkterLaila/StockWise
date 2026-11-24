@@ -235,9 +235,6 @@ Header record for customer sales transactions, orders, and POS receipts.
 | `discount_amount`| `NUMERIC(12, 2)`| No | `0.00` | `CHECK (discount_amount >= 0)` | Applied discount |
 | `tax_amount` | `NUMERIC(12, 2)`| No | `0.00` | `CHECK (tax_amount >= 0)` | Applied VAT / sales tax |
 | `total_amount` | `NUMERIC(12, 2)`| No | `0.00` | `CHECK (total_amount >= 0)` | Net payable amount |
-| `paid_amount` | `NUMERIC(12, 2)`| No | `0.00` | `CHECK (paid_amount >= 0)` | Amount collected from customer |
-| `due_amount` | `NUMERIC(12, 2)`| No | `0.00` | — | Remaining unpaid amount |
-| `payment_status`| `TEXT` | No | `'unpaid'` | `CHECK (payment_status IN ('paid', 'partial', 'unpaid'))` | Settlement status |
 | `status` | `TEXT` | No | `'completed'`| `CHECK (status IN ('draft', 'completed', 'cancelled', 'refunded'))` | Order lifecycle status |
 | `notes` | `TEXT` | Yes | `NULL` | — | Order notes or customer instructions |
 | `created_by` | `UUID` | Yes | `NULL` | `REFERENCES profiles(id)` | Cashier / staff member who made the sale |
@@ -247,6 +244,7 @@ Header record for customer sales transactions, orders, and POS receipts.
 > **Uncertainty & Verification Notes:**
 > * Confirm whether `customer_id` is nullable to allow walk-in sales without registering a customer profile.
 > * Confirm if `payment_method` is stored directly on `sales` or exclusively tracked via the `payments` table.
+> * Total paid, due, and payment status are derived from related `payments` records; `sales` stores none of these payment summary columns.
 
 ---
 
@@ -315,7 +313,6 @@ Tracks monetary receipts and disbursements linked to sales, purchases, or custom
 | Column | Data Type | Nullable | Default | Constraints / References | Description |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `id` | `UUID` | No | `gen_random_uuid()` | `PRIMARY KEY` | Payment transaction ID |
-| `payment_number`| `VARCHAR(100)`| Yes | `NULL` | — | Receipt or voucher identifier |
 | `payment_type` | `TEXT` | No | — | `CHECK (payment_type IN ('inward', 'outward', 'sale', 'purchase'))` | Flow direction |
 | `sale_id` | `UUID` | Yes | `NULL` | `REFERENCES sales(id)` | Associated customer sale (if applicable) |
 | `purchase_id` | `UUID` | Yes | `NULL` | `REFERENCES purchases(id)` | Associated purchase invoice (if applicable) |
@@ -324,7 +321,7 @@ Tracks monetary receipts and disbursements linked to sales, purchases, or custom
 | `amount` | `NUMERIC(12, 2)`| No | — | `CHECK (amount > 0)` | Payment currency amount |
 | `payment_date` | `DATE` | No | `CURRENT_DATE` | — | Date payment occurred |
 | `payment_method`| `TEXT` | No | `'cash'` | `CHECK (payment_method IN ('cash', 'card', 'bank_transfer', 'mobile_money', 'cheque', 'other'))` | Method used |
-| `reference_number`| `TEXT` | Yes | `NULL` | — | Transaction / cheque / transfer ID |
+| `reference_number`| `TEXT` | Yes | `NULL` | — | Receipt, voucher, transfer, or payment request reference |
 | `notes` | `TEXT` | Yes | `NULL` | — | Additional payment memo |
 | `created_by` | `UUID` | Yes | `NULL` | `REFERENCES profiles(id)` | Staff member who received/issued payment |
 | `created_at` | `TIMESTAMPTZ` | No | `now()` | — | Creation timestamp |

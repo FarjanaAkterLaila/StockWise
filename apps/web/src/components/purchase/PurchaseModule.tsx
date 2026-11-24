@@ -127,7 +127,7 @@ export const PurchaseModule: React.FC = () => {
   };
 
   const handleSavePurchase = async (
-    purchaseData: Omit<Purchase, "id"> & { id?: string },
+    purchaseData: Omit<Purchase, "id"> & { id?: string; newPaymentAmount?: number },
   ) => {
     if (purchaseData.id) {
       try {
@@ -147,7 +147,7 @@ export const PurchaseModule: React.FC = () => {
           })),
           notes: purchaseData.notes,
           totalAmount: purchaseData.grandTotal,
-          paidAmount: purchaseData.paidAmount,
+          paidAmount: purchaseData.newPaymentAmount,
           discountAmount: purchaseData.discountAmount,
           vatRate: purchaseData.vatRate,
           vatAmount: purchaseData.vatAmount,

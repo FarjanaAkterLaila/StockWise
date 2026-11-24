@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { formatTime } from "@/utils/formatters";
+import { calculatePurchaseTotals } from "@/utils/purchase.utils";
 import type {
   Purchase,
   PaymentStatus,
@@ -97,8 +98,8 @@ export const fetchPurchases = async (): Promise<Purchase[]> => {
 
     const items = rawItems.map((item) => {
       const qty = Number(item.quantity) || 1;
-      const unitP = Number(item.unit_price ?? item.unit_cost) || 0;
-      const sub = Number(item.subtotal) || qty * unitP;
+      const unitP = Number(item.unit_price) || Number(item.unit_cost) || 0;
+      const sub = qty * unitP;
       return {
         id: item.id,
         productId: item.product_id,
@@ -109,8 +110,7 @@ export const fetchPurchases = async (): Promise<Purchase[]> => {
         subtotal: sub,
       };
     });
-
-    const itemsTotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+    const itemsSubtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
 
     const dateObj = new Date(p.purchase_date || p.created_at);
     const date = dateObj.toISOString().split("T")[0];
@@ -119,7 +119,6 @@ export const fetchPurchases = async (): Promise<Purchase[]> => {
     const rawP = p as unknown as Record<string, unknown>;
     let discountAmt = Number(rawP.discount_amount) || 0;
     let vatR = Number(rawP.vat_rate) || 0;
-    let vatAmt = Number(rawP.vat_amount) || 0;
     let metaPaid: number | null = null;
     let cleanNotes = p.notes || "";
 
@@ -130,7 +129,6 @@ export const fetchPurchases = async (): Promise<Purchase[]> => {
           const parsed = JSON.parse(metaMatch[1]);
           if (parsed.discount !== undefined) discountAmt = Number(parsed.discount);
           if (parsed.vatRate !== undefined) vatR = Number(parsed.vatRate);
-          if (parsed.vatAmount !== undefined) vatAmt = Number(parsed.vatAmount);
           if (parsed.paidAmount !== undefined) metaPaid = Number(parsed.paidAmount);
         }
         cleanNotes = p.notes.replace(/<!--META:.*?-->/g, "").trim();
@@ -139,35 +137,39 @@ export const fetchPurchases = async (): Promise<Purchase[]> => {
       }
     }
 
-    // Use stored total_amount if positive, otherwise compute from line items
-    const dbTotal = Number(p.total_amount) || 0;
-    const totalAmt = dbTotal > 0 ? dbTotal : itemsTotal;
-
-    // Check payments table first, then fallback to stored paid_amount, then metadata
+    // Use recorded payment rows when available; legacy summaries are only a fallback
+    // if the payments query itself is unavailable.
     const payRecord = paymentsMap[p.id];
-    const paymentsTotal = payRecord ? payRecord.total : 0;
+    const paymentsTotal = payRecord?.total || 0;
     const dbPaid = Number(p.paid_amount) || 0;
-    const paidAmt = paymentsTotal > 0 ? paymentsTotal : (dbPaid > 0 ? dbPaid : (metaPaid ?? 0));
+    const paidAmt = paymentsRes.error
+      ? (dbPaid > 0 ? dbPaid : (metaPaid ?? 0))
+      : paymentsTotal;
+
+    const totals = calculatePurchaseTotals(
+      items.map((item) => ({
+        id: item.id,
+        productId: item.productId,
+        productName: item.productName,
+        sku: item.sku,
+        quantity: String(item.quantity),
+        unitPrice: String(item.unitPrice),
+      })),
+      String(discountAmt),
+      String(vatR),
+      String(paidAmt),
+    );
 
     // Payment method from payment record or raw purchase
     const pMethod = (payRecord?.method || rawP.payment_method || "Bank Transfer") as PaymentMethod;
 
     // Exact Due Amount
-    const dueAmt = Math.max(0, totalAmt - paidAmt);
+    const dueAmt = totals.dueAmount;
 
     // Exact Payment Status
-    let pStatus: PaymentStatus;
-    if (totalAmt > 0) {
-      if (paidAmt >= totalAmt || dueAmt === 0) {
-        pStatus = "paid";
-      } else if (paidAmt > 0) {
-        pStatus = "partial";
-      } else {
-        pStatus = "unpaid";
-      }
-    } else {
-      pStatus = (p.payment_status?.toLowerCase() as PaymentStatus) || "paid";
-    }
+    const pStatus: PaymentStatus = totals.grandTotal > 0
+      ? (paidAmt >= totals.grandTotal ? "paid" : paidAmt > 0 ? "partial" : "unpaid")
+      : (p.payment_status?.toLowerCase() as PaymentStatus) || "unpaid";
 
     return {
       id: p.id,
@@ -178,11 +180,11 @@ export const fetchPurchases = async (): Promise<Purchase[]> => {
       date,
       time,
       items,
-      subtotal: totalAmt,
+      subtotal: itemsSubtotal,
       discountAmount: discountAmt,
-      vatRate: vatR,
-      vatAmount: vatAmt,
-      grandTotal: totalAmt,
+      vatRate: totals.vatRate,
+      vatAmount: totals.vatAmount,
+      grandTotal: totals.grandTotal,
       paidAmount: paidAmt,
       dueAmount: dueAmt,
       paymentStatus: pStatus,
@@ -469,7 +471,8 @@ export const createPurchase = async (
     else if (low.includes("cheque")) pMethod = "cheque";
 
     const paymentPayload: Record<string, unknown> = {
-      payment_type: "outward",
+      payment_type: "paid",
+      sale_id: null,
       purchase_id: po.id,
       supplier_id: suppId,
       amount: Number(input.paidAmount),
@@ -495,10 +498,7 @@ export const createPurchase = async (
         break;
       }
     }
-    if (payRes.error && payRes.error.message.includes("payment_type")) {
-      delete paymentPayload.payment_type;
-      await supabase.from("payments").insert(paymentPayload);
-    }
+    if (payRes.error) throw new Error(`Could not record purchase payment: ${payRes.error.message}`);
   }
 
   // 4. If goods were marked received at creation, invoke atomic RPC
@@ -532,7 +532,10 @@ export const createPurchase = async (
       unitPrice: i.unitPrice,
       subtotal: i.subtotal || i.quantity * i.unitPrice,
     })),
-    subtotal: Number(input.totalAmount) || Number(po.total_amount) || 0,
+    subtotal: input.items.reduce(
+      (sum, item) => sum + (Number(item.subtotal) || Number(item.quantity) * Number(item.unitPrice)),
+      0,
+    ),
     discountAmount: Number(input.discountAmount) || 0,
     vatRate: Number(input.vatRate) || 0,
     vatAmount: Number(input.vatAmount) || 0,
@@ -579,34 +582,6 @@ export const updatePurchase = async (
     payload.payment_method = input.paymentMethod;
   }
 
-  const finalTotal =
-    input.totalAmount !== undefined ? Number(input.totalAmount) : 0;
-  const finalPaid =
-    input.paidAmount !== undefined ? Number(input.paidAmount) : 0;
-  const finalDue = Math.max(0, finalTotal - finalPaid);
-
-  if (input.paidAmount !== undefined || input.totalAmount !== undefined) {
-    payload.paid_amount = finalPaid;
-    payload.due_amount = finalDue;
-    payload.payment_status =
-      payload.due_amount === 0
-        ? "paid"
-        : finalPaid > 0
-          ? "partial"
-          : "unpaid";
-  }
-
-  // Update metadata in notes to guarantee zero data loss
-  const metaObj = {
-    discount: input.discountAmount !== undefined ? Number(input.discountAmount) : 0,
-    vatRate: input.vatRate !== undefined ? Number(input.vatRate) : 0,
-    vatAmount: input.vatAmount !== undefined ? Number(input.vatAmount) : 0,
-    paidAmount: finalPaid,
-    dueAmount: finalDue,
-  };
-  const rawNotes = input.notes !== undefined ? input.notes : "";
-  const baseNotes = (rawNotes || "").replace(/<!--META:.*?-->/g, "").trim();
-  payload.notes = `${baseNotes ? baseNotes + " " : ""}<!--META:${JSON.stringify(metaObj)}-->`;
   if (input.status) {
     payload.status =
       input.status.toLowerCase() === "pending"
@@ -639,6 +614,37 @@ export const updatePurchase = async (
       }
     }
   }
+
+  const { data: existingPayments, error: paymentsErr } = await supabase
+    .from("payments")
+    .select("amount")
+    .eq("purchase_id", id);
+  if (paymentsErr) throw new Error(`Could not load purchase payments: ${paymentsErr.message}`);
+  const previouslyPaid = (existingPayments || []).reduce(
+    (sum, payment) => sum + (Number(payment.amount) || 0),
+    0,
+  );
+  const existingPurchase = input.totalAmount === undefined
+    ? await supabase.from("purchases").select("total_amount").eq("id", id).single()
+    : null;
+  if (existingPurchase?.error) throw new Error(existingPurchase.error.message);
+  const finalTotal = input.totalAmount !== undefined
+    ? Number(input.totalAmount)
+    : Number(existingPurchase?.data?.total_amount) || 0;
+  const newPayment = input.paidAmount === undefined ? 0 : Number(input.paidAmount);
+  const remainingBeforePayment = Math.max(0, finalTotal - previouslyPaid);
+  if (!Number.isFinite(newPayment) || newPayment < 0 || newPayment > remainingBeforePayment) {
+    throw new Error(`New payment must be between 0 and the remaining due (${remainingBeforePayment}).`);
+  }
+  const priorDue = Math.max(0, finalTotal - previouslyPaid);
+  const notesBeforePayment = (input.notes || "").replace(/<!--META:.*?-->/g, "").trim();
+  payload.notes = `${notesBeforePayment}${notesBeforePayment ? " " : ""}<!--META:${JSON.stringify({
+    discount: Number(input.discountAmount) || 0,
+    vatRate: Number(input.vatRate) || 0,
+    vatAmount: Number(input.vatAmount) || 0,
+    paidAmount: previouslyPaid,
+    dueAmount: priorDue,
+  })}-->`;
 
   let { error } = await supabase
     .from("purchases")
@@ -742,67 +748,58 @@ export const updatePurchase = async (
     }
   }
 
-  // Synchronize payment records for this purchase
-  if (input.paidAmount !== undefined) {
-    const finalPaid = Number(input.paidAmount) || 0;
-    if (finalPaid > 0) {
-      const { data: existingPay } = await supabase
-        .from("payments")
-        .select("id")
-        .eq("purchase_id", id)
-        .limit(1)
-        .maybeSingle();
+  // Purchase edits add an installment; prior payment rows are immutable history.
+  if (newPayment > 0) {
+    const pMethod = (input.paymentMethod || "Bank Transfer").toLowerCase().includes("cash")
+      ? "cash"
+      : "bank_transfer";
+    const paymentPayload: Record<string, unknown> = {
+      payment_type: "paid",
+      sale_id: null,
+      purchase_id: id,
+      supplier_id: payload.supplier_id || input.supplierId,
+      amount: newPayment,
+      payment_date: new Date().toISOString(),
+      payment_method: pMethod,
+      notes: `Supplier payout for updated PO #${input.purchaseNumber || id}`,
+    };
 
-      const pMethod = (input.paymentMethod || "Bank Transfer").toLowerCase().includes("cash")
-        ? "cash"
-        : "bank_transfer";
-
-      if (existingPay?.id) {
-        await supabase
-          .from("payments")
-          .update({
-            amount: finalPaid,
-            payment_method: pMethod,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existingPay.id);
-      } else {
-        const paymentPayload: Record<string, unknown> = {
-          payment_type: "outward",
-          purchase_id: id,
-          supplier_id: payload.supplier_id || input.supplierId,
-          amount: finalPaid,
-          payment_date: new Date().toISOString(),
-          payment_method: pMethod,
-          notes: `Supplier payout for updated PO #${input.purchaseNumber || id}`,
-        };
-
-        let { error: payErr } = await supabase
-          .from("payments")
-          .insert(paymentPayload);
-
-        while (payErr && payErr.message.includes("Could not find the '")) {
-          const match = payErr.message.match(
-            /Could not find the '([^']+)' column/,
-          );
-          if (match && match[1] && match[1] in paymentPayload) {
-            delete paymentPayload[match[1]];
-            const retry = await supabase.from("payments").insert(paymentPayload);
-            payErr = retry.error;
-          } else {
-            break;
-          }
-        }
-
-        if (payErr && payErr.message.includes("payment_type")) {
-          delete paymentPayload.payment_type;
-          await supabase.from("payments").insert(paymentPayload);
-        }
-      }
-    } else {
-      await supabase.from("payments").delete().eq("purchase_id", id);
+    let payErr = (await supabase.from("payments").insert(paymentPayload)).error;
+    while (payErr && payErr.message.includes("Could not find the '")) {
+      const match = payErr.message.match(/Could not find the '([^']+)' column/);
+      if (!match?.[1] || !(match[1] in paymentPayload)) break;
+      delete paymentPayload[match[1]];
+      payErr = (await supabase.from("payments").insert(paymentPayload)).error;
     }
+    if (payErr) throw new Error(`Could not record purchase payment: ${payErr.message}`);
   }
+
+  const totalPaid = previouslyPaid + newPayment;
+  const dueAmount = Math.max(0, finalTotal - totalPaid);
+  const summaryPayload: Record<string, unknown> = {
+    paid_amount: totalPaid,
+    due_amount: dueAmount,
+    payment_status: totalPaid >= finalTotal && finalTotal > 0
+      ? "paid"
+      : totalPaid > 0
+        ? "partial"
+        : "unpaid",
+    notes: `${(input.notes || "").replace(/<!--META:.*?-->/g, "").trim()}${(input.notes || "").trim() ? " " : ""}<!--META:${JSON.stringify({
+      discount: Number(input.discountAmount) || 0,
+      vatRate: Number(input.vatRate) || 0,
+      vatAmount: Number(input.vatAmount) || 0,
+      paidAmount: totalPaid,
+      dueAmount,
+    })}-->`,
+  };
+  let summaryErr = (await supabase.from("purchases").update(summaryPayload).eq("id", id)).error;
+  while (summaryErr && summaryErr.message.includes("Could not find the '")) {
+    const match = summaryErr.message.match(/Could not find the '([^']+)' column/);
+    if (!match?.[1] || !(match[1] in summaryPayload)) break;
+    delete summaryPayload[match[1]];
+    summaryErr = (await supabase.from("purchases").update(summaryPayload).eq("id", id)).error;
+  }
+  if (summaryErr) throw new Error(`Could not update purchase payment summary: ${summaryErr.message}`);
 };
 
 export const deletePurchase = async (id: string): Promise<void> => {

@@ -3,7 +3,7 @@ export type DbProductStatus = "active" | "inactive" | "archived";
 export type DbPurchaseStatus = "ordered" | "received" | "pending" | "cancelled";
 export type DbSaleStatus = "draft" | "completed" | "cancelled" | "refunded";
 export type DbPaymentStatus = "paid" | "partial" | "unpaid";
-export type DbPaymentType = "inward" | "outward" | "sale" | "purchase";
+export type DbPaymentType = "received" | "paid";
 export type DbPaymentMethod =
   | "cash"
   | "card"
@@ -117,9 +117,6 @@ export interface SaleRow {
   discount_amount: number;
   tax_amount: number;
   total_amount: number;
-  paid_amount: number;
-  due_amount: number;
-  payment_status: DbPaymentStatus;
   status: DbSaleStatus;
   notes: string | null;
   created_by?: string | null;
@@ -152,7 +149,7 @@ export interface StockMovementRow {
 
 export interface PaymentRow {
   id: string;
-  payment_number: string | null;
+  reference_number: string | null;
   payment_type: DbPaymentType;
   sale_id: string | null;
   purchase_id: string | null;
@@ -161,7 +158,6 @@ export interface PaymentRow {
   amount: number;
   payment_date: string;
   payment_method: DbPaymentMethod;
-  reference_number: string | null;
   notes: string | null;
   created_by?: string | null;
   created_at: string;

@@ -2,7 +2,8 @@ import React from "react";
 import type { Sale } from "@/types";
 import { ViewModal } from "@/components/common/ViewModal";
 import { Badge } from "@/components/common/Badge";
-import { formatCurrency, formatDate } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/formatters";
+import { formatSaleDate } from "@/utils/sale.utils";
 import { BADGE_VARIANTS, UI_SIZES } from "@/utils/constants";
 import {
   ViewHeader,
@@ -32,6 +33,36 @@ export const SalesViewModal: React.FC<SalesViewModalProps> = ({
 }) => {
   if (!sale) return null;
 
+  const itemsSubtotal = (sale.items || []).reduce(
+    (sum, item) =>
+      sum +
+      (Number(item.subtotal) ||
+        (Number(item.quantity) || 1) * (Number(item.unitPrice) || 0) ||
+        0),
+    0,
+  );
+  const displaySubtotal =
+    Number(sale.subtotal) > 0 ? Number(sale.subtotal) : itemsSubtotal;
+
+  const displayPaidAmount =
+    Number(sale.paidAmount) > 0
+      ? Number(sale.paidAmount)
+      : sale.paymentStatus === "paid"
+        ? Number(sale.totalAmount)
+        : 0;
+
+  const displayDiscount =
+    Number(sale.discountAmount) > 0
+      ? Number(sale.discountAmount)
+      : displaySubtotal > Number(sale.totalAmount)
+        ? Math.max(0, displaySubtotal - Number(sale.totalAmount))
+        : 0;
+
+  const displayDueAmount =
+    sale.dueAmount !== undefined && sale.dueAmount !== null && !isNaN(Number(sale.dueAmount))
+      ? Number(sale.dueAmount)
+      : Math.max(0, Number(sale.totalAmount) - displayPaidAmount);
+
   return (
     <ViewModal
       isOpen={isOpen}
@@ -43,14 +74,14 @@ export const SalesViewModal: React.FC<SalesViewModalProps> = ({
         <ViewInvoiceNumber>
           <InvoiceTitle>{sale.invoiceNumber}</InvoiceTitle>
           <InvoiceDate>
-            Issued on {formatDate(sale.date)} at {sale.time || "12:00 PM"}
+            Issued on {formatSaleDate(sale.date)}{sale.time ? ` at ${sale.time}` : ""}
           </InvoiceDate>
         </ViewInvoiceNumber>
 
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <Badge
             variant={
-              sale.paymentStatus === "paid"
+              sale.paymentStatus === "paid" || displayDueAmount === 0
                 ? BADGE_VARIANTS.SUCCESS
                 : sale.paymentStatus === "partial"
                   ? BADGE_VARIANTS.WARNING
@@ -59,7 +90,7 @@ export const SalesViewModal: React.FC<SalesViewModalProps> = ({
             size={UI_SIZES.MD}
             dot
           >
-            {sale.paymentStatus.toUpperCase()} ({sale.paymentMethod})
+            {(displayDueAmount === 0 ? "PAID" : sale.paymentStatus).toUpperCase()} ({sale.paymentMethod || "Cash"})
           </Badge>
 
           <Badge
@@ -96,8 +127,8 @@ export const SalesViewModal: React.FC<SalesViewModalProps> = ({
         <ViewMetaCard>
           <ViewMetaLabel>Settlement Status</ViewMetaLabel>
           <ViewMetaValue>
-            {sale.dueAmount > 0
-              ? `Due: ${formatCurrency(sale.dueAmount)}`
+            {displayDueAmount > 0
+              ? `Due: ${formatCurrency(displayDueAmount)}`
               : "Fully Paid"}
           </ViewMetaValue>
         </ViewMetaCard>
@@ -135,19 +166,56 @@ export const SalesViewModal: React.FC<SalesViewModalProps> = ({
         </ViewItemsTable>
       </div>
 
+      {sale.paymentHistory && sale.paymentHistory.length > 0 && (
+        <section style={{ marginTop: 20 }}>
+          <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>Payment History</h3>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "left", padding: 8 }}>Date</th>
+                  <th style={{ textAlign: "left", padding: 8 }}>Method</th>
+                  <th style={{ textAlign: "right", padding: 8 }}>Amount</th>
+                  <th style={{ textAlign: "left", padding: 8 }}>Reference / Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sale.paymentHistory.map((payment) => (
+                  <tr key={payment.id}>
+                    <td style={{ padding: 8 }}>{payment.paymentDate}</td>
+                    <td style={{ padding: 8 }}>{payment.paymentMethod}</td>
+                    <td style={{ padding: 8, textAlign: "right" }}>{formatCurrency(payment.amount)}</td>
+                    <td style={{ padding: 8 }}>
+                      {[payment.referenceNumber, payment.notes].filter(Boolean).join(" · ") || "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       {/* Totals Summary */}
       <TotalsCard>
         <TotalsRow>
           <span>Subtotal ({sale.items.length} items):</span>
-          <span>{formatCurrency(sale.subtotal)}</span>
+          <span>{formatCurrency(displaySubtotal)}</span>
         </TotalsRow>
 
-        {sale.discountAmount > 0 && (
-          <TotalsRow>
-            <span>Discount:</span>
-            <span>- {formatCurrency(sale.discountAmount)}</span>
-          </TotalsRow>
-        )}
+        <TotalsRow>
+          <span>Discount:</span>
+          <span
+            style={{
+              color: displayDiscount > 0 ? "#ef4444" : "inherit",
+              fontWeight: displayDiscount > 0 ? 600 : 400,
+            }}
+          >
+            {displayDiscount > 0
+              ? `- ${formatCurrency(displayDiscount)}`
+              : formatCurrency(0)}
+          </span>
+        </TotalsRow>
 
         {sale.taxAmount > 0 && (
           <TotalsRow>
@@ -165,14 +233,14 @@ export const SalesViewModal: React.FC<SalesViewModalProps> = ({
 
         <TotalsRow>
           <span>Amount Paid:</span>
-          <span>{formatCurrency(sale.paidAmount)}</span>
+          <span>{formatCurrency(displayPaidAmount)}</span>
         </TotalsRow>
 
-        {sale.dueAmount > 0 && (
+        {displayDueAmount > 0 && (
           <TotalsRow>
             <span>Balance Due:</span>
             <TotalsAmount $danger={true}>
-              {formatCurrency(sale.dueAmount)}
+              {formatCurrency(displayDueAmount)}
             </TotalsAmount>
           </TotalsRow>
         )}

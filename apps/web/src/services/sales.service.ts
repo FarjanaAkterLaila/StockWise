@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
-import type { Sale, PaymentStatus, SaleStatus, PaymentMethod } from "@/types";
+import type { Sale, SalePaymentRecord, PaymentStatus, SaleStatus, PaymentMethod } from "@/types";
 import type { SaleRow, SaleItemRow } from "@/types/database.types";
+import { formatTime } from "@/utils/formatters";
 
 interface SaleItemWithProduct extends SaleItemRow {
   products: { id: string; name: string; sku: string | null } | null;
@@ -10,6 +11,42 @@ interface SaleRowWithRelations extends SaleRow {
   customers: { id: string; name: string; phone: string | null } | null;
   sale_items: SaleItemWithProduct[] | null;
 }
+
+const isUuid = (val?: string | null): boolean =>
+  Boolean(
+    val &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        val.trim(),
+      ),
+  );
+
+const readNumericField = (
+  row: Record<string, unknown>,
+  ...fieldNames: string[]
+): number | undefined => {
+  let zeroValue: number | undefined;
+  for (const fieldName of fieldNames) {
+    const value = row[fieldName];
+    if (value !== null && value !== undefined && value !== "") {
+      const numericValue = Number(value);
+      if (Number.isFinite(numericValue)) {
+        if (numericValue !== 0) return numericValue;
+        zeroValue = 0;
+      }
+    }
+  }
+  return zeroValue;
+};
+
+const normalizePaymentMethod = (value?: unknown): PaymentMethod | undefined => {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (normalized === "cash") return "Cash";
+  if (normalized === "card") return "Card";
+  if (normalized === "bank_transfer" || normalized === "bank") return "Bank Transfer";
+  if (normalized === "mfs" || normalized === "mobile_money" || normalized === "mobile") return "MFS";
+  return undefined;
+};
 
 export interface CreateSaleInput {
   customerId?: string;
@@ -33,44 +70,166 @@ export interface CreateSaleInput {
   notes?: string;
 }
 
+export interface UpdateSaleInput {
+  totalAmount: number;
+  newPaymentAmount: number;
+  paymentMethod: string;
+  paymentDate?: string;
+  referenceNumber?: string;
+  notes?: string;
+  status?: string;
+}
+
 export const fetchSales = async (): Promise<Sale[]> => {
-  const { data, error } = await supabase
-    .from("sales")
-    .select(`
-      *,
-      customers:customer_id (id, name, phone),
-      sale_items (
-        id,
-        product_id,
-        quantity,
-        unit_price,
-        subtotal,
-        products:product_id (id, name, sku)
-      )
-    `)
-    .order("created_at", { ascending: false });
+  const [salesRes, paymentsRes] = await Promise.all([
+    supabase
+      .from("sales")
+      .select(`
+        *,
+        customers:customer_id (id, name, phone),
+        sale_items (
+          *,
+          products:product_id (*)
+        )
+      `)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("payments")
+      .select("id, sale_id, purchase_id, payment_type, amount, payment_method, payment_date, reference_number, notes")
+      .is("purchase_id", null)
+      .eq("payment_type", "received")
+      .order("payment_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false }),
+  ]);
 
-  if (error) throw new Error(error.message);
+  if (salesRes.error) throw new Error(salesRes.error.message);
+  if (paymentsRes.error) throw new Error(paymentsRes.error.message);
 
-  const rows = (data || []) as unknown as SaleRowWithRelations[];
+  const paymentsMap: Record<string, {
+    total: number;
+    latestMethod?: string;
+    latestPaymentDate?: string;
+    latestReferenceNumber?: string;
+    latestNotes?: string;
+    history: SalePaymentRecord[];
+  }> = {};
+  if (paymentsRes.data) {
+    for (const pay of paymentsRes.data) {
+      if (pay.sale_id) {
+        if (!paymentsMap[pay.sale_id]) {
+          paymentsMap[pay.sale_id] = {
+            total: 0,
+            latestMethod: pay.payment_method,
+            // Keep the date-only database value intact for input[type=date].
+            latestPaymentDate: typeof pay.payment_date === "string"
+              ? pay.payment_date.slice(0, 10)
+              : undefined,
+            latestReferenceNumber: pay.reference_number || undefined,
+            latestNotes: pay.notes || undefined,
+            history: [],
+          };
+        }
+        paymentsMap[pay.sale_id].total += Number(pay.amount) || 0;
+        paymentsMap[pay.sale_id].history.push({
+          id: pay.id,
+          amount: Number(pay.amount) || 0,
+          paymentMethod: normalizePaymentMethod(pay.payment_method) || pay.payment_method || "Cash",
+          paymentDate: typeof pay.payment_date === "string" ? pay.payment_date.slice(0, 10) : "",
+          referenceNumber: pay.reference_number || undefined,
+          notes: pay.notes || undefined,
+        });
+      }
+    }
+  }
+
+  const rows = (salesRes.data || []) as unknown as SaleRowWithRelations[];
 
   return rows.map((s) => {
-    const items = (s.sale_items || []).map((item) => ({
-      id: item.id,
-      productId: item.product_id,
-      productName: item.products?.name || "Product",
-      sku: item.products?.sku || "",
-      quantity: Number(item.quantity) || 1,
-      unitPrice: Number(item.unit_price) || 0,
-      subtotal: Number(item.subtotal) || 0,
-    }));
+    const rawSale = s as unknown as Record<string, unknown>;
+    const rawItems = (s.sale_items || []) as unknown as Array<Record<string, unknown> & {
+      products?: {
+        id?: string;
+        name?: string;
+        sku?: string | null;
+        variant?: string | null;
+        variant_name?: string | null;
+        size?: string | null;
+      } | null;
+    }>;
 
-    const dateObj = new Date(s.sale_date || s.created_at);
-    const date = dateObj.toISOString().split("T")[0];
-    const time = dateObj.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
+    const items = rawItems.map((item) => {
+      const qty = readNumericField(item, "quantity", "qty") || 1;
+      const uPrice = readNumericField(item, "unit_price", "unitPrice", "price", "selling_price", "unit_cost") || 0;
+      const itemSub = readNumericField(item, "subtotal", "line_total", "lineTotal", "total") ?? qty * uPrice;
+      const variant = item.variant_name || item.product_variant || item.variant_size || item.variant || item.product_size || item.size || item.products?.variant_name || item.products?.variant || item.products?.size;
+      const productName = String(item.products?.name || item.product_name || "Product");
+      return {
+        id: String(item.id || `${String(item.product_id || item.productId || "item")}-${qty}`),
+        productId: String(item.product_id || item.productId || ""),
+        productName: variant && !productName.toLowerCase().includes(String(variant).toLowerCase())
+          ? `${productName} (${variant})`
+          : productName,
+        sku: item.products?.sku || String(item.sku || ""),
+        quantity: qty,
+        unitPrice: uPrice,
+        subtotal: itemSub,
+      };
     });
+
+    const itemsSubtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+
+    // sale_date is a PostgreSQL DATE. Keep its calendar value intact; parsing
+    // YYYY-MM-DD as a timestamp shifts it across time zones. created_at is the
+    // actual timestamp and is formatted once using the app's Dhaka convention.
+    const date = String(s.sale_date || "").slice(0, 10);
+    const time = s.created_at ? formatTime(s.created_at) : "";
+
+    let metaSubtotal: number | null = null;
+    let metaDiscount = readNumericField(rawSale, "discount_amount", "discountAmount", "discount") || 0;
+    let metaTax = readNumericField(rawSale, "tax_amount", "taxAmount", "vat_amount", "vatAmount", "tax") || 0;
+    let cleanNotes = s.notes || "";
+
+    if (s.notes && s.notes.includes("<!--META:")) {
+      try {
+        const match = s.notes.match(/<!--META:(.*?)-->/);
+        if (match && match[1]) {
+          const parsed = JSON.parse(match[1]);
+          if (parsed.subtotal !== undefined) metaSubtotal = Number(parsed.subtotal);
+          if (parsed.discountAmount !== undefined) metaDiscount = Number(parsed.discountAmount);
+          if (parsed.taxAmount !== undefined) metaTax = Number(parsed.taxAmount);
+        }
+        cleanNotes = s.notes.replace(/<!--META:.*?-->/g, "").trim();
+      } catch {
+        // preserve existing notes
+      }
+    }
+
+    const subtotal =
+      metaSubtotal !== null && metaSubtotal > 0
+        ? metaSubtotal
+        : (readNumericField(rawSale, "subtotal", "sub_total", "subTotal") || 0) > 0
+          ? readNumericField(rawSale, "subtotal", "sub_total", "subTotal")!
+          : itemsSubtotal;
+
+    const totalAmount =
+      (readNumericField(rawSale, "total_amount", "totalAmount", "grand_total", "grandTotal", "total") || 0) > 0
+        ? readNumericField(rawSale, "total_amount", "totalAmount", "grand_total", "grandTotal", "total")!
+        : Math.max(0, subtotal - metaDiscount + metaTax);
+
+    const recordedPayment = paymentsMap[s.id]?.total;
+    const paymentMethodFromPay = paymentsMap[s.id]?.latestMethod;
+
+    const paidAmount = recordedPayment || 0;
+
+    const dueAmount = Math.max(0, totalAmount - paidAmount);
+
+    const paymentStatus: PaymentStatus =
+      dueAmount === 0
+        ? "paid"
+        : paidAmount > 0
+          ? "partial"
+          : "unpaid";
 
     return {
       id: s.id,
@@ -82,16 +241,23 @@ export const fetchSales = async (): Promise<Sale[]> => {
       date,
       time,
       items,
-      subtotal: Number(s.subtotal) || 0,
-      discountAmount: Number(s.discount_amount) || 0,
-      taxAmount: Number(s.tax_amount) || 0,
-      totalAmount: Number(s.total_amount) || 0,
-      paidAmount: Number(s.paid_amount) || 0,
-      dueAmount: Number(s.due_amount) || 0,
-      paymentStatus: (s.payment_status?.toLowerCase() as PaymentStatus) || "paid",
-      paymentMethod: "Cash" as PaymentMethod,
+      subtotal,
+      discountAmount: metaDiscount,
+      taxAmount: metaTax,
+      totalAmount,
+      paidAmount,
+      dueAmount,
+      paymentStatus,
+      paymentMethod:
+        normalizePaymentMethod(paymentMethodFromPay) ||
+        normalizePaymentMethod(rawSale.payment_method) ||
+        ("Cash" as PaymentMethod),
+      paymentDate: paymentsMap[s.id]?.latestPaymentDate,
+      lastPaymentReferenceNumber: paymentsMap[s.id]?.latestReferenceNumber,
+      lastPaymentNotes: paymentsMap[s.id]?.latestNotes,
+      paymentHistory: paymentsMap[s.id]?.history || [],
       status: (s.status?.toLowerCase() as SaleStatus) || "completed",
-      notes: s.notes || "",
+      notes: cleanNotes,
     };
   });
 };
@@ -105,11 +271,15 @@ export const createSale = async (
   )}`;
 
   // 1. Resolve or auto-create customer if name provided and customerId missing
-  let resolvedCustomerId = saleData.customerId;
+  let resolvedCustomerId: string | null = isUuid(saleData.customerId)
+    ? saleData.customerId!.trim()
+    : null;
+
   if (
     !resolvedCustomerId &&
     saleData.customerName &&
-    saleData.customerName.trim().toLowerCase() !== "walk-in customer"
+    saleData.customerName.trim().toLowerCase() !== "walk-in customer" &&
+    saleData.customerName.trim().toLowerCase() !== "walk-in"
   ) {
     const trimmed = saleData.customerName.trim();
     const { data: existingCust } = await supabase
@@ -121,15 +291,33 @@ export const createSale = async (
     if (existingCust?.id) {
       resolvedCustomerId = existingCust.id;
     } else {
-      const { data: newCust } = await supabase
+      const custPayload: Record<string, unknown> = {
+        name: trimmed,
+        phone: saleData.customerPhone?.trim() || null,
+        balance: 0,
+      };
+      let { data: newCust, error: custErr } = await supabase
         .from("customers")
-        .insert({
-          name: trimmed,
-          phone: saleData.customerPhone?.trim() || null,
-          balance: 0,
-        })
+        .insert(custPayload)
         .select("id")
         .maybeSingle();
+
+      while (custErr && custErr.message.includes("Could not find the '")) {
+        const match = custErr.message.match(/Could not find the '([^']+)' column/);
+        if (match && match[1] && match[1] in custPayload) {
+          delete custPayload[match[1]];
+          const retry = await supabase
+            .from("customers")
+            .insert(custPayload)
+            .select("id")
+            .maybeSingle();
+          newCust = retry.data;
+          custErr = retry.error;
+        } else {
+          break;
+        }
+      }
+
       if (newCust?.id) {
         resolvedCustomerId = newCust.id;
       }
@@ -147,18 +335,35 @@ export const createSale = async (
       Number(i.subtotal) || (Number(i.quantity) || 1) * (Number(i.unitPrice) || 0),
   }));
 
+  const itemsSubtotal = normalizedItems.reduce(
+    (sum, item) => sum + (Number(item.subtotal) || 0),
+    0,
+  );
+  const actualSubtotal =
+    Number(saleData.subtotal) > 0 ? Number(saleData.subtotal) : itemsSubtotal;
+
+  const metaTag = `<!--META:${JSON.stringify({
+    subtotal: actualSubtotal,
+    discountAmount: Number(saleData.discountAmount) || 0,
+    taxAmount: Number(saleData.taxAmount) || 0,
+    paidAmount: Number(saleData.paidAmount) || 0,
+  })}-->`;
+  const combinedNotes = saleData.notes
+    ? `${saleData.notes.trim()}\n${metaTag}`
+    : metaTag;
+
   // 3. Execute through PostgreSQL RPC function for atomic stock validation & deduction
   const { data, error } = await supabase.rpc("process_sale_transaction", {
     p_invoice_number: invoiceNumber,
     p_customer_id: resolvedCustomerId || null,
-    p_subtotal: Number(saleData.subtotal) || 0,
+    p_subtotal: actualSubtotal,
     p_discount_amount: Number(saleData.discountAmount) || 0,
     p_tax_amount: Number(saleData.taxAmount) || 0,
     p_total_amount: Number(saleData.totalAmount) || 0,
     p_paid_amount: Number(saleData.paidAmount) || 0,
     p_payment_method: saleData.paymentMethod || "Cash",
     p_status: saleData.status || "completed",
-    p_notes: saleData.notes || null,
+    p_notes: combinedNotes,
     p_user_id: userId || null,
     p_items: normalizedItems,
   });
@@ -191,30 +396,16 @@ export const createSale = async (
         }
       }
 
-      const dueAmount = Math.max(
-        0,
-        Number(saleData.totalAmount) - Number(saleData.paidAmount || 0),
-      );
-      const paymentStatus =
-        dueAmount === 0
-          ? "paid"
-          : Number(saleData.paidAmount || 0) > 0
-            ? "partial"
-            : "unpaid";
-
       const salePayload: Record<string, unknown> = {
         invoice_number: invoiceNumber,
         customer_id: resolvedCustomerId || null,
         sale_date: new Date().toISOString(),
-        subtotal: Number(saleData.subtotal) || 0,
+        subtotal: actualSubtotal,
         discount_amount: Number(saleData.discountAmount) || 0,
         tax_amount: Number(saleData.taxAmount) || 0,
         total_amount: Number(saleData.totalAmount) || 0,
-        paid_amount: Number(saleData.paidAmount) || 0,
-        due_amount: dueAmount,
-        payment_status: paymentStatus,
         status: saleData.status || "completed",
-        notes: saleData.notes || null,
+        notes: combinedNotes,
       };
       if (userId) salePayload.created_by = userId;
 
@@ -320,17 +511,27 @@ export const createSale = async (
       // Record payment if paid_amount > 0
       if (Number(saleData.paidAmount) > 0) {
         const paymentPayload: Record<string, unknown> = {
-          payment_number: `PAY-SAL-${Date.now().toString().slice(-6)}`,
-          payment_type: "sale",
+          payment_type: "received",
           sale_id: newSale.id,
-          customer_id: resolvedCustomerId || null,
+          purchase_id: null,
           amount: Number(saleData.paidAmount),
-          payment_date: new Date().toISOString(),
+          payment_date: new Date().toISOString().slice(0, 10),
           payment_method: "cash",
           notes: `Payment for invoice #${invoiceNumber}`,
         };
         if (userId) paymentPayload.created_by = userId;
-        await supabase.from("payments").insert(paymentPayload);
+
+        let { error: payErr } = await supabase.from("payments").insert(paymentPayload);
+        while (payErr && payErr.message.includes("Could not find the '")) {
+          const match = payErr.message.match(/Could not find the '([^']+)' column/);
+          if (match && match[1] && match[1] in paymentPayload) {
+            delete paymentPayload[match[1]];
+            const retry = await supabase.from("payments").insert(paymentPayload);
+            payErr = retry.error;
+          } else {
+            break;
+          }
+        }
       }
 
       return newSale;
@@ -344,46 +545,31 @@ export const createSale = async (
 
 export const updateSale = async (
   id: string,
-  updates: Partial<CreateSaleInput>,
+  updates: UpdateSaleInput,
 ): Promise<void> => {
-  const payload: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
-  if (updates.notes !== undefined) payload.notes = updates.notes || null;
-  if (updates.status !== undefined) payload.status = updates.status;
-  if (updates.customerId !== undefined) {
-    payload.customer_id = updates.customerId && updates.customerId.trim() ? updates.customerId.trim() : null;
+  const newPaymentAmount = Number(updates.newPaymentAmount);
+  const referenceNumber = updates.referenceNumber || "";
+  if (newPaymentAmount > 0 && !referenceNumber) {
+    throw new Error("A payment reference is required to safely record the new payment.");
   }
-  if (updates.totalAmount !== undefined) payload.total_amount = Number(updates.totalAmount);
-  if (updates.paidAmount !== undefined) {
-    payload.paid_amount = Number(updates.paidAmount);
-    if (updates.totalAmount !== undefined) {
-      payload.due_amount = Math.max(
-        0,
-        Number(updates.totalAmount) - Number(updates.paidAmount),
-      );
-      payload.payment_status =
-        payload.due_amount === 0
-          ? "paid"
-          : Number(updates.paidAmount) > 0
-            ? "partial"
-            : "unpaid";
-    }
-  }
-
-  let { error } = await supabase.from("sales").update(payload).eq("id", id);
-
-  while (error && error.message.includes("Could not find the '")) {
-    const match = error.message.match(/Could not find the '([^']+)' column/);
-    if (match && match[1] && match[1] in payload) {
-      delete payload[match[1]];
-      const retry = await supabase.from("sales").update(payload).eq("id", id);
-      error = retry.error;
-    } else {
-      break;
-    }
-  }
-
+  const method = updates.paymentMethod.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const paymentMethod = method === "card"
+    ? "card"
+    : method === "bank_transfer" || method === "bank"
+      ? "bank_transfer"
+      : method === "mfs" || method === "mobile_money" || method === "mobile"
+        ? "mobile_money"
+        : "cash";
+  const { error } = await supabase.rpc("update_sale_payment_transaction", {
+    p_sale_id: id,
+    p_total_amount: Number(updates.totalAmount),
+    p_new_payment_amount: newPaymentAmount,
+    p_payment_method: paymentMethod,
+    p_payment_date: updates.paymentDate || new Date().toISOString().slice(0, 10),
+    p_reference_number: referenceNumber,
+    p_notes: updates.notes || null,
+    p_status: updates.status || "completed",
+  });
   if (error) throw new Error(error.message);
 };
 

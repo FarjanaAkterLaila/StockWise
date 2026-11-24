@@ -1,5 +1,6 @@
 import type { Sale, PaymentStatus } from "@/types";
 import { DEFAULT_VALUES } from "@/utils/constants";
+import { formatDate } from "@/utils/formatters";
 import type {
   SaleFormData,
   SaleItemFormData,
@@ -9,6 +10,19 @@ export const SALE_ITEM_FIELDS = {
   QUANTITY: "quantity",
   UNIT_PRICE: "unitPrice",
 } as const;
+
+// Sales dates are stored as PostgreSQL DATE values, not timestamps. Format
+// their calendar parts directly so browser timezone parsing cannot shift them.
+export const formatSaleDate = (date: string): string => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!match) return formatDate(date);
+  const [, year, month, day] = match;
+  const monthName = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ][Number(month) - 1];
+  return monthName ? `${day} ${monthName} ${year}` : date;
+};
 
 export type SaleItemField =
   (typeof SALE_ITEM_FIELDS)[keyof typeof SALE_ITEM_FIELDS];
@@ -30,7 +44,10 @@ export const createInitialSaleItem = (): SaleItemFormData => {
 
 export const getInitialSaleFormData = (sale?: Sale | null): SaleFormData => ({
   invoiceNumber: sale?.invoiceNumber || generateInvoiceNumber(),
-  customerId: sale?.customerId || DEFAULT_VALUES.WALK_IN_CUSTOMER_ID,
+  customerId:
+    sale?.customerId && sale.customerId !== DEFAULT_VALUES.WALK_IN_CUSTOMER_ID
+      ? sale.customerId
+      : "",
   customerName: sale?.customerName || DEFAULT_VALUES.WALK_IN_CUSTOMER_NAME,
   customerType: sale?.customerType || DEFAULT_VALUES.CUSTOMER_TYPE,
   customerPhone: sale?.customerPhone || "",

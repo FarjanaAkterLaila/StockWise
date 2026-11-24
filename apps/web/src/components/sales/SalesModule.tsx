@@ -105,14 +105,22 @@ export const SalesModule: React.FC = () => {
   };
 
   const handleSaveSale = async (
-    saleData: Omit<Sale, "id"> & { id?: string },
+    saleData: Omit<Sale, "id"> & {
+      id?: string;
+      newPaymentAmount?: number;
+      paymentDate?: string;
+      paymentReferenceNumber?: string;
+    },
   ) => {
     if (saleData.id) {
       try {
         await updateSale(saleData.id, {
           notes: saleData.notes,
           totalAmount: saleData.totalAmount,
-          paidAmount: saleData.paidAmount,
+          newPaymentAmount: saleData.newPaymentAmount || 0,
+          paymentMethod: saleData.paymentMethod,
+          paymentDate: saleData.paymentDate,
+          referenceNumber: saleData.paymentReferenceNumber,
           status: saleData.status,
         });
         const updated = await fetchSales();

@@ -3,7 +3,8 @@ import type { Sale } from "@/types";
 import { Badge } from "@/components/common/Badge";
 import { BADGE_VARIANTS, UI_SIZES } from "@/utils/constants";
 import { Eye, Pencil, Trash2 } from "lucide-react";
-import { formatCurrency, formatDate } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/formatters";
+import { formatSaleDate } from "@/utils/sale.utils";
 import {
   TableRow,
   TableCell,
@@ -48,7 +49,7 @@ export const SalesTableRow: React.FC<SalesTableRowProps> = ({
       <TableCell>
         <InvoiceCell>
           <InvoiceNum>{sale.invoiceNumber}</InvoiceNum>
-          <TimeText>{sale.time || "12:00 PM"}</TimeText>
+          {sale.time && <TimeText>{sale.time}</TimeText>}
         </InvoiceCell>
       </TableCell>
 
@@ -74,7 +75,7 @@ export const SalesTableRow: React.FC<SalesTableRowProps> = ({
 
       {/* Date */}
       <TableCell>
-        <DateText>{formatDate(sale.date)}</DateText>
+        <DateText>{formatSaleDate(sale.date)}</DateText>
       </TableCell>
 
       {/* Financial Amounts (Total & Due) */}

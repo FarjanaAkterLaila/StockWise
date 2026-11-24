@@ -1,4 +1,4 @@
--- ==============================================================================
+﻿-- ==============================================================================
 -- StockWise Mini ERP - Supabase Auth, Profiles, RLS Policies, and Atomic RPCs
 -- ==============================================================================
 
@@ -163,11 +163,11 @@ BEGIN
       RAISE NOTICE 'Notice: Could not modify sales_status_check constraint: %', SQLERRM;
   END;
 
-  -- Ensure payments_payment_type_check allows 'inward', 'outward', 'sale', 'purchase'
+  -- Keep the payment type allowlist aligned with the payments relationship check.
   BEGIN
     ALTER TABLE public.payments DROP CONSTRAINT IF EXISTS payments_payment_type_check;
     ALTER TABLE public.payments ADD CONSTRAINT payments_payment_type_check 
-      CHECK (payment_type IN ('inward', 'outward', 'sale', 'purchase'));
+      CHECK (payment_type IN ('received', 'paid'));
     RAISE NOTICE 'Updated payments_payment_type_check constraint.';
   EXCEPTION
     WHEN OTHERS THEN
@@ -444,6 +444,7 @@ DECLARE
   v_sale_id uuid;
   v_due_amount numeric;
   v_payment_status text;
+  v_total_paid numeric;
   v_item jsonb;
   v_prod_id uuid;
   v_qty int;
@@ -465,12 +466,6 @@ BEGIN
     RAISE EXCEPTION 'Sale transaction must include at least one item.';
   END IF;
 
-  v_due_amount := GREATEST(0, p_total_amount - COALESCE(p_paid_amount, 0));
-  v_payment_status := CASE 
-    WHEN v_due_amount = 0 THEN 'paid'
-    WHEN COALESCE(p_paid_amount, 0) > 0 THEN 'partial'
-    ELSE 'unpaid'
-  END;
   v_is_completed := (LOWER(COALESCE(p_status, 'completed')) = 'completed');
 
   -- 1. If completed, acquire locks on all products in deterministic order to prevent deadlocks
@@ -514,11 +509,11 @@ BEGIN
   -- 2. Insert into sales
   INSERT INTO public.sales (
     invoice_number, customer_id, sale_date, subtotal, discount_amount, 
-    tax_amount, total_amount, paid_amount, due_amount, payment_status, 
+    tax_amount, total_amount,
     status, notes, created_by, created_at, updated_at
   ) VALUES (
     p_invoice_number, p_customer_id, NOW(), p_subtotal, p_discount_amount,
-    p_tax_amount, p_total_amount, COALESCE(p_paid_amount, 0), v_due_amount, v_payment_status,
+    p_tax_amount, p_total_amount,
     LOWER(COALESCE(p_status, 'completed')), p_notes, v_caller_id, NOW(), NOW()
   ) RETURNING id INTO v_sale_id;
 
@@ -546,14 +541,14 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- 4. Insert payment record if paid_amount > 0
+  -- 4. Insert the initial Sales payment, if provided.
   IF COALESCE(p_paid_amount, 0) > 0 THEN
     INSERT INTO public.payments (
-      payment_number, payment_type, sale_id, customer_id, amount, 
+      reference_number, payment_type, sale_id, purchase_id, amount,
       payment_date, payment_method, notes, created_by, created_at
     ) VALUES (
       'PAY-' || to_char(NOW(), 'YYMMDD') || '-' || LPAD(FLOOR(RANDOM()*10000)::text, 4, '0'),
-      'sale', v_sale_id, p_customer_id, p_paid_amount, NOW(),
+      'received', v_sale_id, NULL, p_paid_amount, NOW(),
       CASE 
         WHEN LOWER(COALESCE(p_payment_method, 'cash')) LIKE '%card%' THEN 'card'
         WHEN LOWER(COALESCE(p_payment_method, 'cash')) LIKE '%bank%' THEN 'bank_transfer'
@@ -564,17 +559,180 @@ BEGIN
     );
   END IF;
 
+  SELECT COALESCE(SUM(amount), 0) INTO v_total_paid
+  FROM public.payments
+  WHERE sale_id = v_sale_id
+    AND purchase_id IS NULL
+    AND payment_type = 'received';
+
+  v_due_amount := GREATEST(0, p_total_amount - v_total_paid);
+  v_payment_status := CASE
+    WHEN v_total_paid >= p_total_amount THEN 'paid'
+    WHEN v_total_paid > 0 THEN 'partial'
+    ELSE 'unpaid'
+  END;
+
   RETURN jsonb_build_object(
     'id', v_sale_id,
     'invoiceNumber', p_invoice_number,
     'totalAmount', p_total_amount,
-    'paidAmount', p_paid_amount,
+    'paidAmount', v_total_paid,
     'dueAmount', v_due_amount,
     'paymentStatus', v_payment_status,
     'status', LOWER(COALESCE(p_status, 'completed'))
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+-- Atomically apply a Sales edit and any additional payment. The payment
+-- reference is the request idempotency key; locking the sale serializes retries.
+-- Install the Sales edit/payment RPC with the exact named parameters used by
+-- apps/web/src/services/sales.service.ts. This also replaces the earlier
+-- implementation that referenced payments.customer_id, which is not present
+-- in the verified payments schema.
+DROP FUNCTION IF EXISTS public.update_sale_payment_transaction(
+  uuid, numeric, numeric, text, date, text, text, text
+);
+
+CREATE FUNCTION public.update_sale_payment_transaction(
+  p_sale_id uuid,
+  p_total_amount numeric,
+  p_new_payment_amount numeric,
+  p_payment_method text,
+  p_payment_date date,
+  p_reference_number text,
+  p_notes text,
+  p_status text
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_sale public.sales%ROWTYPE;
+  v_previously_paid numeric;
+  v_total_paid numeric;
+  v_due_amount numeric;
+  v_payment_status text;
+  v_duplicate boolean := false;
+BEGIN
+  IF auth.uid() IS NULL AND COALESCE(auth.role(), '') <> 'service_role' THEN
+    RAISE EXCEPTION 'Unauthorized: Authentication required.';
+  END IF;
+
+  IF public.current_user_role() NOT IN ('admin', 'manager', 'staff') THEN
+    RAISE EXCEPTION 'Unauthorized: Sales payment update is not permitted.';
+  END IF;
+
+  IF p_sale_id IS NULL THEN
+    RAISE EXCEPTION 'Sale ID is required.';
+  END IF;
+  IF p_total_amount IS NULL OR p_total_amount < 0 THEN
+    RAISE EXCEPTION 'Sale total must be a non-negative amount.';
+  END IF;
+  IF p_new_payment_amount IS NULL OR p_new_payment_amount < 0 THEN
+    RAISE EXCEPTION 'New payment must be a non-negative amount.';
+  END IF;
+  IF p_new_payment_amount > 0
+     AND NULLIF(BTRIM(p_reference_number), '') IS NULL THEN
+    RAISE EXCEPTION 'A payment reference is required for retry-safe payment recording.';
+  END IF;
+  IF p_payment_method IS NULL
+     OR p_payment_method NOT IN ('cash', 'card', 'bank_transfer', 'mobile_money') THEN
+    RAISE EXCEPTION 'Unsupported payment method: %', p_payment_method;
+  END IF;
+  IF p_payment_date IS NULL THEN
+    RAISE EXCEPTION 'Payment date is required.';
+  END IF;
+  IF LOWER(COALESCE(p_status, 'completed')) NOT IN ('draft', 'completed', 'cancelled', 'refunded') THEN
+    RAISE EXCEPTION 'Unsupported sale status: %', p_status;
+  END IF;
+
+  -- Lock serializes concurrent edits/retries for this sale; the entire RPC
+  -- (payment insert plus sale update) commits or rolls back as one transaction.
+  SELECT * INTO v_sale
+  FROM public.sales
+  WHERE id = p_sale_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Sale % was not found.', p_sale_id;
+  END IF;
+
+  SELECT COALESCE(SUM(amount), 0) INTO v_previously_paid
+  FROM public.payments
+  WHERE sale_id = p_sale_id
+    AND purchase_id IS NULL
+    AND payment_type = 'received';
+
+  IF p_new_payment_amount > 0 THEN
+    SELECT EXISTS (
+      SELECT 1
+      FROM public.payments
+      WHERE sale_id = p_sale_id
+        AND purchase_id IS NULL
+        AND payment_type = 'received'
+        AND reference_number = p_reference_number
+    ) INTO v_duplicate;
+
+    IF NOT v_duplicate THEN
+      IF p_new_payment_amount > GREATEST(0, p_total_amount - v_previously_paid) THEN
+        RAISE EXCEPTION 'New payment exceeds remaining due (%).',
+          GREATEST(0, p_total_amount - v_previously_paid);
+      END IF;
+
+      INSERT INTO public.payments (
+        sale_id,
+        purchase_id,
+        payment_type,
+        amount,
+        payment_method,
+        payment_date,
+        reference_number,
+        notes,
+        created_by
+      ) VALUES (
+        p_sale_id,
+        NULL,
+        'received',
+        p_new_payment_amount,
+        p_payment_method,
+        p_payment_date,
+        p_reference_number,
+        'Additional payment for invoice ' || v_sale.invoice_number,
+        auth.uid()
+      );
+    END IF;
+  END IF;
+
+  SELECT COALESCE(SUM(amount), 0) INTO v_total_paid
+  FROM public.payments
+  WHERE sale_id = p_sale_id
+    AND purchase_id IS NULL
+    AND payment_type = 'received';
+
+  v_due_amount := GREATEST(0, p_total_amount - v_total_paid);
+  v_payment_status := CASE
+    WHEN v_total_paid >= p_total_amount THEN 'paid'
+    WHEN v_total_paid > 0 THEN 'partial'
+    ELSE 'unpaid'
+  END;
+
+  UPDATE public.sales
+  SET total_amount = p_total_amount,
+      notes = COALESCE(p_notes, v_sale.notes),
+      status = LOWER(COALESCE(p_status, v_sale.status)),
+      updated_at = NOW()
+  WHERE id = p_sale_id;
+
+  RETURN jsonb_build_object(
+    'id', p_sale_id,
+    'totalPaid', v_total_paid,
+    'dueAmount', v_due_amount,
+    'paymentStatus', v_payment_status,
+    'duplicate', v_duplicate
+  );
+END;
+$$;
 
 -- Atomic Goods Receipt Transaction Function
 -- Requires admin or manager role, locks purchase and products in order,
@@ -647,8 +805,14 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 -- Target explicitly our specific created functions only to avoid affecting extensions or other functions in public schema
 REVOKE EXECUTE ON FUNCTION public.current_user_role() FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.process_sale_transaction(text, uuid, numeric, numeric, numeric, numeric, numeric, text, text, text, uuid, jsonb) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.update_sale_payment_transaction(uuid, numeric, numeric, text, date, text, text, text) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.receive_purchase_goods_transaction(uuid, uuid) FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION public.current_user_role() TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.process_sale_transaction(text, uuid, numeric, numeric, numeric, numeric, numeric, text, text, text, uuid, jsonb) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.update_sale_payment_transaction(uuid, numeric, numeric, text, date, text, text, text) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.receive_purchase_goods_transaction(uuid, uuid) TO authenticated, service_role;
+
+-- Refresh PostgREST after this SQL file installs or updates exposed routines.
+
+NOTIFY pgrst, 'reload schema';
