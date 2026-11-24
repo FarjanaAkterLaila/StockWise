@@ -168,18 +168,20 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
 
             {activeData.map((d, idx) => {
               const centerX = padding.left + (idx + 0.5) * slotWidth;
-              const salesHeight = (d.sales / maxY) * plotHeight;
+              const rawSalesHeight = (d.sales / maxY) * plotHeight;
+              const salesHeight = d.sales > 0 ? Math.max(rawSalesHeight, 2) : 0;
               const salesY = padding.top + plotHeight - salesHeight;
               const salesX = centerX - barWidth - barGap / 2;
 
-              const purchaseHeight = (d.purchase / maxY) * plotHeight;
+              const rawPurchaseHeight = (d.purchase / maxY) * plotHeight;
+              const purchaseHeight = d.purchase > 0 ? Math.max(rawPurchaseHeight, 2) : 0;
               const purchaseY = padding.top + plotHeight - purchaseHeight;
               const purchaseX = centerX + barGap / 2;
 
               const isHovered = hoveredIdx === idx;
 
               return (
-                <g key={d.month}>
+                <g key={`${d.monthFull}-${idx}`}>
                   {isHovered && (
                     <rect
                       x={centerX - slotWidth / 2 + 2}
@@ -193,39 +195,43 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
                   )}
 
                   {/* Sales Bar */}
-                  <rect
-                    x={salesX}
-                    y={salesY}
-                    width={barWidth}
-                    height={Math.max(salesHeight, 2)}
-                    fill={
-                      isHovered
-                        ? theme.colors.primaryHover
-                        : theme.colors.primary
-                    }
-                    rx={3}
-                    style={{
-                      transition: "fill 0.15s ease",
-                      cursor: "pointer",
-                    }}
-                  />
+                  {salesHeight > 0 && (
+                    <rect
+                      x={salesX}
+                      y={salesY}
+                      width={barWidth}
+                      height={salesHeight}
+                      fill={
+                        isHovered
+                          ? theme.colors.primaryHover
+                          : theme.colors.primary
+                      }
+                      rx={3}
+                      style={{
+                        transition: "fill 0.15s ease",
+                        cursor: "pointer",
+                      }}
+                    />
+                  )}
 
-                  <rect
-                    x={purchaseX}
-                    y={purchaseY}
-                    width={barWidth}
-                    height={Math.max(purchaseHeight, 2)}
-                    fill={
-                      isHovered
-                        ? theme.colors.warningHover
-                        : theme.colors.warning
-                    }
-                    rx={3}
-                    style={{
-                      transition: "fill 0.15s ease",
-                      cursor: "pointer",
-                    }}
-                  />
+                  {purchaseHeight > 0 && (
+                    <rect
+                      x={purchaseX}
+                      y={purchaseY}
+                      width={barWidth}
+                      height={purchaseHeight}
+                      fill={
+                        isHovered
+                          ? theme.colors.warningHover
+                          : theme.colors.warning
+                      }
+                      rx={3}
+                      style={{
+                        transition: "fill 0.15s ease",
+                        cursor: "pointer",
+                      }}
+                    />
+                  )}
 
                   <text
                     x={centerX}
@@ -258,8 +264,10 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
                       if (rect) {
                         const scaleX = rect.width / svgWidth;
                         const scaleY = rect.height / svgHeight;
+                        const rawX = centerX * scaleX;
+                        const clampedX = Math.min(Math.max(rawX, 75), Math.max(75, rect.width - 75));
                         setTooltipPos({
-                          x: centerX * scaleX,
+                          x: clampedX,
                           y: Math.min(salesY, purchaseY) * scaleY,
                         });
                       }
@@ -272,8 +280,10 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
                       if (rect) {
                         const scaleX = rect.width / svgWidth;
                         const scaleY = rect.height / svgHeight;
+                        const rawX = centerX * scaleX;
+                        const clampedX = Math.min(Math.max(rawX, 75), Math.max(75, rect.width - 75));
                         setTooltipPos({
-                          x: centerX * scaleX,
+                          x: clampedX,
                           y: Math.min(salesY, purchaseY) * scaleY,
                         });
                       }

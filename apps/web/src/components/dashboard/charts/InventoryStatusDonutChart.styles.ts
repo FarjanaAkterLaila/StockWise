@@ -9,6 +9,7 @@ export const ChartCard = styled.div`
   display: flex;
   flex-direction: column;
   position: relative;
+  min-width: 0;
   transition: box-shadow 0.2s ease;
 
   &:hover {

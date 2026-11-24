@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import type {
   MetricSummary,
   RecentSale,
@@ -18,6 +18,7 @@ import {
 import { MetricCard } from "./MetricCard";
 import { RecentSalesTable } from "./RecentSalesTable";
 import { GenericLoader } from "@/components/common/GenericLoader";
+import { RefreshCw } from "lucide-react";
 import {
   SalesPurchaseBarChart,
   RevenueTrendLineChart,
@@ -25,6 +26,10 @@ import {
 } from "./charts";
 import {
   DashboardViewContainer,
+  DashboardTopBar,
+  DashboardSubNote,
+  DashboardRefreshBtn,
+  DashboardErrorBanner,
   MetricsGrid,
   AnalyticsSection,
   ChartsRowTop,
@@ -50,6 +55,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const [metrics, setMetrics] = useState<MetricSummary[]>(initialMetrics);
   const [sales, setSales] = useState<RecentSale[]>(initialSales);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [salesPurchaseData, setSalesPurchaseData] = useState<
     SalesPurchaseComparison[]
   >([]);
@@ -59,31 +66,39 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const [inventoryStatusData, setInventoryStatusData] = useState<
     InventoryStatusBreakdown[]
   >([]);
+  const requestSeqRef = useRef(0);
+
+  const loadDashboard = useCallback(async (isRefresh = false) => {
+    const seq = ++requestSeqRef.current;
+    if (isRefresh) setRefreshing(true);
+    try {
+      const data = await fetchDashboardStats();
+      if (seq !== requestSeqRef.current || !data) return;
+      setSales(data.recentSales ?? []);
+      setSalesPurchaseData(data.salesPurchaseComparison ?? []);
+      setRevenueTrendData(data.revenueTrend);
+      setInventoryStatusData(data.inventoryStatusBreakdown ?? []);
+      if (data.metrics) {
+        setMetrics((prev) => updateMetricsWithData(prev, data.metrics));
+      }
+      setLoadError(null);
+    } catch (err: unknown) {
+      if (seq !== requestSeqRef.current) return;
+      setLoadError((err as Error).message || "Unable to load Dashboard analytics.");
+    } finally {
+      if (seq === requestSeqRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    fetchDashboardStats()
-      .then((data) => {
-        if (!isMounted || !data) return;
-        setSales(data.recentSales ?? []);
-        setSalesPurchaseData(data.salesPurchaseComparison ?? []);
-        setRevenueTrendData(data.revenueTrend);
-        setInventoryStatusData(data.inventoryStatusBreakdown ?? []);
-        if (data.metrics) {
-          setMetrics((prev) => updateMetricsWithData(prev, data.metrics));
-        }
-      })
-      .catch((err) => {
-        console.error("Dashboard stats fetch error:", err);
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-
+    const timeoutId = window.setTimeout(() => void loadDashboard(false), 0);
     return () => {
-      isMounted = false;
+      window.clearTimeout(timeoutId);
     };
-  }, []);
+  }, [loadDashboard]);
 
   if (loading) {
     return (
@@ -98,6 +113,33 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
   return (
     <DashboardViewContainer>
+      <DashboardTopBar>
+        <DashboardSubNote>
+          Live Store Metrics • Asia/Dhaka Calendar Dates
+        </DashboardSubNote>
+        <DashboardRefreshBtn
+          type="button"
+          onClick={() => void loadDashboard(true)}
+          disabled={refreshing}
+        >
+          <RefreshCw size={14} />
+          <span>{refreshing ? "Refreshing..." : "Refresh"}</span>
+        </DashboardRefreshBtn>
+      </DashboardTopBar>
+
+      {loadError && (
+        <DashboardErrorBanner role="alert">
+          <span>Dashboard could not be loaded: {loadError}</span>
+          <DashboardRefreshBtn
+            type="button"
+            onClick={() => void loadDashboard(true)}
+            disabled={refreshing}
+          >
+            Retry
+          </DashboardRefreshBtn>
+        </DashboardErrorBanner>
+      )}
+
       {/* 1. KPI Summary Cards (Top Section) */}
       <MetricsGrid aria-label="Key Performance Indicators">
         {metrics.map((metric) => (

@@ -2,7 +2,8 @@ import React from "react";
 import type { RecentSale, PaymentStatus } from "@/types";
 import { ViewModal } from "@/components/common/ViewModal";
 import { Badge } from "@/components/common/Badge";
-import { formatCurrency, formatDate } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/formatters";
+import { formatDashboardDate } from "@/utils/dashboard.utils";
 import { BADGE_VARIANTS, PAYMENT_STATUS } from "@/utils/constants";
 import {
   Building2,
@@ -73,7 +74,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={`Sales Receipt • ${sale.invoiceNumber}`}
-      subtitle={`Billing details for POS transaction on ${formatDate(sale.date)}`}
+      subtitle={`Billing details for POS transaction on ${formatDashboardDate(sale.date)}`}
       size="md"
       printLabel="Print Receipt"
     >
@@ -120,7 +121,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           <DetailValue>
             <Calendar size={14} />
             <span>
-              {formatDate(sale.date)} • {sale.time}
+              {formatDashboardDate(sale.date)} • {sale.time}
             </span>
           </DetailValue>
         </DetailCard>

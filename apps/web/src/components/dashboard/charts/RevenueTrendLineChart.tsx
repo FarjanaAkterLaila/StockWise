@@ -215,8 +215,12 @@ export const RevenueTrendLineChart: React.FC<RevenueTrendLineChartProps> = ({
 
             {points.map((pt, idx) => {
               const isHovered = hoveredIdx === idx;
+              const showLabel =
+                points.length <= 10 ||
+                idx % 5 === 0 ||
+                idx === points.length - 1;
               return (
-                <g key={idx}>
+                <g key={pt.raw.date}>
                   <circle
                     cx={pt.x}
                     cy={pt.y}
@@ -229,21 +233,23 @@ export const RevenueTrendLineChart: React.FC<RevenueTrendLineChartProps> = ({
                     style={{ transition: "r 0.15s ease, fill 0.15s ease" }}
                   />
 
-                  <text
-                    x={pt.x}
-                    y={svgHeight - 8}
-                    textAnchor="middle"
-                    fontSize={points.length > 8 ? "9.5" : "11"}
-                    fontWeight={isHovered ? "700" : "500"}
-                    fill={
-                      isHovered
-                        ? theme.colors.textPrimary
-                        : theme.colors.textSubtle
-                    }
-                    fontFamily="'Plus Jakarta Sans', system-ui, sans-serif"
-                  >
-                    {pt.raw.label}
-                  </text>
+                  {showLabel && (
+                    <text
+                      x={pt.x}
+                      y={svgHeight - 8}
+                      textAnchor="middle"
+                      fontSize={points.length > 8 ? "9.5" : "11"}
+                      fontWeight={isHovered ? "700" : "500"}
+                      fill={
+                        isHovered
+                          ? theme.colors.textPrimary
+                          : theme.colors.textSubtle
+                      }
+                      fontFamily="'Plus Jakarta Sans', system-ui, sans-serif"
+                    >
+                      {pt.raw.label}
+                    </text>
+                  )}
 
                   <circle
                     cx={pt.x}
@@ -259,8 +265,10 @@ export const RevenueTrendLineChart: React.FC<RevenueTrendLineChartProps> = ({
                       if (rect) {
                         const scaleX = rect.width / svgWidth;
                         const scaleY = rect.height / svgHeight;
+                        const rawX = pt.x * scaleX;
+                        const clampedX = Math.min(Math.max(rawX, 75), Math.max(75, rect.width - 75));
                         setTooltipPos({
-                          x: pt.x * scaleX,
+                          x: clampedX,
                           y: pt.y * scaleY,
                         });
                       }
@@ -273,8 +281,10 @@ export const RevenueTrendLineChart: React.FC<RevenueTrendLineChartProps> = ({
                       if (rect) {
                         const scaleX = rect.width / svgWidth;
                         const scaleY = rect.height / svgHeight;
+                        const rawX = pt.x * scaleX;
+                        const clampedX = Math.min(Math.max(rawX, 75), Math.max(75, rect.width - 75));
                         setTooltipPos({
-                          x: pt.x * scaleX,
+                          x: clampedX,
                           y: pt.y * scaleY,
                         });
                       }

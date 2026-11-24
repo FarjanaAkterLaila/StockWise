@@ -9,6 +9,7 @@ export const CardWrap = styled.div<{ $metricId: string }>`
   transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 
   &:hover {
     transform: translateY(-2px);
@@ -20,6 +21,7 @@ export const CardHeaderRow = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 `;
 
 export const MetricTitle = styled.span`
@@ -35,26 +37,30 @@ export const IconBox = styled.div<{ $metricId: string }>`
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 
   ${({ $metricId, theme }) => {
     switch ($metricId) {
-      case "sales_count":
+      case "total-sales":
+      case "cash-received":
+      case "net-cash-flow":
         return `
           background-color: ${theme.colors.successLight};
           color: ${theme.colors.success};
         `;
-      case "total_purchase":
-      case "inventory_value":
+      case "purchase-cost":
+      case "cash-outflow":
+      case "receivable-payable":
         return `
           background-color: ${theme.colors.infoLight};
           color: ${theme.colors.info};
         `;
-      case "low_stock":
+      case "low-stock":
         return `
           background-color: ${theme.colors.warningLight};
           color: ${theme.colors.warning};
         `;
-      case "revenue":
+      case "total-revenue":
       default:
         return `
           background-color: ${theme.colors.primaryLight};
@@ -68,15 +74,18 @@ export const ValueRow = styled.div`
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   margin: 14px 0 10px;
 `;
 
 export const MetricValue = styled.span`
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 800;
   color: ${({ theme }) => theme.colors.textPrimary};
   letter-spacing: -0.5px;
   font-feature-settings: "tnum";
+  overflow-wrap: anywhere;
 `;
 
 export const StatusPill = styled.span<{ $isPositive: boolean }>`
@@ -93,7 +102,8 @@ export const StatusPill = styled.span<{ $isPositive: boolean }>`
 export const FooterRow = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
   font-size: 11.5px;
 `;
 

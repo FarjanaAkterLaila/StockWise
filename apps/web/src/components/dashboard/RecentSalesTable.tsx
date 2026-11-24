@@ -4,7 +4,8 @@ import type { RecentSale, PaymentStatus } from "@/types";
 import { Badge } from "@/components/common/Badge";
 import { Card } from "@/components/common/Card";
 import { CustomSelect } from "@/components/common/CustomSelect";
-import { formatCurrency, formatDate } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/formatters";
+import { formatDashboardDate } from "@/utils/dashboard.utils";
 import { PAYMENT_STATUS, BADGE_VARIANTS } from "@/utils/constants";
 import { ReceiptModal } from "./ReceiptModal";
 import {
@@ -154,7 +155,9 @@ export const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
             {filteredSales.length === 0 ? (
               <tr>
                 <EmptyMessage colSpan={7}>
-                  No sales found matching your filter criteria.
+                  {sales.length === 0
+                    ? "No active sales invoices recorded yet."
+                    : "No sales found matching your filter criteria."}
                 </EmptyMessage>
               </tr>
             ) : (
@@ -208,7 +211,7 @@ export const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
                     </TableCell>
                     <TableCell>
                       <DateBlock>
-                        <span>{formatDate(sale.date)}</span>
+                        <span>{formatDashboardDate(sale.date)}</span>
                         <TimeText>{sale.time}</TimeText>
                       </DateBlock>
                     </TableCell>

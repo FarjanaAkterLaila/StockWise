@@ -59,10 +59,10 @@ export const LowStockAlert: React.FC<LowStockAlertProps> = ({
     >
       <LowStockList>
         {products.map((item) => {
-          const percentage = Math.min(
-            100,
-            Math.round((item.currentStock / item.minStock) * 100),
-          );
+          const percentage =
+            item.minStock > 0
+              ? Math.min(100, Math.round((item.currentStock / item.minStock) * 100))
+              : 0;
           const isCritical = item.currentStock <= 2;
 
           return (
@@ -129,7 +129,7 @@ export const LowStockAlert: React.FC<LowStockAlertProps> = ({
       <LowStockFooter>
         <FooterInfo>
           <Boxes size={16} />
-          <span>5 items out of 142 SKUs require distributor intake</span>
+          <span>{products.length} low-stock items require distributor intake</span>
         </FooterInfo>
         <BulkOrderButton onClick={onViewInventory} type="button">
           Create Bulk Restock PO

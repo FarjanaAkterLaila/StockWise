@@ -32,17 +32,19 @@ const calculateDonutSegments = (
   circumference: number,
 ) => {
   let accumulatedOffset = 0;
-  return items.map((item) => {
-    const strokeDasharray = `${(item.percentage / 100) * circumference} ${circumference}`;
-    const strokeDashoffset = -accumulatedOffset;
-    accumulatedOffset += (item.percentage / 100) * circumference;
+  return items
+    .filter((item) => item.count > 0 && item.percentage > 0)
+    .map((item) => {
+      const strokeDasharray = `${(item.percentage / 100) * circumference} ${circumference}`;
+      const strokeDashoffset = -accumulatedOffset;
+      accumulatedOffset += (item.percentage / 100) * circumference;
 
-    return {
-      ...item,
-      strokeDasharray,
-      strokeDashoffset,
-    };
-  });
+      return {
+        ...item,
+        strokeDasharray,
+        strokeDashoffset,
+      };
+    });
 };
 
 export const InventoryStatusDonutChart: React.FC<
