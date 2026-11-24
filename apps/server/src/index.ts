@@ -1,22 +1,13 @@
-import express from "express";
-import cors from "cors";
 import dotenv from "dotenv";
+import { createApp } from "./app";
 
 dotenv.config();
 
-const app = express();
+const app = createApp();
 const PORT = process.env.PORT || 5000;
-
-app.use(cors());
-app.use(express.json());
-
-app.get("/api/health", (_req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "StockWise API is running!",
-  });
-});
 
 app.listen(PORT, () => {
   console.log(`StockWise API running on port ${PORT}`);
 });
+
+export default app;
