@@ -16,6 +16,7 @@ interface AccountsOverviewStatsProps {
   totalExpenses: number;
   totalPurchasePayments: number;
   totalPayable: number;
+  totalReceivable: number;
   netCashFlow: number;
   marginPercentage: number;
 }
@@ -25,6 +26,7 @@ export const AccountsOverviewStats: React.FC<AccountsOverviewStatsProps> = ({
   totalExpenses,
   totalPurchasePayments,
   totalPayable,
+  totalReceivable,
   netCashFlow,
   marginPercentage,
 }) => {
@@ -78,6 +80,19 @@ export const AccountsOverviewStats: React.FC<AccountsOverviewStatsProps> = ({
           <StatValue>{formatCurrency(totalPayable)}</StatValue>
           <StatBadge $positive={totalPayable === 0}>
             <span>{totalPayable > 0 ? "Distributor Dues Pending" : "All Vendors Settled"}</span>
+          </StatBadge>
+        </StatDetails>
+      </StatCard>
+
+      <StatCard>
+        <StatIconBox $colorVariant={totalReceivable > 0 ? "info" : "success"}>
+          <Clock size={22} />
+        </StatIconBox>
+        <StatDetails>
+          <StatLabel>Total Receivable</StatLabel>
+          <StatValue>{formatCurrency(totalReceivable)}</StatValue>
+          <StatBadge $positive={totalReceivable === 0}>
+            <span>{totalReceivable > 0 ? "Customer Dues Pending" : "All Customers Settled"}</span>
           </StatBadge>
         </StatDetails>
       </StatCard>

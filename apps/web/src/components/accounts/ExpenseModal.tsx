@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import type { AccountsPaymentMethod, Expense, ExpenseCategory } from "@/types";
 import { EXPENSE_CATEGORIES } from "@/utils/constants";
 import { ACCOUNTS_PAYMENT_METHODS } from "@/utils/accounts.utils";
@@ -38,10 +38,11 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSaving) return;
+    if (savingRef.current) return;
     const errors = validateExpenseForm(formData);
     setFormErrors(errors);
     if (Object.keys(errors).length > 0) return;
@@ -55,10 +56,12 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       paymentMethod: formData.paymentMethod,
     };
 
+    savingRef.current = true;
     setIsSaving(true);
     try {
       if (await onSave(expenseRecord)) onClose();
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
     }
   };
@@ -68,10 +71,17 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       onSubmit={handleSubmit}
+      isSubmitting={isSaving}
       title={isEditing ? "Edit Expense Record" : "Record Store Expense"}
       subtitle="Manage store operating expenses, utilities, payroll, and logistics payouts"
       size="md"
-      submitText={isEditing ? "Update Expense" : "Save Expense Voucher"}
+      submitText={
+        isSaving
+          ? "Saving..."
+          : isEditing
+            ? "Update Expense"
+            : "Save Expense Voucher"
+      }
     >
       <FormGroup>
         <FormLabel>Expense Title *</FormLabel>

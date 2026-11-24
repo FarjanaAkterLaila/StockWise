@@ -68,9 +68,6 @@ const RANGE_OPTIONS = [
 export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
   monthlyData = [],
   expenses = [],
-  totalIncome = 0,
-  totalExpenses = 0,
-  totalPurchasePayments = 0,
 }) => {
   const theme = useTheme();
 
@@ -84,16 +81,13 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
     avgIncome,
     avgExpense,
     avgNet,
+    periodTotals,
     categoryExpenses,
     chartLayout,
     hoveredItem,
   } = useFinancialAnalytics(monthlyData, expenses);
 
-  const netOperatingProfit = totalIncome - totalExpenses - totalPurchasePayments;
-  const netMarginPercent =
-    totalIncome > 0
-      ? Math.round((netOperatingProfit / totalIncome) * 100)
-      : 0;
+  const rangeLabel = range === "6m" ? "Last 6 months" : "Last 12 months";
 
   return (
     <AnalyticsGrid>
@@ -134,7 +128,7 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
             </StatNumber>
           </SummaryStatItem>
           <SummaryStatItem>
-            <StatLabel>Monthly Avg. Net Profit</StatLabel>
+            <StatLabel>Monthly Avg. Net Cash</StatLabel>
             <StatNumber $variant="success">{formatCurrency(avgNet)}</StatNumber>
           </SummaryStatItem>
         </SummaryStatsRow>
@@ -281,7 +275,7 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
                 </TooltipValue>
               </TooltipRow>
               <TooltipRow>
-                <TooltipLabel>Net Margin:</TooltipLabel>
+                <TooltipLabel>Net Cash Flow:</TooltipLabel>
                 <TooltipValue
                   $color={
                     hoveredItem.data.netProfit >= 0
@@ -299,29 +293,29 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
 
       <PnLCard>
         <PnLHeader>
-          <PnLTitle>Profit &amp; Loss Statement</PnLTitle>
+          <PnLTitle>Cash Flow Summary</PnLTitle>
           <PnLSubtitle>
-            Fiscal period operational performance summary
+            {rangeLabel} cash inflows and outflows
           </PnLSubtitle>
         </PnLHeader>
 
         <PnLSection>
-          <PnLSectionTitle>Revenue &amp; Inflows</PnLSectionTitle>
+          <PnLSectionTitle>Cash Inflows</PnLSectionTitle>
           <PnLRow>
             <PnLLabel>Received Sales Payments</PnLLabel>
-            <PnLValue>{formatCurrency(totalIncome)}</PnLValue>
+            <PnLValue>{formatCurrency(periodTotals.periodIncome)}</PnLValue>
           </PnLRow>
           <PnLRow>
-            <PnLLabel $bold>Total Income</PnLLabel>
-            <PnLValue $bold>{formatCurrency(totalIncome)}</PnLValue>
+            <PnLLabel $bold>Total Cash Received</PnLLabel>
+            <PnLValue $bold>{formatCurrency(periodTotals.periodIncome)}</PnLValue>
           </PnLRow>
         </PnLSection>
 
         <PnLSection>
-          <PnLSectionTitle>Purchase Payments</PnLSectionTitle>
+          <PnLSectionTitle>Supplier Cash Outflows</PnLSectionTitle>
           <PnLRow>
             <PnLLabel>Supplier payments recorded</PnLLabel>
-            <PnLValue>{formatCurrency(totalPurchasePayments)}</PnLValue>
+            <PnLValue>{formatCurrency(periodTotals.periodPurchasePayments)}</PnLValue>
           </PnLRow>
         </PnLSection>
 
@@ -337,12 +331,12 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
           ) : (
             <PnLRow>
               <PnLLabel>Operational Outflow</PnLLabel>
-              <PnLValue>{formatCurrency(totalExpenses)}</PnLValue>
+              <PnLValue>{formatCurrency(periodTotals.periodOperatingExpenses)}</PnLValue>
             </PnLRow>
           )}
           <PnLRow>
-            <PnLLabel $bold>Total Operating Outflow</PnLLabel>
-            <PnLValue $bold>{formatCurrency(totalExpenses)}</PnLValue>
+            <PnLLabel $bold>Total Operating Expenses</PnLLabel>
+            <PnLValue $bold>{formatCurrency(periodTotals.periodOperatingExpenses)}</PnLValue>
           </PnLRow>
         </PnLSection>
 
@@ -352,17 +346,17 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
           <PnLTotalLabel>
             <span>Net Cash Flow</span>
             <PnLMarginSubtext>
-              ({netMarginPercent}% overall profitability)
+              ({periodTotals.periodCashMarginPercent}% net cash margin • {range})
             </PnLMarginSubtext>
           </PnLTotalLabel>
-          <PnLTotalValue $isPositive={netOperatingProfit >= 0}>
-            {formatCurrency(netOperatingProfit)}
+          <PnLTotalValue $isPositive={periodTotals.periodNetCashFlow >= 0}>
+            {formatCurrency(periodTotals.periodNetCashFlow)}
           </PnLTotalValue>
         </PnLTotalRow>
 
         {categoryExpenses.length > 0 && (
           <PnLBreakdownSection>
-            <PnLSectionTitle>Operating Expense Breakdown</PnLSectionTitle>
+            <PnLSectionTitle>Operating Expense Breakdown ({range})</PnLSectionTitle>
             <CategoryProgressList>
               {categoryExpenses.slice(0, 4).map((cat) => (
                 <CategoryProgressItem key={cat.name}>

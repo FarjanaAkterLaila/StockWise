@@ -1,9 +1,10 @@
 import React from "react";
 import type { SupplierPaymentRecord } from "@/types";
 import { formatCurrency } from "@/utils/formatters";
-import { PAYMENT_STATUS_OPTIONS } from "@/utils/constants";
+import { PAYMENT_STATUS_OPTIONS, DEFAULT_VALUES } from "@/utils/constants";
 import {
   SUPPLIER_PAYMENT_COLUMNS,
+  ACCOUNTS_PAYMENT_METHODS,
   PAYMENT_ICON_MAP,
   PAYMENT_STATUS_VARIANT_MAP,
   formatAccountsDate,
@@ -29,6 +30,9 @@ import {
   SearchField,
   SearchInput,
   FilterSelectsGroup,
+  DateRangeGroup,
+  DateRangeSeparator,
+  DateInput,
   ClearFilterBtn,
   TableRow,
   TableCell,
@@ -84,6 +88,12 @@ export const SupplierPayments: React.FC<SupplierPaymentsProps> = ({
     setSearchTerm,
     selectedStatus,
     setSelectedStatus,
+    selectedPaymentMethod,
+    setSelectedPaymentMethod,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
     viewingPayment,
     setViewingPayment,
     filteredPayments,
@@ -115,6 +125,32 @@ export const SupplierPayments: React.FC<SupplierPaymentsProps> = ({
                 label: opt.label,
               }))}
             />
+
+            <CustomSelect
+              value={selectedPaymentMethod}
+              onChange={setSelectedPaymentMethod}
+              ariaLabel="Filter supplier payments by payment method"
+              options={[
+                { value: DEFAULT_VALUES.FILTER_ALL, label: "All Payment Methods" },
+                ...ACCOUNTS_PAYMENT_METHODS.map((m) => ({ value: m, label: m })),
+              ]}
+            />
+
+            <DateRangeGroup>
+              <DateInput
+                type="date"
+                aria-label="Supplier payments from date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+              <DateRangeSeparator>–</DateRangeSeparator>
+              <DateInput
+                type="date"
+                aria-label="Supplier payments to date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </DateRangeGroup>
 
             {hasActiveFilters && (
               <ClearFilterBtn onClick={handleResetFilters} type="button">

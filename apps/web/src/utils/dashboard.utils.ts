@@ -12,11 +12,11 @@ export const DASHBOARD_METRIC_IDS = {
 export const INITIAL_EMPTY_METRICS: MetricSummary[] = [
   {
     id: DASHBOARD_METRIC_IDS.TOTAL_REVENUE,
-    title: "Total Revenue",
+    title: "Billed Sales",
     value: "৳0",
     change: "Live",
     isPositive: true,
-    period: "All-time POS sales",
+    period: "Active invoices • Cash received: ৳0",
     iconName: "dollar-sign",
   },
   {
@@ -25,16 +25,16 @@ export const INITIAL_EMPTY_METRICS: MetricSummary[] = [
     value: "0",
     change: "Live",
     isPositive: true,
-    period: "Completed orders",
+    period: "Active sales orders",
     iconName: "shopping-cart",
   },
   {
     id: DASHBOARD_METRIC_IDS.PURCHASE_COST,
-    title: "Purchase Outflow",
+    title: "Purchase Bills",
     value: "৳0",
     change: "Live",
     isPositive: false,
-    period: "Vendor restock",
+    period: "Vendor PO bills • Paid: ৳0",
     iconName: "shopping-bag",
   },
   {
@@ -50,13 +50,22 @@ export const INITIAL_EMPTY_METRICS: MetricSummary[] = [
 
 const METRIC_RESOLVERS: Record<
   string,
-  (metrics: DashboardStatsResult["metrics"]) => string
+  (metrics: DashboardStatsResult["metrics"]) => { value: string; period?: string }
 > = {
-  [DASHBOARD_METRIC_IDS.TOTAL_REVENUE]: (m) => formatCurrency(m.totalRevenue),
-  [DASHBOARD_METRIC_IDS.TOTAL_SALES]: (m) => String(m.totalSalesCount),
-  [DASHBOARD_METRIC_IDS.PURCHASE_COST]: (m) =>
-    formatCurrency(m.totalPurchaseCost),
-  [DASHBOARD_METRIC_IDS.LOW_STOCK]: (m) => String(m.lowStockCount),
+  [DASHBOARD_METRIC_IDS.TOTAL_REVENUE]: (m) => ({
+    value: formatCurrency(m.totalRevenue),
+    period: `Active invoices • Cash received: ${formatCurrency(m.totalCashReceived)}`,
+  }),
+  [DASHBOARD_METRIC_IDS.TOTAL_SALES]: (m) => ({
+    value: String(m.totalSalesCount),
+  }),
+  [DASHBOARD_METRIC_IDS.PURCHASE_COST]: (m) => ({
+    value: formatCurrency(m.totalPurchaseCost),
+    period: `Vendor PO bills • Paid: ${formatCurrency(m.totalSupplierPaid)}`,
+  }),
+  [DASHBOARD_METRIC_IDS.LOW_STOCK]: (m) => ({
+    value: String(m.lowStockCount),
+  }),
 };
 
 export const updateMetricsWithData = (
@@ -65,6 +74,12 @@ export const updateMetricsWithData = (
 ): MetricSummary[] => {
   return prevMetrics.map((m) => {
     const resolver = METRIC_RESOLVERS[m.id];
-    return resolver ? { ...m, value: resolver(metricsData) } : m;
+    if (!resolver) return m;
+    const resolved = resolver(metricsData);
+    return {
+      ...m,
+      value: resolved.value,
+      ...(resolved.period ? { period: resolved.period } : {}),
+    };
   });
 };

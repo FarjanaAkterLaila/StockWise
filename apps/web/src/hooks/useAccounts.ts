@@ -7,7 +7,11 @@ import type {
   MonthlyFinancialSummary,
 } from "@/types";
 import { ACCOUNTS_TABS, type AccountsTabId } from "@/utils/constants";
-import { calculateAccountsOverview } from "@/utils/accounts.utils";
+import {
+  calculateAccountsOverview,
+  getRecentMonthBuckets,
+  toLocalDateKey,
+} from "@/utils/accounts.utils";
 import {
   fetchExpenses,
   createExpense,
@@ -16,6 +20,7 @@ import {
   fetchCustomerPayments,
   fetchSupplierPayments,
   fetchTotalPurchasePayable,
+  fetchTotalSalesReceivable,
 } from "@/services/accounts.service";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
@@ -39,19 +44,22 @@ export const useAccounts = () => {
     SupplierPaymentRecord[]
   >([]);
   const [totalPurchasePayable, setTotalPurchasePayable] = useState(0);
+  const [totalSalesReceivable, setTotalSalesReceivable] = useState(0);
 
   const reloadAccounts = useCallback(async (): Promise<boolean> => {
     try {
-      const [expData, custPayData, suppPayData, payableData] = await Promise.all([
+      const [expData, custPayData, suppPayData, payableData, receivableData] = await Promise.all([
         fetchExpenses(),
         fetchCustomerPayments(),
         fetchSupplierPayments(),
         fetchTotalPurchasePayable(),
+        fetchTotalSalesReceivable(),
       ]);
       setExpenses(expData);
       setCustomerPayments(custPayData);
       setSupplierPayments(suppPayData);
       setTotalPurchasePayable(payableData);
+      setTotalSalesReceivable(receivableData);
       setLoadError(null);
       return true;
     } catch (err: unknown) {
@@ -86,50 +94,47 @@ export const useAccounts = () => {
   }, [customerPayments]);
 
   const monthlyFinancials = useMemo<MonthlyFinancialSummary[]>(() => {
-    const now = new Date();
-    const result: MonthlyFinancialSummary[] = [];
-
-    for (let i = 11; i >= 0; i--) {
-      const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const yearMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, "0")}`;
-      const monthShort = targetDate.toLocaleString("en-US", { month: "short" });
-      const monthFull = targetDate.toLocaleString("en-US", {
-        month: "long",
-        year: "numeric",
-      });
-
+    return getRecentMonthBuckets(12).map(({ yearMonth, monthShort, monthFull }) => {
       const monthIncome = customerPayments
-        .filter((cp) => (cp.date || "").slice(0, 7) === yearMonth)
+        .filter((cp) => toLocalDateKey(cp.date).slice(0, 7) === yearMonth)
         .reduce((sum, cp) => sum + (Number(cp.paidAmount) || 0), 0);
 
-      const monthExpenses =
-        expenses
-          .filter((e) => (e.date || "").slice(0, 7) === yearMonth)
-          .reduce((sum, e) => sum + (Number(e.amount) || 0), 0) +
-        supplierPayments
-          .filter((sp) => (sp.date || "").slice(0, 7) === yearMonth)
-          .reduce((sum, sp) => sum + (Number(sp.paidAmount) || 0), 0);
+      const operatingExpense = expenses
+        .filter((e) => toLocalDateKey(e.date).slice(0, 7) === yearMonth)
+        .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
-      const netProfit = monthIncome - monthExpenses;
+      const purchaseExpense = supplierPayments
+        .filter((sp) => toLocalDateKey(sp.date).slice(0, 7) === yearMonth)
+        .reduce((sum, sp) => sum + (Number(sp.paidAmount) || 0), 0);
+
+      const monthExpenses = operatingExpense + purchaseExpense;
+      const netCashFlow = monthIncome - monthExpenses;
       const marginPercentage =
-        monthIncome > 0 ? Math.round((netProfit / monthIncome) * 100) : 0;
+        monthIncome > 0 ? Math.round((netCashFlow / monthIncome) * 100) : 0;
 
-      result.push({
+      return {
+        yearMonth,
         month: monthShort,
         monthFull,
         income: monthIncome,
         expense: monthExpenses,
-        netProfit,
+        operatingExpense,
+        purchaseExpense,
+        netProfit: netCashFlow,
         marginPercentage,
-      });
-    }
-
-    return result;
+      };
+    });
   }, [customerPayments, expenses, supplierPayments]);
 
   const overviewMetrics = useMemo(() => {
-    return calculateAccountsOverview(customerPayments, expenses, supplierPayments, totalPurchasePayable);
-  }, [customerPayments, expenses, supplierPayments, totalPurchasePayable]);
+    return calculateAccountsOverview(
+      customerPayments,
+      expenses,
+      supplierPayments,
+      totalPurchasePayable,
+      totalSalesReceivable,
+    );
+  }, [customerPayments, expenses, supplierPayments, totalPurchasePayable, totalSalesReceivable]);
 
   const handleSaveExpense = async (newOrUpdatedExpense: Expense): Promise<boolean> => {
     try {

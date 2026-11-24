@@ -8,6 +8,7 @@ import type {
   CustomerType,
 } from "@/types";
 import { EXPENSE_CATEGORIES } from "@/utils/constants";
+import { toLocalDateKey } from "@/utils/accounts.utils";
 import type { ExpenseRow, PaymentRow } from "@/types/database.types";
 
 const isDateOnly = (value: string): boolean => {
@@ -69,10 +70,31 @@ interface CustomerPaymentRowWithRelations extends PaymentRow {
     invoice_number: string;
     total_amount: number;
     sale_date: string;
+    status?: string | null;
     customer_id: string | null;
     customers: { name: string; phone: string | null } | null;
   } | null;
 }
+
+const INELIGIBLE_SALE_STATUSES = new Set(["cancelled", "refunded", "draft"]);
+
+export const isEligibleSaleStatus = (status?: string | null): boolean => {
+  const normalizedStatus = typeof status === "string"
+    ? status.trim().toLowerCase()
+    : "";
+  return !INELIGIBLE_SALE_STATUSES.has(normalizedStatus);
+};
+
+export const isEligiblePurchaseStatus = (status?: string | null): boolean => {
+  const normalizedStatus = typeof status === "string"
+    ? status.trim().toLowerCase()
+    : "";
+  return normalizedStatus !== "cancelled";
+};
+
+const isEligibleCustomerSale = (
+  sale: CustomerPaymentRowWithRelations["sales"],
+): boolean => Boolean(sale) && isEligibleSaleStatus(sale?.status);
 
 interface SupplierPaymentRowWithRelations extends PaymentRow {
   purchases: {
@@ -179,7 +201,7 @@ export const fetchCustomerPayments = async (): Promise<
   const { data, error } = await supabase
     .from("payments")
     .select(
-      "id, sale_id, purchase_id, payment_type, amount, payment_date, payment_method, reference_number, notes, created_at, sales:sale_id (invoice_number, total_amount, sale_date, customer_id, customers:customer_id (name, phone))",
+      "id, sale_id, purchase_id, payment_type, amount, payment_date, payment_method, reference_number, notes, created_at, sales:sale_id (invoice_number, total_amount, sale_date, status, customer_id, customers:customer_id (name, phone))",
     )
     .eq("payment_type", "received")
     .is("purchase_id", null)
@@ -190,7 +212,17 @@ export const fetchCustomerPayments = async (): Promise<
 
   if (error) throw new Error(error.message);
 
-  const rows = (data || []) as unknown as CustomerPaymentRowWithRelations[];
+  const rawRows = (data || []) as unknown as CustomerPaymentRowWithRelations[];
+
+  // Exclude payments linked to deleted, cancelled, refunded, or draft sales
+  const seenIds = new Set<string>();
+  const rows: CustomerPaymentRowWithRelations[] = [];
+  for (const row of rawRows) {
+    if (!isEligibleCustomerSale(row.sales)) continue;
+    if (seenIds.has(row.id)) continue;
+    seenIds.add(row.id);
+    rows.push(row);
+  }
 
   const receivedBySale = new Map<string, number>();
   for (const payment of rows) {
@@ -211,20 +243,23 @@ export const fetchCustomerPayments = async (): Promise<
       id: p.id,
       invoiceNumber: sale?.invoice_number || `INV-${p.id.slice(0, 6)}`,
       customerName: sale?.customers?.name || "Walk-in Customer",
-      customerType: "Retail" as CustomerType,
+      customerType: (!sale?.customer_id || !sale?.customers
+        ? "Walk-in"
+        : "Retail") as CustomerType,
       customerPhone: sale?.customers?.phone || undefined,
-      date: typeof p.payment_date === "string" ? p.payment_date.slice(0, 10) : "",
+      date: toLocalDateKey(p.payment_date),
       paymentMethod: mapPaymentMethod(p.payment_method),
       referenceNumber: p.reference_number || undefined,
       notes: p.notes || undefined,
       totalAmount,
       paidAmount: Number(p.amount) || 0,
+      cumulativePaidAmount: paidForSale,
       dueAmount: Math.max(0, totalAmount - paidForSale),
-      paymentStatus: paidForSale >= totalAmount
-        ? "paid"
-        : paidForSale > 0
-          ? "partial"
-          : "unpaid",
+      paymentStatus: paidForSale <= 0
+        ? "unpaid"
+        : paidForSale >= totalAmount
+          ? "paid"
+          : "partial",
     };
   });
 };
@@ -250,7 +285,7 @@ export const fetchSupplierPayments = async (): Promise<
 
   // Filter out payments attached to deleted purchases or cancelled orders
   const validRows = rawRows.filter(
-    (row) => row.purchases && row.purchases.status?.toLowerCase() !== "cancelled",
+    (row) => row.purchases && isEligiblePurchaseStatus(row.purchases.status),
   );
 
   // Deduplicate payment records by ID so each transaction appears exactly once
@@ -284,7 +319,7 @@ export const fetchSupplierPayments = async (): Promise<
       purchaseNumber:
         p.purchases?.purchase_number || `PO-${p.id.slice(0, 6)}`,
       supplierName: p.purchases?.suppliers?.name || "Supplier",
-      date: typeof p.payment_date === "string" ? p.payment_date.slice(0, 10) : "",
+      date: toLocalDateKey(p.payment_date),
       paymentMethod: mapPaymentMethod(p.payment_method),
       referenceNumber: p.reference_number || undefined,
       notes: p.notes || undefined,
@@ -303,10 +338,10 @@ export const fetchSupplierPayments = async (): Promise<
 export const fetchTotalPurchasePayable = async (): Promise<number> => {
   const [{ data: purchases, error: purchasesError }, { data: payments, error: paymentsError }] =
     await Promise.all([
-      supabase.from("purchases").select("id, total_amount, status").neq("status", "cancelled"),
+      supabase.from("purchases").select("id, total_amount, status"),
       supabase
         .from("payments")
-        .select("purchase_id, amount")
+        .select("id, purchase_id, amount")
         .eq("payment_type", "paid")
         .is("sale_id", null)
         .not("purchase_id", "is", null),
@@ -315,20 +350,73 @@ export const fetchTotalPurchasePayable = async (): Promise<number> => {
   if (purchasesError) throw new Error(purchasesError.message);
   if (paymentsError) throw new Error(paymentsError.message);
 
-  const activePurchaseIds = new Set((purchases || []).map((p) => p.id));
+  const eligiblePurchasesById = new Map<string, number>();
+  for (const purchase of purchases || []) {
+    if (!purchase?.id || !isEligiblePurchaseStatus(purchase.status)) continue;
+    if (!eligiblePurchasesById.has(purchase.id)) {
+      eligiblePurchasesById.set(purchase.id, Number(purchase.total_amount) || 0);
+    }
+  }
 
   const paidByPurchase = new Map<string, number>();
+  const seenPaymentIds = new Set<string>();
   for (const payment of payments || []) {
-    if (!payment.purchase_id || !activePurchaseIds.has(payment.purchase_id)) continue;
+    if (!payment.id || seenPaymentIds.has(payment.id)) continue;
+    seenPaymentIds.add(payment.id);
+    if (!payment.purchase_id || !eligiblePurchasesById.has(payment.purchase_id)) continue;
     paidByPurchase.set(
       payment.purchase_id,
-      (paidByPurchase.get(payment.purchase_id) || 0) + Number(payment.amount || 0),
+      (paidByPurchase.get(payment.purchase_id) || 0) + (Number(payment.amount) || 0),
     );
   }
 
-  return (purchases || []).reduce((totalDue, purchase) => {
-    const total = Number(purchase.total_amount) || 0;
-    const paid = paidByPurchase.get(purchase.id) || 0;
-    return totalDue + Math.max(0, total - paid);
-  }, 0);
+  let totalPayable = 0;
+  for (const [purchaseId, total] of eligiblePurchasesById.entries()) {
+    const paid = paidByPurchase.get(purchaseId) || 0;
+    totalPayable += Math.max(0, total - paid);
+  }
+  return totalPayable;
+};
+
+export const fetchTotalSalesReceivable = async (): Promise<number> => {
+  const [{ data: sales, error: salesError }, { data: payments, error: paymentsError }] =
+    await Promise.all([
+      supabase.from("sales").select("id, total_amount, status"),
+      supabase
+        .from("payments")
+        .select("id, sale_id, amount")
+        .eq("payment_type", "received")
+        .is("purchase_id", null)
+        .not("sale_id", "is", null),
+    ]);
+
+  if (salesError) throw new Error(salesError.message);
+  if (paymentsError) throw new Error(paymentsError.message);
+
+  const eligibleSalesById = new Map<string, number>();
+  for (const sale of sales || []) {
+    if (!sale?.id || !isEligibleSaleStatus(sale.status)) continue;
+    if (!eligibleSalesById.has(sale.id)) {
+      eligibleSalesById.set(sale.id, Number(sale.total_amount) || 0);
+    }
+  }
+
+  const paidBySale = new Map<string, number>();
+  const seenPaymentIds = new Set<string>();
+  for (const payment of payments || []) {
+    if (!payment.id || seenPaymentIds.has(payment.id)) continue;
+    seenPaymentIds.add(payment.id);
+    if (!payment.sale_id || !eligibleSalesById.has(payment.sale_id)) continue;
+    paidBySale.set(
+      payment.sale_id,
+      (paidBySale.get(payment.sale_id) || 0) + (Number(payment.amount) || 0),
+    );
+  }
+
+  let totalReceivable = 0;
+  for (const [saleId, total] of eligibleSalesById.entries()) {
+    const paid = paidBySale.get(saleId) || 0;
+    totalReceivable += Math.max(0, total - paid);
+  }
+  return totalReceivable;
 };

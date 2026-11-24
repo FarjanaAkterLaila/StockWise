@@ -1,4 +1,5 @@
 import type { SalesPurchaseComparison, RevenueTrendPoint } from "@/types";
+import { computeNiceChartMax } from "@/utils/accounts.utils";
 
 export interface SalesPurchaseTotals {
   totalSales: number;
@@ -84,10 +85,9 @@ export const calculateBarChartLayout = (
 
   const rawMax = Math.max(
     ...activeData.map((d) => Math.max(d.sales, d.purchase)),
-    1000000,
+    0,
   );
-  const step = 1000000;
-  const maxY = Math.ceil((rawMax * 1.15) / step) * step;
+  const maxY = computeNiceChartMax(rawMax);
   const yTicks = [0, maxY * 0.25, maxY * 0.5, maxY * 0.75, maxY];
 
   const slotWidth = activeData.length > 0 ? plotWidth / activeData.length : 0;
@@ -124,9 +124,8 @@ export const calculateLineChartLayout = (
   const plotWidth = svgWidth - padding.left - padding.right;
   const plotHeight = svgHeight - padding.top - padding.bottom;
 
-  const rawMax = Math.max(...activePoints.map((p) => p.revenue), 100000);
-  const magnitude = Math.pow(10, Math.floor(Math.log10(rawMax)));
-  const maxY = Math.ceil((rawMax * 1.15) / (magnitude / 2)) * (magnitude / 2);
+  const rawMax = Math.max(...activePoints.map((p) => p.revenue), 0);
+  const maxY = computeNiceChartMax(rawMax);
   const yTicks = [0, maxY * 0.25, maxY * 0.5, maxY * 0.75, maxY];
 
   if (activePoints.length <= 1) {

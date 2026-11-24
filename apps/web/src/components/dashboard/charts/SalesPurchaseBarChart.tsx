@@ -82,7 +82,7 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
             <ChartTitle>Sales vs Purchase Overview</ChartTitle>
           </TitleRow>
           <ChartSubtitle>
-            Monthly sales revenue vs. vendor restock expense in BDT
+            Monthly billed sales vs. vendor purchase bills in BDT
           </ChartSubtitle>
         </TitleBlock>
 
@@ -98,19 +98,19 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
 
       <SummaryStatsRow>
         <SummaryStatItem>
-          <StatLabel>Sales</StatLabel>
+          <StatLabel>Billed Sales</StatLabel>
           <StatValue $colorVariant="primary">
             {formatCurrency(totals.totalSales)}
           </StatValue>
         </SummaryStatItem>
         <SummaryStatItem>
-          <StatLabel>Purchase</StatLabel>
+          <StatLabel>Purchase Bills</StatLabel>
           <StatValue $colorVariant="warning">
             {formatCurrency(totals.totalPurchase)}
           </StatValue>
         </SummaryStatItem>
         <SummaryStatItem>
-          <StatLabel>Net Margin</StatLabel>
+          <StatLabel>Sales - Purchases</StatLabel>
           <StatValue $colorVariant="success">
             {formatCurrency(totals.netMargin)} ({totals.marginPercent}%)
           </StatValue>
@@ -120,11 +120,11 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
       <LegendRow>
         <LegendItem>
           <LegendDot $color={theme.colors.primary} />
-          <span>Sales Revenue</span>
+          <span>Billed Sales</span>
         </LegendItem>
         <LegendItem>
           <LegendDot $color={theme.colors.warning} />
-          <span>Purchase Expense</span>
+          <span>Purchase Bills</span>
         </LegendItem>
       </LegendRow>
 
@@ -292,17 +292,17 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
             >
               <TooltipTitle>{hoveredItem.monthFull}</TooltipTitle>
               <TooltipRow>
-                <TooltipLabel>Sales:</TooltipLabel>
+                <TooltipLabel>Billed Sales:</TooltipLabel>
                 <TooltipValue>{formatCurrency(hoveredItem.sales)}</TooltipValue>
               </TooltipRow>
               <TooltipRow>
-                <TooltipLabel>Purchase:</TooltipLabel>
+                <TooltipLabel>Purchase Bills:</TooltipLabel>
                 <TooltipValue>
                   {formatCurrency(hoveredItem.purchase)}
                 </TooltipValue>
               </TooltipRow>
               <TooltipRow>
-                <TooltipLabel>Margin:</TooltipLabel>
+                <TooltipLabel>Difference:</TooltipLabel>
                 <TooltipValue $highlight={true}>
                   {formatCurrency(hoveredItem.margin)}
                 </TooltipValue>

@@ -30,6 +30,9 @@ import {
   SearchField,
   SearchInput,
   FilterSelectsGroup,
+  DateRangeGroup,
+  DateRangeSeparator,
+  DateInput,
   ClearFilterBtn,
   TableRow,
   TableCell,
@@ -78,6 +81,10 @@ export const CustomerPayments: React.FC<CustomerPaymentsProps> = ({
     setSearchTerm,
     selectedStatus,
     setSelectedStatus,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
     viewingPayment,
     setViewingPayment,
     filteredPayments,
@@ -109,6 +116,22 @@ export const CustomerPayments: React.FC<CustomerPaymentsProps> = ({
                 label: opt.label,
               }))}
             />
+
+            <DateRangeGroup>
+              <DateInput
+                type="date"
+                aria-label="Customer payments from date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+              <DateRangeSeparator>–</DateRangeSeparator>
+              <DateInput
+                type="date"
+                aria-label="Customer payments to date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </DateRangeGroup>
 
             {hasActiveFilters && (
               <ClearFilterBtn onClick={handleResetFilters} type="button">
@@ -331,9 +354,15 @@ export const CustomerPayments: React.FC<CustomerPaymentsProps> = ({
               <TotalsValueText>{formatCurrency(viewingPayment.totalAmount)}</TotalsValueText>
             </TotalsRow>
             <TotalsRow>
-              <span>Total Received / Paid:</span>
+              <span>This Payment Amount:</span>
               <TotalsValueText $bold>
                 {formatCurrency(viewingPayment.paidAmount)}
+              </TotalsValueText>
+            </TotalsRow>
+            <TotalsRow>
+              <span>Total Received on Invoice:</span>
+              <TotalsValueText>
+                {formatCurrency(viewingPayment.cumulativePaidAmount ?? viewingPayment.paidAmount)}
               </TotalsValueText>
             </TotalsRow>
             <TotalsRow $isGrandTotal>

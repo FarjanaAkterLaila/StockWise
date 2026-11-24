@@ -190,7 +190,7 @@ export const InlineCreateBtn = styled.button`
 
 export const StatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 16px;
 
   ${({ theme }) => theme.media.desktopLg} {
@@ -447,6 +447,44 @@ export const FilterSelectsGroup = styled.div`
     flex-direction: column;
     align-items: stretch;
     width: 100%;
+  }
+`;
+
+export const DateRangeGroup = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  ${({ theme }) => theme.media.mobile} {
+    width: 100%;
+  }
+`;
+
+export const DateRangeSeparator = styled.span`
+  font-size: 12px;
+  color: ${({ theme }) => theme.colors.textMuted};
+  flex-shrink: 0;
+`;
+
+export const DateInput = styled.input`
+  height: 36px;
+  padding: 0 10px;
+  border-radius: ${({ theme }) => theme.radius.md};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  background-color: ${({ theme }) => theme.colors.backgroundSubtle};
+  color: ${({ theme }) => theme.colors.textPrimary};
+  font-size: 12.5px;
+  font-family: inherit;
+  outline: none;
+
+  &:focus {
+    border-color: ${({ theme }) => theme.colors.primary};
+    box-shadow: 0 0 0 2px ${({ theme }) => theme.colors.primaryLight};
+  }
+
+  ${({ theme }) => theme.media.mobile} {
+    flex: 1;
+    min-width: 0;
   }
 `;
 

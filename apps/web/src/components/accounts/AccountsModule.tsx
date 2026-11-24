@@ -77,6 +77,7 @@ export const AccountsModule: React.FC = () => {
             totalExpenses={overviewMetrics.totalExpenses}
             totalPurchasePayments={overviewMetrics.totalPurchasePayments}
             totalPayable={overviewMetrics.totalPayable}
+            totalReceivable={overviewMetrics.totalReceivable}
             netCashFlow={overviewMetrics.netCashFlow}
             marginPercentage={overviewMetrics.marginPercentage}
           />

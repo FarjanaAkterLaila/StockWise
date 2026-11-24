@@ -36,6 +36,9 @@ import {
   SearchField,
   SearchInput,
   FilterSelectsGroup,
+  DateRangeGroup,
+  DateRangeSeparator,
+  DateInput,
   ClearFilterBtn,
   InlineCreateBtn,
   TableRow,
@@ -86,6 +89,10 @@ export const ExpenseManagement: React.FC<ExpenseManagementProps> = ({
     setSelectedCategory,
     selectedPaymentMethod,
     setSelectedPaymentMethod,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
     editingExpense,
     setEditingExpense,
     viewingExpense,
@@ -133,6 +140,22 @@ export const ExpenseManagement: React.FC<ExpenseManagementProps> = ({
                 ...ACCOUNTS_PAYMENT_METHODS.map((m) => ({ value: m, label: m })),
               ]}
             />
+
+            <DateRangeGroup>
+              <DateInput
+                type="date"
+                aria-label="Expenses from date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+              <DateRangeSeparator>–</DateRangeSeparator>
+              <DateInput
+                type="date"
+                aria-label="Expenses to date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </DateRangeGroup>
 
             {hasActiveFilters && (
               <ClearFilterBtn onClick={handleResetFilters} type="button">
@@ -196,10 +219,6 @@ export const ExpenseManagement: React.FC<ExpenseManagementProps> = ({
                   <PayIcon size={14} />
                   <span>{exp.paymentMethod}</span>
                 </CellMethodWrap>
-              </TableCell>
-
-              <TableCell>
-              <CellDateText>—</CellDateText>
               </TableCell>
 
               <TableCell $align="right">

@@ -46,7 +46,6 @@ export const EXPENSE_COLUMNS: TableColumn[] = [
   { label: "Date" },
   { label: "Amount" },
   { label: "Payment Method" },
-  { label: "Paid To / Recipient" },
   { label: "Actions", align: "right" },
 ];
 
@@ -71,8 +70,72 @@ export const PAYMENT_ICON_MAP: Record<string, LucideIcon> = {
 
 export const ACCOUNTS_PAYMENT_METHODS = [...PAYMENT_METHODS, "Cheque", "Other"] as const;
 
-export const isWithinDateRange = (date: string, from: string, to: string): boolean =>
-  (!from || date >= from) && (!to || date <= to);
+const BANGLADESH_TIME_ZONE = "Asia/Dhaka";
+
+const dhakaDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: BANGLADESH_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+export const toLocalDateKey = (value?: string | Date | null): string => {
+  if (!value) return "";
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+    const parsed = new Date(trimmed);
+    if (isNaN(parsed.getTime())) return trimmed.slice(0, 10);
+    return dhakaDateFormatter.format(parsed);
+  }
+  if (isNaN(value.getTime())) return "";
+  return dhakaDateFormatter.format(value);
+};
+
+export const getRecentMonthBuckets = (
+  count: number,
+  referenceDate: Date = new Date(),
+): Array<{ yearMonth: string; monthShort: string; monthFull: string }> => {
+  const localToday = toLocalDateKey(referenceDate);
+  const [refYear, refMonth] = localToday.split("-").map(Number);
+  const result: Array<{ yearMonth: string; monthShort: string; monthFull: string }> = [];
+
+  for (let i = count - 1; i >= 0; i--) {
+    const targetDate = new Date(Date.UTC(refYear, refMonth - 1 - i, 15));
+    const yearMonth = `${targetDate.getUTCFullYear()}-${String(targetDate.getUTCMonth() + 1).padStart(2, "0")}`;
+    const monthShort = targetDate.toLocaleString("en-US", {
+      month: "short",
+      timeZone: "UTC",
+    });
+    const monthFull = targetDate.toLocaleString("en-US", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+    result.push({ yearMonth, monthShort, monthFull });
+  }
+  return result;
+};
+
+export const computeNiceChartMax = (rawMax: number): number => {
+  if (!Number.isFinite(rawMax) || rawMax <= 0) return 1000;
+  const padded = rawMax * 1.15;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(padded)));
+  const fraction = padded / magnitude;
+  let niceStep: number;
+  if (fraction <= 1.2) niceStep = magnitude * 0.25;
+  else if (fraction <= 2.5) niceStep = magnitude * 0.5;
+  else if (fraction <= 5) niceStep = magnitude;
+  else niceStep = magnitude * 2;
+  const step = Math.max(1, niceStep);
+  return Math.ceil(padded / step) * step;
+};
+
+export const isWithinDateRange = (date: string, from: string, to: string): boolean => {
+  const key = toLocalDateKey(date);
+  return (!from || (key !== "" && key >= from)) && (!to || (key !== "" && key <= to));
+};
 
 export const formatAccountsDate = (date?: string | null): string => {
   if (!date || typeof date !== "string") return "";
@@ -138,6 +201,7 @@ export interface AccountsOverviewMetrics {
   totalExpenses: number;
   totalPurchasePayments: number;
   totalPayable: number;
+  totalReceivable: number;
   netCashFlow: number;
   marginPercentage: number;
 }
@@ -147,6 +211,7 @@ export const calculateAccountsOverview = (
   expenses: Expense[],
   supplierPayments: SupplierPaymentRecord[],
   totalPayable = 0,
+  totalReceivable = 0,
 ): AccountsOverviewMetrics => {
   const totalIncome = customerPayments.reduce(
     (acc, payment) => acc + (Number(payment.paidAmount) || 0),
@@ -166,6 +231,7 @@ export const calculateAccountsOverview = (
     totalExpenses,
     totalPurchasePayments,
     totalPayable,
+    totalReceivable,
     netCashFlow,
     marginPercentage,
   };
@@ -243,9 +309,9 @@ export const calculateFinancialChartLayout = (
 
   const maxVal = Math.max(
     ...activeData.map((d) => Math.max(d.income, d.expense)),
-    1000000,
+    0,
   );
-  const maxY = Math.ceil((maxVal * 1.15) / 1000000) * 1000000;
+  const maxY = computeNiceChartMax(maxVal);
 
   const numTicks = 4;
   const yTicks = Array.from({ length: numTicks + 1 }, (_, i) => {

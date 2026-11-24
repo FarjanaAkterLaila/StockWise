@@ -32,6 +32,9 @@ import {
   SearchField,
   SearchInput,
   FilterSelectsGroup,
+  DateRangeGroup,
+  DateRangeSeparator,
+  DateInput,
   ClearFilterBtn,
   TableRow,
   TableCell,
@@ -78,6 +81,10 @@ export const IncomeManagement: React.FC<IncomeManagementProps> = ({
     setSelectedSource,
     selectedPaymentMethod,
     setSelectedPaymentMethod,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
     viewingIncome,
     setViewingIncome,
     filteredIncomes,
@@ -120,6 +127,22 @@ export const IncomeManagement: React.FC<IncomeManagementProps> = ({
                 ...ACCOUNTS_PAYMENT_METHODS.map((m) => ({ value: m, label: m })),
               ]}
             />
+
+            <DateRangeGroup>
+              <DateInput
+                type="date"
+                aria-label="Income from date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+              <DateRangeSeparator>–</DateRangeSeparator>
+              <DateInput
+                type="date"
+                aria-label="Income to date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </DateRangeGroup>
 
             {hasActiveFilters && (
               <ClearFilterBtn onClick={handleResetFilters} type="button">

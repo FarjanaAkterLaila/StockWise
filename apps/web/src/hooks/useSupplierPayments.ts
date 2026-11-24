@@ -8,6 +8,9 @@ export const useSupplierPayments = (payments: SupplierPaymentRecord[]) => {
   const [selectedStatus, setSelectedStatus] = useState<string>(
     DEFAULT_VALUES.FILTER_ALL,
   );
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>(
+    DEFAULT_VALUES.FILTER_ALL,
+  );
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [viewingPayment, setViewingPayment] =
@@ -27,19 +30,28 @@ export const useSupplierPayments = (payments: SupplierPaymentRecord[]) => {
         selectedStatus === DEFAULT_VALUES.FILTER_ALL ||
         item.paymentStatus === selectedStatus;
 
+      const matchesMethod =
+        selectedPaymentMethod === DEFAULT_VALUES.FILTER_ALL ||
+        item.paymentMethod === selectedPaymentMethod;
+
       const matchesDate = isWithinDateRange(item.date, dateFrom, dateTo);
 
-      return matchesSearch && matchesStatus && matchesDate;
+      return matchesSearch && matchesStatus && matchesMethod && matchesDate;
     });
-  }, [payments, searchTerm, selectedStatus, dateFrom, dateTo]);
+  }, [payments, searchTerm, selectedStatus, selectedPaymentMethod, dateFrom, dateTo]);
 
   const hasActiveFilters = Boolean(
-    searchTerm.trim() || selectedStatus !== DEFAULT_VALUES.FILTER_ALL || dateFrom || dateTo,
+    searchTerm.trim() ||
+      selectedStatus !== DEFAULT_VALUES.FILTER_ALL ||
+      selectedPaymentMethod !== DEFAULT_VALUES.FILTER_ALL ||
+      dateFrom ||
+      dateTo,
   );
 
   const handleResetFilters = () => {
     setSearchTerm("");
     setSelectedStatus(DEFAULT_VALUES.FILTER_ALL);
+    setSelectedPaymentMethod(DEFAULT_VALUES.FILTER_ALL);
     setDateFrom("");
     setDateTo("");
   };
@@ -49,6 +61,8 @@ export const useSupplierPayments = (payments: SupplierPaymentRecord[]) => {
     setSearchTerm,
     selectedStatus,
     setSelectedStatus,
+    selectedPaymentMethod,
+    setSelectedPaymentMethod,
     dateFrom,
     setDateFrom,
     dateTo,

@@ -262,6 +262,7 @@ export interface CustomerPaymentRecord {
   notes?: string;
   totalAmount: number;
   paidAmount: number;
+  cumulativePaidAmount?: number;
   dueAmount: number;
   paymentStatus: PaymentStatus;
 }
@@ -282,10 +283,13 @@ export interface SupplierPaymentRecord {
 }
 
 export interface MonthlyFinancialSummary {
+  yearMonth?: string;
   month: string;
   monthFull: string;
   income: number;
   expense: number;
+  operatingExpense?: number;
+  purchaseExpense?: number;
   netProfit: number;
   marginPercentage: number;
 }

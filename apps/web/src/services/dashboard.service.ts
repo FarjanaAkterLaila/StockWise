@@ -1,4 +1,9 @@
 import { supabase } from "@/lib/supabase";
+import {
+  isEligibleSaleStatus,
+  isEligiblePurchaseStatus,
+} from "@/services/accounts.service";
+import { toLocalDateKey, getRecentMonthBuckets } from "@/utils/accounts.utils";
 import type {
   RecentSale,
   LowStockProduct,
@@ -20,8 +25,10 @@ interface ProductRowWithCategory extends ProductRow {
 export interface DashboardStatsResult {
   metrics: {
     totalRevenue: number;
+    totalCashReceived: number;
     totalSalesCount: number;
     totalPurchaseCost: number;
+    totalSupplierPaid: number;
     lowStockCount: number;
   };
   recentSales: RecentSale[];
@@ -32,32 +39,32 @@ export interface DashboardStatsResult {
 }
 
 export const fetchDashboardStats = async (): Promise<DashboardStatsResult> => {
-  // 1. Sales
+  // 1. Sales (exclude draft, cancelled, refunded; handle NULL and case variations)
   const { data: salesData, error: salesErr } = await supabase
     .from("sales")
     .select(
       "id, invoice_number, total_amount, sale_date, created_at, customer_id, status, customers:customer_id (name)",
     )
-    .neq("status", "cancelled")
     .order("created_at", { ascending: false });
 
   if (salesErr) throw new Error(salesErr.message);
 
   const rawSales = (salesData || []) as unknown as SaleRowWithCustomer[];
-  const sales = rawSales.filter(
-    (s) => (s.status?.toLowerCase() || "completed") !== "cancelled",
-  );
+  const sales = rawSales.filter((s) => isEligibleSaleStatus(s.status));
 
   const paidBySale = new Map<string, number>();
   if (sales.length > 0) {
     const { data: paymentRows, error: paymentError } = await supabase
       .from("payments")
-      .select("sale_id, amount")
+      .select("id, sale_id, amount")
       .in("sale_id", sales.map((sale) => sale.id))
       .is("purchase_id", null)
       .eq("payment_type", "received");
     if (paymentError) throw new Error(paymentError.message);
+    const seenSalePayIds = new Set<string>();
     for (const payment of paymentRows || []) {
+      if (!payment.id || seenSalePayIds.has(payment.id)) continue;
+      seenSalePayIds.add(payment.id);
       if (payment.sale_id) {
         paidBySale.set(
           payment.sale_id,
@@ -69,6 +76,10 @@ export const fetchDashboardStats = async (): Promise<DashboardStatsResult> => {
 
   const totalRevenue = sales.reduce(
     (sum, s) => sum + (Number(s.total_amount) || 0),
+    0,
+  );
+  const totalCashReceived = Array.from(paidBySale.values()).reduce(
+    (sum, val) => sum + val,
     0,
   );
   const totalSalesCount = sales.length;
@@ -88,16 +99,36 @@ export const fetchDashboardStats = async (): Promise<DashboardStatsResult> => {
     (p) => Number(p.quantity) <= (Number(p.min_stock_level) || 5),
   );
 
-  // 3. Purchases
+  // 3. Purchases (exclude cancelled; handle NULL and case variations)
   const { data: purchasesData, error: purErr } = await supabase
     .from("purchases")
-    .select("total_amount, status, purchase_date, created_at");
+    .select("id, total_amount, status, purchase_date, created_at");
 
   if (purErr) throw new Error(purErr.message);
 
-  const purchases = (purchasesData || []).filter(
-    (p) => (p.status?.toLowerCase() || "received") !== "cancelled",
+  const purchases = (purchasesData || []).filter((p) =>
+    isEligiblePurchaseStatus(p.status),
   );
+  const eligiblePurchaseIds = new Set(purchases.map((p) => p.id));
+
+  let totalSupplierPaid = 0;
+  if (purchases.length > 0) {
+    const { data: purchasePayRows, error: purchasePayErr } = await supabase
+      .from("payments")
+      .select("id, purchase_id, amount")
+      .eq("payment_type", "paid")
+      .is("sale_id", null)
+      .not("purchase_id", "is", null);
+    if (purchasePayErr) throw new Error(purchasePayErr.message);
+    const seenPurPayIds = new Set<string>();
+    for (const payment of purchasePayRows || []) {
+      if (!payment.id || seenPurPayIds.has(payment.id)) continue;
+      seenPurPayIds.add(payment.id);
+      if (payment.purchase_id && eligiblePurchaseIds.has(payment.purchase_id)) {
+        totalSupplierPaid += Number(payment.amount) || 0;
+      }
+    }
+  }
 
   const totalPurchaseCost = purchases.reduce(
     (sum, p) => sum + (Number(p.total_amount) || 0),
@@ -113,21 +144,22 @@ export const fetchDashboardStats = async (): Promise<DashboardStatsResult> => {
       id: s.id,
       invoiceNumber: s.invoice_number,
       customerName: s.customers?.name || "Walk-in Customer",
-      customerType: "Retail",
+      customerType: s.customer_id ? "Retail" : "Walk-in",
       itemsSummary: "Hardware Items",
       itemCount: 1,
       totalAmount,
       paidAmount,
       paymentStatus: (
-        paidAmount >= totalAmount
-          ? "paid"
-          : paidAmount > 0
-            ? "partial"
-            : "unpaid"
+        paidAmount <= 0
+          ? "unpaid"
+          : paidAmount >= totalAmount
+            ? "paid"
+            : "partial"
       ) as PaymentStatus,
       paymentMethod: "Cash",
-      date: d.toISOString().split("T")[0],
+      date: toLocalDateKey(s.sale_date || s.created_at),
       time: d.toLocaleTimeString("en-US", {
+        timeZone: "Asia/Dhaka",
         hour: "2-digit",
         minute: "2-digit",
       }),
@@ -156,85 +188,41 @@ export const fetchDashboardStats = async (): Promise<DashboardStatsResult> => {
       };
     });
 
-  // 6. Compute Real Sales vs Purchase Comparison (Last 12 Months)
-  const now = new Date();
-  const salesPurchaseComparison: SalesPurchaseComparison[] = [];
-  for (let i = 11; i >= 0; i--) {
-    const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const yearMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, "0")}`;
-    const monthShort = targetDate.toLocaleString("en-US", { month: "short" });
-    const monthFull = targetDate.toLocaleString("en-US", {
-      month: "long",
-      year: "numeric",
-    });
+  // 6. Compute Real Sales vs Purchase Comparison (Last 12 Months, Asia/Dhaka)
+  const salesPurchaseComparison: SalesPurchaseComparison[] = getRecentMonthBuckets(12).map(
+    ({ yearMonth, monthShort, monthFull }) => {
+      const monthSales = sales
+        .filter((s) => toLocalDateKey(s.sale_date || s.created_at).slice(0, 7) === yearMonth)
+        .reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0);
 
-    const monthSales = sales
-      .filter((s) => {
-        const dStr = (s.sale_date || s.created_at || "").slice(0, 7);
-        return dStr === yearMonth;
-      })
-      .reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0);
+      const monthPurchases = purchases
+        .filter((p) => toLocalDateKey(p.purchase_date || p.created_at).slice(0, 7) === yearMonth)
+        .reduce((sum, p) => sum + (Number(p.total_amount) || 0), 0);
 
-    const monthPurchases = purchases
-      .filter((p) => {
-        const dStr = (p.purchase_date || p.created_at || "").slice(0, 7);
-        return dStr === yearMonth;
-      })
-      .reduce((sum, p) => sum + (Number(p.total_amount) || 0), 0);
+      return {
+        month: monthShort,
+        monthFull,
+        sales: monthSales,
+        purchase: monthPurchases,
+        margin: monthSales - monthPurchases,
+      };
+    },
+  );
 
-    salesPurchaseComparison.push({
-      month: monthShort,
-      monthFull,
-      sales: monthSales,
-      purchase: monthPurchases,
-      margin: monthSales - monthPurchases,
-    });
-  }
+  // 7. Compute Real Revenue Trend (7d, 30d, 6m in Asia/Dhaka)
+  const localTodayKey = toLocalDateKey(new Date());
+  const [todayYear, todayMonth, todayDay] = localTodayKey.split("-").map(Number);
 
-  // 7. Compute Real Revenue Trend (7d, 30d, 6m)
-  const compute7dTrend = (): RevenueTrendPoint[] => {
+  const computeDailyTrend = (days: number, formatLabel: (d: Date) => string): RevenueTrendPoint[] => {
     const points: RevenueTrendPoint[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const isoDate = d.toISOString().split("T")[0];
-      const label = d.toLocaleDateString("en-US", { weekday: "short" });
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(Date.UTC(todayYear, todayMonth - 1, todayDay - i, 12));
+      const isoDate = d.toISOString().slice(0, 10);
+      const label = formatLabel(d);
 
-      const daySales = sales.filter((s) => {
-        const sDate = (s.sale_date || s.created_at || "").split("T")[0];
-        return sDate === isoDate;
-      });
-
-      const dayRevenue = daySales.reduce(
-        (sum, s) => sum + (Number(s.total_amount) || 0),
-        0,
+      const daySales = sales.filter(
+        (s) => toLocalDateKey(s.sale_date || s.created_at) === isoDate,
       );
-
-      points.push({
-        date: isoDate,
-        label,
-        revenue: dayRevenue,
-        invoices: daySales.length,
-      });
-    }
-    return points;
-  };
-
-  const compute30dTrend = (): RevenueTrendPoint[] => {
-    const points: RevenueTrendPoint[] = [];
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const isoDate = d.toISOString().split("T")[0];
-      const label = d.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-
-      const daySales = sales.filter((s) => {
-        const sDate = (s.sale_date || s.created_at || "").split("T")[0];
-        return sDate === isoDate;
-      });
 
       const dayRevenue = daySales.reduce(
         (sum, s) => sum + (Number(s.total_amount) || 0),
@@ -252,35 +240,28 @@ export const fetchDashboardStats = async (): Promise<DashboardStatsResult> => {
   };
 
   const compute6mTrend = (): RevenueTrendPoint[] => {
-    const points: RevenueTrendPoint[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const yearMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, "0")}`;
-      const label = targetDate.toLocaleString("en-US", { month: "short" });
-
-      const monthSales = sales.filter((s) => {
-        const sDate = (s.sale_date || s.created_at || "").slice(0, 7);
-        return sDate === yearMonth;
-      });
+    return getRecentMonthBuckets(6).map(({ yearMonth, monthShort }) => {
+      const monthSales = sales.filter(
+        (s) => toLocalDateKey(s.sale_date || s.created_at).slice(0, 7) === yearMonth,
+      );
 
       const monthRevenue = monthSales.reduce(
         (sum, s) => sum + (Number(s.total_amount) || 0),
         0,
       );
 
-      points.push({
+      return {
         date: yearMonth,
-        label,
+        label: monthShort,
         revenue: monthRevenue,
         invoices: monthSales.length,
-      });
-    }
-    return points;
+      };
+    });
   };
 
   const revenueTrend: Record<"7d" | "30d" | "6m", RevenueTrendPoint[]> = {
-    "7d": compute7dTrend(),
-    "30d": compute30dTrend(),
+    "7d": computeDailyTrend(7, (d) => d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" })),
+    "30d": computeDailyTrend(30, (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })),
     "6m": compute6mTrend(),
   };
 
@@ -338,8 +319,10 @@ export const fetchDashboardStats = async (): Promise<DashboardStatsResult> => {
   return {
     metrics: {
       totalRevenue,
+      totalCashReceived,
       totalSalesCount,
       totalPurchaseCost,
+      totalSupplierPaid,
       lowStockCount: lowStockProducts.length,
     },
     recentSales,

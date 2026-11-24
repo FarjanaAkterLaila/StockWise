@@ -4,6 +4,7 @@ import {
   calculateFinancialAverages,
   calculateCategoryExpenses,
   calculateFinancialChartLayout,
+  toLocalDateKey,
 } from "@/utils/accounts.utils";
 
 export const useFinancialAnalytics = (
@@ -22,9 +23,43 @@ export const useFinancialAnalytics = (
     return calculateFinancialAverages(activeData);
   }, [activeData]);
 
+  const periodTotals = useMemo(() => {
+    const periodIncome = activeData.reduce((sum, d) => sum + d.income, 0);
+    const periodOperatingExpenses = activeData.reduce(
+      (sum, d) => sum + (d.operatingExpense ?? d.expense),
+      0,
+    );
+    const periodPurchasePayments = activeData.reduce(
+      (sum, d) => sum + (d.purchaseExpense ?? 0),
+      0,
+    );
+    const periodNetCashFlow =
+      periodIncome - periodOperatingExpenses - periodPurchasePayments;
+    const periodCashMarginPercent =
+      periodIncome > 0
+        ? Math.round((periodNetCashFlow / periodIncome) * 100)
+        : 0;
+    return {
+      periodIncome,
+      periodOperatingExpenses,
+      periodPurchasePayments,
+      periodNetCashFlow,
+      periodCashMarginPercent,
+    };
+  }, [activeData]);
+
   const categoryExpenses = useMemo(() => {
-    return calculateCategoryExpenses(expenses);
-  }, [expenses]);
+    const activeMonths = new Set(
+      activeData.map((d) => d.yearMonth).filter((m): m is string => Boolean(m)),
+    );
+    const periodExpenses =
+      activeMonths.size > 0
+        ? expenses.filter((exp) =>
+            activeMonths.has(toLocalDateKey(exp.date).slice(0, 7)),
+          )
+        : expenses;
+    return calculateCategoryExpenses(periodExpenses);
+  }, [activeData, expenses]);
 
   const chartLayout = useMemo(() => {
     return calculateFinancialChartLayout(activeData);
@@ -56,6 +91,7 @@ export const useFinancialAnalytics = (
     avgIncome,
     avgExpense,
     avgNet,
+    periodTotals,
     categoryExpenses,
     chartLayout,
     hoveredItem,
