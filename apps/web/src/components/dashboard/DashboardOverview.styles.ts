@@ -15,8 +15,14 @@ export const MetricsGrid = styled.section`
     grid-template-columns: repeat(2, 1fr);
   }
 
+  ${({ theme }) => theme.media.tablet} {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   ${({ theme }) => theme.media.mobile} {
     grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
   }
 `;
 
@@ -25,6 +31,11 @@ export const AnalyticsSection = styled.section`
   flex-direction: column;
   gap: 20px;
   margin-bottom: 24px;
+
+  ${({ theme }) => theme.media.mobile} {
+    gap: 14px;
+    margin-bottom: 16px;
+  }
 `;
 
 export const ChartsRowTop = styled.div`
@@ -32,8 +43,16 @@ export const ChartsRowTop = styled.div`
   grid-template-columns: 1fr 1fr;
   gap: 20px;
 
+  ${({ theme }) => theme.media.desktopLg} {
+    grid-template-columns: 1fr;
+  }
+
   ${({ theme }) => theme.media.tablet} {
     grid-template-columns: 1fr;
+  }
+
+  ${({ theme }) => theme.media.mobile} {
+    gap: 14px;
   }
 `;
 

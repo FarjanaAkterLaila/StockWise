@@ -13,6 +13,12 @@ export const ReceiptHeader = styled.div`
   background-color: ${({ theme }) => theme.colors.backgroundSubtle};
   border-radius: ${({ theme }) => theme.radius.md};
   border: 1px solid ${({ theme }) => theme.colors.border};
+
+  ${({ theme }) => theme.media.mobile} {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
 `;
 
 export const StoreInfo = styled.div`
@@ -42,6 +48,10 @@ export const ReceiptBadgeGroup = styled.div`
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
+
+  ${({ theme }) => theme.media.mobile} {
+    align-items: flex-start;
+  }
 `;
 
 export const InvoiceTag = styled.span`

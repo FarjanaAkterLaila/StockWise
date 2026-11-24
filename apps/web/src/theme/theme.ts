@@ -116,7 +116,9 @@ export const theme = {
   },
 
   media: {
+    mobileSm: "@media (max-width: 480px)",
     mobile: "@media (max-width: 640px)",
+    tabletSm: "@media (max-width: 768px)",
     tablet: "@media (max-width: 992px)",
     desktopLg: "@media (max-width: 1200px)",
   },

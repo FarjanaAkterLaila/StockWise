@@ -15,6 +15,13 @@ export const CardHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+
+  ${({ theme }) => theme.media.mobile} {
+    padding: 14px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
 `;
 
 export const CardTitle = styled.h3`
@@ -33,9 +40,17 @@ export const CardSubtitle = styled.p`
 export const CardAction = styled.div`
   display: flex;
   align-items: center;
+
+  ${({ theme }) => theme.media.mobile} {
+    width: 100%;
+  }
 `;
 
 export const CardBody = styled.div`
   padding: 20px 22px;
   flex: 1;
+
+  ${({ theme }) => theme.media.mobile} {
+    padding: 14px 16px;
+  }
 `;

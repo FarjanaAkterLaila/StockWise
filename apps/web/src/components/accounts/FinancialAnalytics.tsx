@@ -182,6 +182,19 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
                 <ChartBarGroup
                   key={slot.month}
                   onMouseEnter={() => setHoveredIdx(idx)}
+                  onTouchStart={(e) => {
+                    setHoveredIdx(idx);
+                    const rect = e.currentTarget.closest("svg")?.getBoundingClientRect();
+                    if (rect) {
+                      const scaleX = rect.width / chartLayout.svgWidth;
+                      const scaleY = rect.height / chartLayout.svgHeight;
+                      setTooltipPos({
+                        x: slot.slotCenterX * scaleX,
+                        y: Math.min(slot.income.y, slot.expense.y) * scaleY,
+                      });
+                    }
+                  }}
+                  onClick={() => setHoveredIdx(idx)}
                 >
                   {/* Hover background pillar */}
                   {isHovered && (

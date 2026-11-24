@@ -32,11 +32,21 @@ export const ItemTopRow = styled.div`
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+
+  ${({ theme }) => theme.media.mobile} {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
 `;
 
 export const ProductInfo = styled.div`
   flex: 1;
   min-width: 0;
+
+  ${({ theme }) => theme.media.mobile} {
+    width: 100%;
+  }
 `;
 
 export const ProductNameRow = styled.div`
@@ -54,6 +64,10 @@ export const ProductName = styled.span`
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 220px;
+
+  ${({ theme }) => theme.media.mobile} {
+    max-width: 100%;
+  }
 `;
 
 export const ProductMetaRow = styled.div`
@@ -82,6 +96,11 @@ export const CategoryText = styled.span`
 export const ActionColumn = styled.div`
   display: flex;
   align-items: center;
+
+  ${({ theme }) => theme.media.mobile} {
+    width: 100%;
+    justify-content: flex-end;
+  }
 `;
 
 export const ReorderButton = styled.button`

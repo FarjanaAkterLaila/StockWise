@@ -61,12 +61,10 @@ export const useAccounts = () => {
   };
 
   const handleOpenRecordExpense = () => {
-    setActiveTab(ACCOUNTS_TABS.EXPENSES);
     setIsCreateExpenseOpen(true);
   };
 
   const handleOpenRecordIncome = () => {
-    setActiveTab(ACCOUNTS_TABS.INCOME);
     setIsCreateIncomeOpen(true);
   };
 

@@ -10,6 +10,11 @@ export const SelectContainer = styled.div<{
   max-width: 100%;
   min-width: ${({ $minWidth }) => $minWidth || "0"};
   box-sizing: border-box;
+
+  ${({ theme }) => theme.media.mobile} {
+    width: 100%;
+    display: block;
+  }
 `;
 
 export const SelectTrigger = styled.button<{
@@ -39,6 +44,10 @@ export const SelectTrigger = styled.button<{
   white-space: nowrap;
   box-shadow: ${({ $fullWidth }) =>
     $fullWidth ? "0 1px 2px rgba(15, 23, 42, 0.04)" : "none"};
+
+  ${({ theme }) => theme.media.mobile} {
+    width: 100%;
+  }
 
   &:hover {
     background-color: ${({ $fullWidth, theme }) =>
@@ -98,6 +107,11 @@ export const DropdownMenu = styled.div<{
   width: ${({ $fullWidth }) => ($fullWidth ? "100%" : "max-content")};
   max-width: ${({ $fullWidth }) => ($fullWidth ? "100%" : "min(420px, 90vw)")};
   max-height: 240px;
+
+  ${({ theme }) => theme.media.mobile} {
+    width: 100%;
+    max-width: 100%;
+  }
   overflow-y: auto;
   background-color: ${({ theme }) => theme.colors.background};
   border: 1px solid ${({ theme }) => theme.colors.border};

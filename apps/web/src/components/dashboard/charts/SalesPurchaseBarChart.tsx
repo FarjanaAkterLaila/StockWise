@@ -273,6 +273,20 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
                         });
                       }
                     }}
+                    onTouchStart={(e) => {
+                      setHoveredIdx(idx);
+                      const rect = e.currentTarget
+                        .closest("svg")
+                        ?.getBoundingClientRect();
+                      if (rect) {
+                        const scaleX = rect.width / svgWidth;
+                        const scaleY = rect.height / svgHeight;
+                        setTooltipPos({
+                          x: centerX * scaleX,
+                          y: Math.min(salesY, purchaseY) * scaleY,
+                        });
+                      }
+                    }}
                   />
                 </g>
               );

@@ -76,7 +76,7 @@ export const TopActionHeader = styled.div`
 
   ${({ theme }) => theme.media.mobile} {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
   }
 `;
 
@@ -100,6 +100,12 @@ export const HeaderActions = styled.div`
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+
+  ${({ theme }) => theme.media.mobile} {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 export const CreatePurchaseBtn = styled.button`
@@ -121,6 +127,11 @@ export const CreatePurchaseBtn = styled.button`
     background-color: ${({ theme }) => theme.colors.primaryHover};
     transform: translateY(-1px);
   }
+
+  ${({ theme }) => theme.media.mobile} {
+    width: 100%;
+    justify-content: center;
+  }
 `;
 
 export const StatsGrid = styled.div`
@@ -129,6 +140,10 @@ export const StatsGrid = styled.div`
   gap: 16px;
 
   ${({ theme }) => theme.media.desktopLg} {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  ${({ theme }) => theme.media.tablet} {
     grid-template-columns: repeat(2, 1fr);
   }
 
@@ -206,7 +221,7 @@ export const FilterBarContainer = styled.div`
   flex-wrap: wrap;
   box-shadow: ${({ theme }) => theme.shadows.card};
 
-  ${({ theme }) => theme.media.mobile} {
+  ${({ theme }) => theme.media.tablet} {
     flex-direction: column;
     align-items: stretch;
   }
@@ -218,7 +233,7 @@ export const SearchWrap = styled.div`
   min-width: 240px;
   max-width: 380px;
 
-  ${({ theme }) => theme.media.mobile} {
+  ${({ theme }) => theme.media.tablet} {
     max-width: 100%;
     min-width: 100%;
   }
@@ -264,7 +279,8 @@ export const FilterControls = styled.div`
 
   ${({ theme }) => theme.media.mobile} {
     width: 100%;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
   }
 `;
 

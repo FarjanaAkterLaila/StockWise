@@ -14,6 +14,10 @@ export const ChartCard = styled.div`
   &:hover {
     box-shadow: ${({ theme }) => theme.shadows.md};
   }
+
+  ${({ theme }) => theme.media.mobile} {
+    padding: 14px 16px;
+  }
 `;
 
 export const ChartHeader = styled.div`
@@ -70,6 +74,10 @@ export const ChartSubtitle = styled.p`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  ${({ theme }) => theme.media.mobile} {
+    white-space: normal;
+  }
 `;
 
 export const HeaderControls = styled.div`
@@ -77,6 +85,11 @@ export const HeaderControls = styled.div`
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+
+  ${({ theme }) => theme.media.mobile} {
+    width: 100%;
+    margin-top: 6px;
+  }
 `;
 
 export const FilterButtonGroup = styled.div`
@@ -131,10 +144,17 @@ export const SummaryStatsRow = styled.div`
   box-sizing: border-box;
   overflow: visible;
 
+  ${({ theme }) => theme.media.tablet} {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
   ${({ theme }) => theme.media.mobile} {
     grid-template-columns: 1fr;
     gap: 8px;
     min-height: auto;
+    padding: 10px 12px;
   }
 `;
 
@@ -182,6 +202,12 @@ export const LegendRow = styled.div`
   margin-bottom: 12px;
   font-size: 11.5px;
   color: ${({ theme }) => theme.colors.textSecondary};
+
+  ${({ theme }) => theme.media.mobile} {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
 `;
 
 export const LegendItem = styled.div`
@@ -201,6 +227,7 @@ export const LegendDot = styled.span<{ $color: string }>`
 export const ChartCanvasWrapper = styled.div`
   position: relative;
   width: 100%;
+  user-select: none;
   animation: chartCrossfade 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 
   @keyframes chartCrossfade {
@@ -222,6 +249,7 @@ export const SvgContainer = styled.div`
 
   svg {
     width: 100%;
+    max-width: 100%;
     height: auto;
     display: block;
     overflow: visible;

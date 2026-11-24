@@ -205,6 +205,10 @@ export const ItemLineHeaderRow = styled.div`
     text-align: right;
   }
 
+  ${({ theme }) => theme.media.tabletSm} {
+    display: none;
+  }
+
   ${({ theme }) => theme.media.mobile} {
     display: none;
   }
@@ -218,6 +222,14 @@ export const ItemLineRow = styled.div`
 
   > * {
     min-width: 0;
+  }
+
+  ${({ theme }) => theme.media.tabletSm} {
+    grid-template-columns: 1fr;
+    background-color: ${({ theme }) => theme.colors.background};
+    padding: 10px;
+    border-radius: ${({ theme }) => theme.radius.sm};
+    border: 1px solid ${({ theme }) => theme.colors.border};
   }
 
   ${({ theme }) => theme.media.mobile} {
@@ -324,6 +336,17 @@ export const ModalFooter = styled.div`
   gap: 10px;
   margin-top: 10px;
 
+  ${({ theme }) => theme.media.mobile} {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    width: 100%;
+
+    > * {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
   @media print {
     display: none;
   }
@@ -403,6 +426,10 @@ export const ViewMetaGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+
+  ${({ theme }) => theme.media.tablet} {
+    grid-template-columns: repeat(2, 1fr);
+  }
 
   ${({ theme }) => theme.media.mobile} {
     grid-template-columns: 1fr;

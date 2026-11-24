@@ -14,6 +14,10 @@ export const ChartCard = styled.div`
   &:hover {
     box-shadow: ${({ theme }) => theme.shadows.md};
   }
+
+  ${({ theme }) => theme.media.mobile} {
+    padding: 14px 16px;
+  }
 `;
 
 export const ChartHeader = styled.div`
@@ -70,6 +74,10 @@ export const ChartSubtitle = styled.p`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  ${({ theme }) => theme.media.mobile} {
+    white-space: normal;
+  }
 `;
 
 export const HeaderControls = styled.div`
@@ -77,6 +85,11 @@ export const HeaderControls = styled.div`
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+
+  ${({ theme }) => theme.media.mobile} {
+    width: 100%;
+    margin-top: 6px;
+  }
 `;
 
 export const FilterButtonGroup = styled.div`
@@ -131,6 +144,14 @@ export const MetricHighlightRow = styled.div`
   flex-wrap: nowrap;
   gap: 10px;
   overflow: visible;
+
+  ${({ theme }) => theme.media.mobile} {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    min-height: auto;
+    padding: 10px 12px;
+  }
 `;
 
 export const HighlightLeft = styled.div`
@@ -139,6 +160,12 @@ export const HighlightLeft = styled.div`
   gap: 10px;
   min-width: 0;
   overflow: visible;
+
+  ${({ theme }) => theme.media.mobile} {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
 `;
 
 export const HighlightValue = styled.span`
@@ -181,6 +208,7 @@ export const GrowthBadge = styled.span<{ $isPositive: boolean }>`
 export const ChartCanvasWrapper = styled.div`
   position: relative;
   width: 100%;
+  user-select: none;
   animation: chartCrossfade 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 
   @keyframes chartCrossfade {
@@ -202,6 +230,7 @@ export const SvgContainer = styled.div`
 
   svg {
     width: 100%;
+    max-width: 100%;
     height: auto;
     display: block;
     overflow: visible;

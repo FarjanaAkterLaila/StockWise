@@ -250,6 +250,20 @@ export const RevenueTrendLineChart: React.FC<RevenueTrendLineChartProps> = ({
                         });
                       }
                     }}
+                    onTouchStart={(e) => {
+                      setHoveredIdx(idx);
+                      const rect = e.currentTarget
+                        .closest("svg")
+                        ?.getBoundingClientRect();
+                      if (rect) {
+                        const scaleX = rect.width / svgWidth;
+                        const scaleY = rect.height / svgHeight;
+                        setTooltipPos({
+                          x: pt.x * scaleX,
+                          y: pt.y * scaleY,
+                        });
+                      }
+                    }}
                   />
                 </g>
               );

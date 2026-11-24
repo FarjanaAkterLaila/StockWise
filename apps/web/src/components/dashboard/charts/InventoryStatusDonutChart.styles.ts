@@ -14,6 +14,10 @@ export const ChartCard = styled.div`
   &:hover {
     box-shadow: ${({ theme }) => theme.shadows.md};
   }
+
+  ${({ theme }) => theme.media.mobile} {
+    padding: 14px 16px;
+  }
 `;
 
 export const ChartHeader = styled.div`
@@ -23,6 +27,11 @@ export const ChartHeader = styled.div`
   gap: 12px;
   margin-bottom: 16px;
   flex-wrap: wrap;
+
+  ${({ theme }) => theme.media.mobile} {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 `;
 
 export const TitleBlock = styled.div`
@@ -74,6 +83,10 @@ export const DonutLayout = styled.div`
     flex-direction: column;
     align-items: center;
     gap: 24px;
+  }
+
+  ${({ theme }) => theme.media.mobile} {
+    gap: 18px;
   }
 `;
 
@@ -154,6 +167,10 @@ export const LegendCard = styled.div<{ $isActive: boolean; $color: string }>`
     background-color: ${({ theme }) => theme.colors.backgroundSubtle};
     border-color: ${({ $color }) => $color};
     transform: translateX(2px);
+  }
+
+  ${({ theme }) => theme.media.mobile} {
+    padding: 8px 12px;
   }
 `;
 

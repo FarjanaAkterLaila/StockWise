@@ -15,12 +15,19 @@ export const HeaderContainer = styled.header`
   ${({ theme }) => theme.media.tablet} {
     padding: 0 20px;
   }
+  ${({ theme }) => theme.media.mobile} {
+    padding: 0 12px;
+    height: 60px;
+  }
 `;
 
 export const HeaderLeft = styled.div`
   display: flex;
   align-items: center;
   gap: 16px;
+  ${({ theme }) => theme.media.mobile} {
+    gap: 10px;
+  }
 `;
 
 export const MobileToggleBtn = styled.button`
@@ -44,16 +51,25 @@ export const PageTitle = styled.h1`
   font-weight: 700;
   color: ${({ theme }) => theme.colors.textPrimary};
   letter-spacing: -0.3px;
+  ${({ theme }) => theme.media.mobile} {
+    font-size: 15px;
+  }
 `;
 export const PageSubtitle = styled.p`
   font-size: 12px;
   color: ${({ theme }) => theme.colors.textMuted};
   font-weight: 500;
+  ${({ theme }) => theme.media.mobile} {
+    display: none;
+  }
 `;
 export const HeaderRight = styled.div`
   display: flex;
   align-items: center;
   gap: 14px;
+  ${({ theme }) => theme.media.mobile} {
+    gap: 8px;
+  }
 `;
 
 export const SearchWrapper = styled.div`
@@ -122,6 +138,11 @@ export const ActionButton = styled.button`
   &:hover {
     background-color: ${({ theme }) => theme.colors.primaryHover};
     box-shadow: ${({ theme }) => theme.shadows.btnPrimary};
+  }
+  ${({ theme }) => theme.media.mobile} {
+    padding: 7px 10px;
+    font-size: 12px;
+    gap: 5px;
   }
 `;
 

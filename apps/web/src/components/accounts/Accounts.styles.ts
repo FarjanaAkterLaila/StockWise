@@ -64,7 +64,7 @@ export const TopActionHeader = styled.div`
 
   ${({ theme }) => theme.media.mobile} {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
   }
 `;
 
@@ -88,6 +88,12 @@ export const HeaderActions = styled.div`
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+
+  ${({ theme }) => theme.media.mobile} {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 export const RecordExpenseBtn = styled.button`
@@ -114,6 +120,11 @@ export const RecordExpenseBtn = styled.button`
   &:active {
     transform: translateY(0);
   }
+
+  ${({ theme }) => theme.media.mobile} {
+    width: 100%;
+    justify-content: center;
+  }
 `;
 
 export const RecordIncomeBtn = styled.button`
@@ -133,28 +144,47 @@ export const RecordIncomeBtn = styled.button`
   &:hover {
     background-color: ${({ theme }) => theme.colors.primaryLight};
   }
+
+  ${({ theme }) => theme.media.mobile} {
+    width: 100%;
+    justify-content: center;
+  }
 `;
 
 export const InlineCreateBtn = styled.button`
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   background-color: ${({ theme }) => theme.colors.primary};
   color: ${({ theme }) => theme.colors.textInverse};
   border: none;
-  padding: 8px 14px;
+  padding: 8px 16px;
   border-radius: ${({ theme }) => theme.radius.md};
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
+  min-width: max-content;
   height: 38px;
   box-sizing: border-box;
   transition: all 0.15s ease;
 
+  span {
+    white-space: nowrap;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+
   &:hover {
     background-color: ${({ theme }) => theme.colors.primaryHover};
+  }
+
+  ${({ theme }) => theme.media.mobile} {
+    width: 100%;
   }
 `;
 
@@ -162,6 +192,10 @@ export const StatsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
+
+  ${({ theme }) => theme.media.desktopLg} {
+    grid-template-columns: repeat(2, 1fr);
+  }
 
   ${({ theme }) => theme.media.tablet} {
     grid-template-columns: repeat(2, 1fr);
@@ -266,6 +300,7 @@ export const TabNav = styled.div`
   overflow-x: auto;
   scrollbar-width: none;
   position: relative;
+  -webkit-overflow-scrolling: touch;
 
   &::-webkit-scrollbar {
     display: none;
@@ -292,6 +327,7 @@ export const TabItem = styled.button<{ $isActive: boolean }>`
   z-index: ${({ $isActive }) => ($isActive ? "2" : "1")};
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
   transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
   border-radius: ${({ theme }) => `${theme.radius.md} ${theme.radius.md} 0 0`};
 
@@ -367,6 +403,11 @@ export const SearchField = styled.div`
   min-width: 260px;
   transition: border-color 0.15s ease;
 
+  ${({ theme }) => theme.media.tablet} {
+    min-width: 100%;
+    width: 100%;
+  }
+
   &:focus-within {
     border-color: ${({ theme }) => theme.colors.primary};
     box-shadow: 0 0 0 2px ${({ theme }) => theme.colors.primaryLight};
@@ -396,20 +437,34 @@ export const FilterSelectsGroup = styled.div`
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  flex-shrink: 0;
+
+  ${({ theme }) => theme.media.tablet} {
+    width: 100%;
+  }
 
   ${({ theme }) => theme.media.mobile} {
     flex-direction: column;
     align-items: stretch;
+    width: 100%;
   }
 `;
 
 export const AnalyticsGrid = styled.div`
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1.6fr 1.2fr;
   gap: 20px;
+
+  ${({ theme }) => theme.media.desktopLg} {
+    grid-template-columns: 1fr;
+  }
 
   ${({ theme }) => theme.media.tablet} {
     grid-template-columns: 1fr;
+  }
+
+  ${({ theme }) => theme.media.mobile} {
+    gap: 14px;
   }
 `;
 
@@ -490,19 +545,24 @@ export const HeaderControls = styled.div`
 `;
 
 export const SummaryStatsRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
   padding: 12px 16px;
   background-color: ${({ theme }) => theme.colors.backgroundSubtle};
   border-radius: ${({ theme }) => theme.radius.md};
   border: 1px solid ${({ theme }) => theme.colors.border};
   margin-bottom: 16px;
 
+  ${({ theme }) => theme.media.tablet} {
+    gap: 10px;
+    padding: 10px 14px;
+  }
+
   ${({ theme }) => theme.media.mobile} {
-    flex-direction: column;
-    align-items: flex-start;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 10px 14px;
   }
 `;
 
@@ -549,13 +609,12 @@ export const LegendDot = styled.span<{ $color: string }>`
 export const ChartCanvasWrapper = styled.div`
   position: relative;
   width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
   user-select: none;
 `;
 
 export const SvgContainer = styled.svg`
   width: 100%;
+  max-width: 100%;
   height: auto;
   display: block;
 `;
@@ -752,6 +811,12 @@ export const VoucherHeader = styled.div`
   background-color: ${({ theme }) => theme.colors.backgroundSubtle};
   border-radius: ${({ theme }) => theme.radius.md};
   border: 1px solid ${({ theme }) => theme.colors.border};
+
+  ${({ theme }) => theme.media.mobile} {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
 `;
 
 export const VoucherPartyCard = styled.div`
@@ -872,6 +937,10 @@ export const VoucherDocBadgeWrap = styled.div`
   flex-direction: column;
   align-items: flex-end;
   gap: 4px;
+
+  ${({ theme }) => theme.media.mobile} {
+    align-items: flex-start;
+  }
 `;
 
 export const VoucherDocNumber = styled.span`
@@ -902,6 +971,12 @@ export const VoucherPartyRow = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-top: 4px;
+
+  ${({ theme }) => theme.media.mobile} {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
 `;
 
 export const VoucherMetaItem = styled.span`
@@ -937,6 +1012,10 @@ export const TotalsDescText = styled.span`
   font-size: 12px;
   max-width: 60%;
   color: ${({ theme }) => theme.colors.textSecondary};
+
+  ${({ theme }) => theme.media.mobile} {
+    max-width: 100%;
+  }
 `;
 
 export const ChartBarGroup = styled.g`

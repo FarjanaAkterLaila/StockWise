@@ -31,6 +31,7 @@ export const SidebarContainer = styled.aside<{ $isOpen: boolean }>`
     position: fixed;
     top: 0;
     left: 0;
+    width: min(280px, 85vw);
     transform: ${({ $isOpen }) => ($isOpen ? "translateX(0)" : "translateX(-100%)")};
     box-shadow: ${({ theme }) => theme.shadows.sidebarMobile};
   }

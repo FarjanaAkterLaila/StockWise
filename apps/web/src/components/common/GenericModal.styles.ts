@@ -15,6 +15,10 @@ export const Overlay = styled.div<{ $isOpen: boolean }>`
   pointer-events: ${({ $isOpen }) => ($isOpen ? "auto" : "none")};
   transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 
+  ${({ theme }) => theme.media.mobile} {
+    padding: 8px;
+  }
+
   @media print {
     position: static;
     background: transparent;
@@ -49,6 +53,11 @@ export const Dialog = styled.div<{ $size?: ModalSize }>`
   box-sizing: border-box;
   border: 1px solid ${({ theme }) => theme.colors.border};
   animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+  ${({ theme }) => theme.media.mobile} {
+    max-height: 94vh;
+    border-radius: ${({ theme }) => theme.radius.lg};
+  }
 
   @keyframes modalScaleIn {
     from {
@@ -89,6 +98,10 @@ export const Header = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.colors.border};
   gap: 16px;
 
+  ${({ theme }) => theme.media.mobile} {
+    padding: 14px 16px;
+  }
+
   @media print {
     display: none;
   }
@@ -105,6 +118,10 @@ export const Title = styled.h3`
   font-weight: 800;
   color: ${({ theme }) => theme.colors.textPrimary};
   letter-spacing: -0.3px;
+
+  ${({ theme }) => theme.media.mobile} {
+    font-size: 16px;
+  }
 `;
 
 export const Subtitle = styled.p`
@@ -146,6 +163,10 @@ export const Body = styled.div`
   color: ${({ theme }) => theme.colors.textSecondary};
   line-height: 1.5;
 
+  ${({ theme }) => theme.media.mobile} {
+    padding: 14px 16px;
+  }
+
   @media print {
     padding: 0;
     width: 100%;
@@ -174,6 +195,12 @@ export const Footer = styled.div`
   background-color: ${({ theme }) => theme.colors.backgroundSubtle};
   border-top: 1px solid ${({ theme }) => theme.colors.border};
 
+  ${({ theme }) => theme.media.mobile} {
+    padding: 12px 16px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
   @media print {
     display: none;
   }
@@ -197,6 +224,13 @@ export const ConfirmBtn = styled.button<{ $variant?: ModalVariant }>`
         ? theme.colors.dangerHover
         : theme.colors.primaryHover};
   }
+
+  ${({ theme }) => theme.media.mobile} {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+    min-width: 100px;
+  }
 `;
 
 export const CancelBtn = styled.button`
@@ -212,5 +246,12 @@ export const CancelBtn = styled.button`
 
   &:hover {
     background-color: ${({ theme }) => theme.colors.hoverSubtle};
+  }
+
+  ${({ theme }) => theme.media.mobile} {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+    min-width: 100px;
   }
 `;

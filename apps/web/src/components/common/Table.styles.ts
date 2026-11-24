@@ -11,10 +11,12 @@ export const TableContainer = styled.div`
 export const TableResponsiveWrapper = styled.div`
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 `;
 
 export const Table = styled.table`
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
   text-align: left;
 `;
@@ -70,6 +72,13 @@ export const TableFooterBar = styled.div`
   font-size: 12px;
   color: ${({ theme }) => theme.colors.textMuted};
   box-sizing: border-box;
+
+  ${({ theme }) => theme.media.mobile} {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 14px;
+  }
 `;
 
 export const FooterCountText = styled.span`

@@ -10,6 +10,7 @@ export const ControlsRow = styled.div`
   ${({ theme }) => theme.media.mobile} {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
   }
 `;
 
@@ -45,10 +46,12 @@ export const TableSearchInput = styled.input`
 
 export const TableWrapper = styled.div`
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 `;
 
 export const Table = styled.table`
   width: 100%;
+  min-width: 650px;
   border-collapse: collapse;
   text-align: left;
 `;

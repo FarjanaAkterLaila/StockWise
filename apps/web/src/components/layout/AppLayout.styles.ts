@@ -22,6 +22,10 @@ export const ScrollableContent = styled.main`
   ${({ theme }) => theme.media.tablet} {
     padding: 20px;
   }
+
+  ${({ theme }) => theme.media.mobile} {
+    padding: 14px 12px;
+  }
 `;
 
 export const PageContainer = styled.div`
