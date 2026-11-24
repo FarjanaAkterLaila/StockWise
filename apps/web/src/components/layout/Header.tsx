@@ -1,14 +1,14 @@
 import React from "react";
-import { useTheme } from "styled-components";
 import type { NavModule } from "@/types";
 import { MODULE_TITLES } from "@/utils/navigation.utils";
+import { useAuth } from "@/context/AuthContext";
 import {
   Menu,
   Search,
   Bell,
   PlusCircle,
   CheckCircle2,
-  ChevronDown,
+  LogOut,
 } from "lucide-react";
 import {
   HeaderContainer,
@@ -46,8 +46,17 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleSidebar,
   onOpenQuickSale,
 }) => {
-  const theme = useTheme();
+  const { user, logout } = useAuth();
   const currentInfo = MODULE_TITLES[activeModule];
+
+  const initials = user?.fullName
+    ? user.fullName
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "OP";
 
   return (
     <HeaderContainer>
@@ -99,21 +108,32 @@ export const Header: React.FC<HeaderProps> = ({
 
         <HeaderDivider />
 
-        <ProfileButton tabIndex={0} role="button">
+        <ProfileButton tabIndex={0} role="button" title={`Logged in as ${user?.role || "Staff"}`}>
           <AvatarWrap>
-            <span>TA</span>
-            <AvatarLiveDot title="Logged in as Admin" />
+            <span>{initials}</span>
+            <AvatarLiveDot title={`Role: ${user?.role || "Staff"}`} />
           </AvatarWrap>
 
           <ProfileInfo>
-            <ProfileName>Tanvir Ahmed</ProfileName>
+            <ProfileName>{user?.fullName || "Operator"}</ProfileName>
             <ProfileRole>
               <CheckCircle2 size={11} />
-              Store Manager
+              {user?.role ? user.role.toUpperCase() : "STAFF"}
             </ProfileRole>
           </ProfileInfo>
 
-          <ChevronDown size={14} color={theme.colors.textMuted} />
+          <HeaderIconButton
+            as="div"
+            role="button"
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              logout();
+            }}
+            title="Log Out"
+            style={{ width: "28px", height: "28px", marginLeft: "4px" }}
+          >
+            <LogOut size={14} />
+          </HeaderIconButton>
         </ProfileButton>
       </HeaderRight>
     </HeaderContainer>

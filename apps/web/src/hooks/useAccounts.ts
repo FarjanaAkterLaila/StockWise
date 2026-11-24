@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type {
   Expense,
   Income,
@@ -6,15 +6,21 @@ import type {
   SupplierPaymentRecord,
 } from "@/types";
 import {
-  INITIAL_EXPENSES,
   INITIAL_INCOMES,
-  INITIAL_CUSTOMER_PAYMENTS,
-  INITIAL_SUPPLIER_PAYMENTS,
 } from "@/data/mockData";
 import { ACCOUNTS_TABS, type AccountsTabId } from "@/utils/constants";
 import { calculateAccountsOverview } from "@/utils/accounts.utils";
+import {
+  fetchExpenses,
+  createExpense,
+  deleteExpense,
+  fetchCustomerPayments,
+  fetchSupplierPayments,
+} from "@/services/accounts.service";
+import { useAuth } from "@/context/AuthContext";
 
 export const useAccounts = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<AccountsTabId>(
     ACCOUNTS_TABS.ANALYTICS,
   );
@@ -22,14 +28,32 @@ export const useAccounts = () => {
   const [isCreateExpenseOpen, setIsCreateExpenseOpen] = useState(false);
   const [isCreateIncomeOpen, setIsCreateIncomeOpen] = useState(false);
 
-  const [expenses, setExpenses] = useState<Expense[]>(INITIAL_EXPENSES);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [incomes, setIncomes] = useState<Income[]>(INITIAL_INCOMES);
-  const [customerPayments] = useState<CustomerPaymentRecord[]>(
-    INITIAL_CUSTOMER_PAYMENTS,
-  );
-  const [supplierPayments] = useState<SupplierPaymentRecord[]>(
-    INITIAL_SUPPLIER_PAYMENTS,
-  );
+  const [customerPayments, setCustomerPayments] = useState<
+    CustomerPaymentRecord[]
+  >([]);
+  const [supplierPayments, setSupplierPayments] = useState<
+    SupplierPaymentRecord[]
+  >([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all([
+      fetchExpenses().catch(() => []),
+      fetchCustomerPayments().catch(() => []),
+      fetchSupplierPayments().catch(() => []),
+    ]).then(([expData, custPayData, suppPayData]) => {
+      if (!isMounted) return;
+      setExpenses(expData);
+      setCustomerPayments(custPayData);
+      setSupplierPayments(suppPayData);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const overviewMetrics = useMemo(() => {
     return calculateAccountsOverview(
@@ -40,20 +64,23 @@ export const useAccounts = () => {
     );
   }, [customerPayments, incomes, expenses, supplierPayments]);
 
-  const handleSaveExpense = (newOrUpdatedExpense: Expense) => {
-    setExpenses((prev) => {
-      const exists = prev.some((e) => e.id === newOrUpdatedExpense.id);
-      if (exists) {
-        return prev.map((e) =>
-          e.id === newOrUpdatedExpense.id ? newOrUpdatedExpense : e,
-        );
-      }
-      return [newOrUpdatedExpense, ...prev];
-    });
+  const handleSaveExpense = async (newOrUpdatedExpense: Expense) => {
+    try {
+      await createExpense(newOrUpdatedExpense, user?.id);
+      const updated = await fetchExpenses();
+      setExpenses(updated);
+    } catch (err: unknown) {
+      alert((err as Error).message || "Failed to save expense in database");
+    }
   };
 
-  const handleDeleteExpense = (expenseId: string) => {
-    setExpenses((prev) => prev.filter((e) => e.id !== expenseId));
+  const handleDeleteExpense = async (expenseId: string) => {
+    try {
+      await deleteExpense(expenseId);
+      setExpenses((prev) => prev.filter((e) => e.id !== expenseId));
+    } catch (err: unknown) {
+      alert((err as Error).message || "Failed to delete expense from database");
+    }
   };
 
   const handleSaveIncome = (newIncome: Income) => {

@@ -46,9 +46,9 @@ export interface ProductRow {
   sku: string | null;
   barcode: string | null;
   category_id: string | null;
-  cost_price: number;
+  purchase_price: number;
   selling_price: number;
-  stock_quantity: number;
+  quantity: number;
   min_stock_level: number | null;
   unit: string | null;
   image_url: string | null;
@@ -103,7 +103,7 @@ export interface PurchaseItemRow {
   purchase_id: string;
   product_id: string;
   quantity: number;
-  unit_cost: number;
+  unit_price: number;
   subtotal: number;
   created_at: string;
 }

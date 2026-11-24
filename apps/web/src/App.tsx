@@ -1,21 +1,14 @@
 import { useState } from "react";
 import type { NavModule, LowStockProduct } from "@/types";
 import { NAV_MODULES } from "@/utils/constants";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { LoginPage } from "@/components/auth/LoginPage";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
-import { InventoryModule } from "@/components/inventory/InventoryModule";
-import { SalesModule } from "@/components/sales/SalesModule";
-import { PurchaseModule } from "@/components/purchase/PurchaseModule";
-import { AccountsModule } from "@/components/accounts/AccountsModule";
-import { ModulePlaceholder } from "@/components/common/ModulePlaceholder";
-import {
-  METRIC_SUMMARIES,
-  RECENT_SALES,
-  LOW_STOCK_PRODUCTS,
-  SHOP_QUICK_STATS,
-} from "@/data/mockData";
+import { AppRoutes } from "@/routes/AppRoutes";
+import { GenericLoader } from "@/components/common/GenericLoader";
 
-export function App() {
+function MainERP() {
+  const { isAuthenticated, loading } = useAuth();
   const [activeModule, setActiveModule] = useState<NavModule>(
     NAV_MODULES.DASHBOARD,
   );
@@ -30,37 +23,41 @@ export function App() {
     }
   };
 
+  if (loading) {
+    return (
+      <GenericLoader
+        fullScreen
+        message="Initializing StockWise session..."
+        subtext="Connecting to database and verifying security session"
+      />
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
   return (
     <AppLayout
       activeModule={activeModule}
       onSelectModule={setActiveModule}
       onQuickSale={handleQuickSale}
     >
-      {activeModule === NAV_MODULES.DASHBOARD ? (
-        <DashboardOverview
-          metrics={METRIC_SUMMARIES}
-          sales={RECENT_SALES}
-          lowStockProducts={LOW_STOCK_PRODUCTS}
-          quickStats={SHOP_QUICK_STATS}
-          onNavigateModule={(module) => setActiveModule(module)}
-          onQuickSale={handleQuickSale}
-          onRestockProduct={handleRestockProduct}
-        />
-      ) : activeModule === NAV_MODULES.INVENTORY ? (
-        <InventoryModule />
-      ) : activeModule === NAV_MODULES.SALES ? (
-        <SalesModule />
-      ) : activeModule === NAV_MODULES.PURCHASE ? (
-        <PurchaseModule />
-      ) : activeModule === NAV_MODULES.ACCOUNTS ? (
-        <AccountsModule />
-      ) : (
-        <ModulePlaceholder
-          module={activeModule}
-          onNavigateHome={() => setActiveModule(NAV_MODULES.DASHBOARD)}
-        />
-      )}
+      <AppRoutes
+        activeModule={activeModule}
+        onNavigateModule={setActiveModule}
+        onQuickSale={handleQuickSale}
+        onRestockProduct={handleRestockProduct}
+      />
     </AppLayout>
+  );
+}
+
+export function App() {
+  return (
+    <AuthProvider>
+      <MainERP />
+    </AuthProvider>
   );
 }
 

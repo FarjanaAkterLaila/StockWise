@@ -1,25 +1,29 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import type { Product } from "@/types";
-import { INITIAL_PRODUCTS } from "@/data/mockData";
-import { Plus } from "lucide-react";
-import { InventoryStats } from "./InventoryStats";
+import {
+  fetchProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from "@/services/products.service";
+import { STOCK_STATUS } from "@/utils/constants";
 import { InventoryFilterBar } from "./InventoryFilterBar";
+import { InventoryStats } from "./InventoryStats";
 import { InventoryTable } from "./InventoryTable";
 import { ProductModal } from "./ProductModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
-import { APP_STRINGS, STOCK_STATUS, PRODUCT_STATUS } from "@/utils/constants";
+import { Plus } from "lucide-react";
 import {
   InventoryContainer,
   TopActionHeader,
   TitleWrap,
   PageTitle,
   PageSubtitle,
-  HeaderActions,
   AddProductBtn,
 } from "./Inventory.styles";
 
 export const InventoryModule: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [stockFilter, setStockFilter] = useState<string>(STOCK_STATUS.ALL);
@@ -27,6 +31,22 @@ export const InventoryModule: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchProducts()
+      .then((data) => {
+        if (isMounted) {
+          setProducts(data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch products from Supabase:", err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const stats = useMemo(() => {
     const totalCount = products.length;
@@ -69,8 +89,8 @@ export const InventoryModule: React.FC = () => {
 
   const hasActiveFilters = Boolean(
     searchQuery.trim() ||
-    selectedCategory !== "All" ||
-    stockFilter !== STOCK_STATUS.ALL,
+      selectedCategory !== "All" ||
+      stockFilter !== STOCK_STATUS.ALL,
   );
 
   const handleResetFilters = () => {
@@ -79,33 +99,39 @@ export const InventoryModule: React.FC = () => {
     setStockFilter(STOCK_STATUS.ALL);
   };
 
-  const handleSaveProduct = (
+  const handleSaveProduct = async (
     formData: Omit<Product, "id"> & { id?: string },
   ) => {
-    if (formData.id) {
-      setProducts((prev) =>
-        prev.map((item) =>
-          item.id === formData.id
-            ? ({ ...item, ...formData } as Product)
-            : item,
-        ),
-      );
-      setEditingProduct(null);
-    } else {
-      const newProduct: Product = {
-        ...formData,
-        id: `prod-${Date.now()}`,
-        status: formData.status || PRODUCT_STATUS.ACTIVE,
-      };
-      setProducts((prev) => [newProduct, ...prev]);
-      setIsAddModalOpen(false);
+    try {
+      if (formData.id) {
+        const updated = await updateProduct(formData.id, formData);
+        setProducts((prev) =>
+          prev.map((item) =>
+            item.id === formData.id ? { ...item, ...updated } : item,
+          ),
+        );
+        setEditingProduct(null);
+      } else {
+        const created = await createProduct(formData);
+        setProducts((prev) => [created, ...prev]);
+        setIsAddModalOpen(false);
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message || "Failed to save product in database");
     }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deletingProduct) {
-      setProducts((prev) => prev.filter((p) => p.id !== deletingProduct.id));
-      setDeletingProduct(null);
+      try {
+        await deleteProduct(deletingProduct.id);
+        setProducts((prev) => prev.filter((p) => p.id !== deletingProduct.id));
+        setDeletingProduct(null);
+      } catch (err: unknown) {
+        alert(
+          (err as Error).message || "Failed to delete product from database",
+        );
+      }
     }
   };
 
@@ -113,15 +139,15 @@ export const InventoryModule: React.FC = () => {
     <InventoryContainer>
       <TopActionHeader>
         <TitleWrap>
-          <PageTitle>{APP_STRINGS.inventoryTitle}</PageTitle>
-          <PageSubtitle>{APP_STRINGS.inventorySubtitle}</PageSubtitle>
+          <PageTitle>Hardware &amp; Component Inventory</PageTitle>
+          <PageSubtitle>
+            Multiplan Computer City real-time stock levels &amp; pricing
+          </PageSubtitle>
         </TitleWrap>
-        <HeaderActions>
-          <AddProductBtn onClick={() => setIsAddModalOpen(true)} type="button">
-            <Plus size={16} />
-            <span>{APP_STRINGS.addProductBtn}</span>
-          </AddProductBtn>
-        </HeaderActions>
+        <AddProductBtn onClick={() => setIsAddModalOpen(true)} type="button">
+          <Plus size={16} />
+          <span>Add New Product</span>
+        </AddProductBtn>
       </TopActionHeader>
 
       <InventoryStats
@@ -144,22 +170,26 @@ export const InventoryModule: React.FC = () => {
 
       <InventoryTable
         products={filteredProducts}
-        totalAllCount={products.length}
         hasActiveFilters={hasActiveFilters}
         onResetFilters={handleResetFilters}
-        onEdit={(prod) => setEditingProduct(prod)}
-        onDelete={(prod) => setDeletingProduct(prod)}
+        onEdit={(p) => setEditingProduct(p)}
+        onDelete={(p) => setDeletingProduct(p)}
       />
 
-      {(isAddModalOpen || editingProduct) && (
+      {isAddModalOpen && (
         <ProductModal
-          key={editingProduct ? editingProduct.id : "new-product-modal"}
-          isOpen={isAddModalOpen || Boolean(editingProduct)}
+          isOpen={isAddModalOpen}
+          initialProduct={null}
+          onClose={() => setIsAddModalOpen(false)}
+          onSave={handleSaveProduct}
+        />
+      )}
+
+      {editingProduct && (
+        <ProductModal
+          isOpen={Boolean(editingProduct)}
           initialProduct={editingProduct}
-          onClose={() => {
-            setIsAddModalOpen(false);
-            setEditingProduct(null);
-          }}
+          onClose={() => setEditingProduct(null)}
           onSave={handleSaveProduct}
         />
       )}

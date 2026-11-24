@@ -1,14 +1,17 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import type { Purchase } from "@/types";
-import { INITIAL_PURCHASES } from "@/data/mockData";
-import { Plus } from "lucide-react";
+import {
+  fetchPurchases,
+  createPurchase,
+} from "@/services/purchases.service";
+import { useAuth } from "@/context/AuthContext";
+import { DEFAULT_VALUES, APP_STRINGS } from "@/utils/constants";
 import { PurchaseStats } from "./PurchaseStats";
 import { PurchaseFilterBar } from "./PurchaseFilterBar";
 import { PurchaseTable } from "./PurchaseTable";
 import { PurchaseModal } from "./PurchaseModal";
 import { PurchaseViewModal } from "./PurchaseViewModal";
-import { GenericModal } from "@/components/common/GenericModal";
-import { APP_STRINGS, DEFAULT_VALUES } from "@/utils/constants";
+import { Plus } from "lucide-react";
 import {
   PurchaseContainer,
   TopActionHeader,
@@ -20,7 +23,8 @@ import {
 } from "./Purchase.styles";
 
 export const PurchaseModule: React.FC = () => {
-  const [purchases, setPurchases] = useState<Purchase[]>(INITIAL_PURCHASES);
+  const { user } = useAuth();
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSupplier, setSelectedSupplier] = useState<string>(
     DEFAULT_VALUES.FILTER_ALL,
@@ -35,9 +39,22 @@ export const PurchaseModule: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [viewingPurchase, setViewingPurchase] = useState<Purchase | null>(null);
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
-  const [deletingPurchase, setDeletingPurchase] = useState<Purchase | null>(
-    null,
-  );
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchPurchases()
+      .then((data) => {
+        if (isMounted) {
+          setPurchases(data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch purchases from Supabase:", err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const stats = useMemo(() => {
     const totalOrders = purchases.length;
@@ -86,9 +103,9 @@ export const PurchaseModule: React.FC = () => {
 
   const hasActiveFilters = Boolean(
     searchTerm.trim() ||
-    selectedSupplier !== DEFAULT_VALUES.FILTER_ALL ||
-    selectedStatus !== DEFAULT_VALUES.FILTER_ALL ||
-    selectedPaymentStatus !== DEFAULT_VALUES.FILTER_ALL,
+      selectedSupplier !== DEFAULT_VALUES.FILTER_ALL ||
+      selectedStatus !== DEFAULT_VALUES.FILTER_ALL ||
+      selectedPaymentStatus !== DEFAULT_VALUES.FILTER_ALL,
   );
 
   const handleResetFilters = () => {
@@ -98,7 +115,7 @@ export const PurchaseModule: React.FC = () => {
     setSelectedPaymentStatus(DEFAULT_VALUES.FILTER_ALL);
   };
 
-  const handleSavePurchase = (
+  const handleSavePurchase = async (
     purchaseData: Omit<Purchase, "id"> & { id?: string },
   ) => {
     if (purchaseData.id) {
@@ -111,19 +128,36 @@ export const PurchaseModule: React.FC = () => {
       );
       setEditingPurchase(null);
     } else {
-      const newPurchase: Purchase = {
-        ...purchaseData,
-        id: `po-${Date.now()}`,
-      };
-      setPurchases((prev) => [newPurchase, ...prev]);
-      setIsCreateModalOpen(false);
-    }
-  };
-
-  const handleConfirmDelete = () => {
-    if (deletingPurchase) {
-      setPurchases((prev) => prev.filter((p) => p.id !== deletingPurchase.id));
-      setDeletingPurchase(null);
+      try {
+        await createPurchase(
+          {
+            supplierId: purchaseData.supplierId,
+            supplierName: purchaseData.supplierName,
+            items: purchaseData.items.map((i) => ({
+              productId: i.productId,
+              productName: i.productName,
+              sku: i.sku,
+              quantity: i.quantity,
+              unitPrice: i.unitPrice,
+              subtotal: i.subtotal,
+            })),
+            totalAmount: purchaseData.grandTotal,
+            paidAmount: purchaseData.paidAmount,
+            paymentMethod: purchaseData.paymentMethod,
+            status: purchaseData.status,
+            notes: purchaseData.notes,
+          },
+          user?.id,
+        );
+        const updated = await fetchPurchases();
+        setPurchases(updated);
+        setIsCreateModalOpen(false);
+      } catch (err: unknown) {
+        alert(
+          (err as Error).message ||
+            "Failed to create purchase order in database",
+        );
+      }
     }
   };
 
@@ -154,36 +188,40 @@ export const PurchaseModule: React.FC = () => {
 
       <PurchaseFilterBar
         searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
         selectedSupplier={selectedSupplier}
-        onSupplierChange={setSelectedSupplier}
         selectedStatus={selectedStatus}
-        onStatusChange={setSelectedStatus}
         selectedPaymentStatus={selectedPaymentStatus}
+        onSearchChange={setSearchTerm}
+        onSupplierChange={setSelectedSupplier}
+        onStatusChange={setSelectedStatus}
         onPaymentStatusChange={setSelectedPaymentStatus}
-        hasActiveFilters={hasActiveFilters}
         onResetFilters={handleResetFilters}
+        hasActiveFilters={hasActiveFilters}
       />
 
       <PurchaseTable
         purchases={filteredPurchases}
-        totalAllCount={purchases.length}
         hasActiveFilters={hasActiveFilters}
         onResetFilters={handleResetFilters}
-        onView={(purchase) => setViewingPurchase(purchase)}
-        onEdit={(purchase) => setEditingPurchase(purchase)}
-        onDelete={(purchase) => setDeletingPurchase(purchase)}
+        onView={(p: Purchase) => setViewingPurchase(p)}
+        onEdit={(p: Purchase) => setEditingPurchase(p)}
+        onDelete={() => {}}
       />
 
-      {(isCreateModalOpen || editingPurchase) && (
+      {isCreateModalOpen && (
         <PurchaseModal
-          key={editingPurchase ? editingPurchase.id : "new-purchase-modal"}
-          isOpen={isCreateModalOpen || Boolean(editingPurchase)}
+          isOpen={isCreateModalOpen}
+          initialPurchase={null}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSave={handleSavePurchase}
+        />
+      )}
+
+      {editingPurchase && (
+        <PurchaseModal
+          isOpen={Boolean(editingPurchase)}
           initialPurchase={editingPurchase}
-          onClose={() => {
-            setIsCreateModalOpen(false);
-            setEditingPurchase(null);
-          }}
+          onClose={() => setEditingPurchase(null)}
           onSave={handleSavePurchase}
         />
       )}
@@ -193,20 +231,6 @@ export const PurchaseModule: React.FC = () => {
           isOpen={Boolean(viewingPurchase)}
           purchase={viewingPurchase}
           onClose={() => setViewingPurchase(null)}
-        />
-      )}
-
-      {deletingPurchase && (
-        <GenericModal
-          isOpen={Boolean(deletingPurchase)}
-          onClose={() => setDeletingPurchase(null)}
-          variant="danger"
-          size="sm"
-          title={APP_STRINGS.deletePurchaseTitle}
-          message={`Are you sure you want to delete purchase order "${deletingPurchase.purchaseNumber}" from ${deletingPurchase.supplierName}? This operation will remove the vendor procurement record.`}
-          confirmText={APP_STRINGS.deletePurchaseConfirm}
-          cancelText={APP_STRINGS.cancel}
-          onConfirm={handleConfirmDelete}
         />
       )}
     </PurchaseContainer>

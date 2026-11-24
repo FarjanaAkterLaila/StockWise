@@ -1,14 +1,14 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import type { Sale } from "@/types";
-import { INITIAL_SALES } from "@/data/mockData";
-import { Plus } from "lucide-react";
+import { fetchSales, createSale } from "@/services/sales.service";
+import { useAuth } from "@/context/AuthContext";
+import { DEFAULT_VALUES, APP_STRINGS } from "@/utils/constants";
 import { SalesStats } from "./SalesStats";
 import { SalesFilterBar } from "./SalesFilterBar";
 import { SalesTable } from "./SalesTable";
 import { SaleModal } from "./SaleModal";
 import { SalesViewModal } from "./SalesViewModal";
-import { GenericModal } from "@/components/common/GenericModal";
-import { APP_STRINGS, DEFAULT_VALUES } from "@/utils/constants";
+import { Plus } from "lucide-react";
 import {
   SalesContainer,
   TopActionHeader,
@@ -20,7 +20,8 @@ import {
 } from "./Sales.styles";
 
 export const SalesModule: React.FC = () => {
-  const [sales, setSales] = useState<Sale[]>(INITIAL_SALES);
+  const { user } = useAuth();
+  const [sales, setSales] = useState<Sale[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>(
     DEFAULT_VALUES.FILTER_ALL,
@@ -32,7 +33,22 @@ export const SalesModule: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [viewingSale, setViewingSale] = useState<Sale | null>(null);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
-  const [deletingSale, setDeletingSale] = useState<Sale | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchSales()
+      .then((data) => {
+        if (isMounted) {
+          setSales(data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch sales from Supabase:", err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const stats = useMemo(() => {
     const totalInvoices = sales.length;
@@ -69,8 +85,8 @@ export const SalesModule: React.FC = () => {
 
   const hasActiveFilters = Boolean(
     searchTerm.trim() ||
-    selectedStatus !== DEFAULT_VALUES.FILTER_ALL ||
-    selectedPaymentStatus !== DEFAULT_VALUES.FILTER_ALL,
+      selectedStatus !== DEFAULT_VALUES.FILTER_ALL ||
+      selectedPaymentStatus !== DEFAULT_VALUES.FILTER_ALL,
   );
 
   const handleResetFilters = () => {
@@ -79,7 +95,9 @@ export const SalesModule: React.FC = () => {
     setSelectedPaymentStatus(DEFAULT_VALUES.FILTER_ALL);
   };
 
-  const handleSaveSale = (saleData: Omit<Sale, "id"> & { id?: string }) => {
+  const handleSaveSale = async (
+    saleData: Omit<Sale, "id"> & { id?: string },
+  ) => {
     if (saleData.id) {
       setSales((prev) =>
         prev.map((item) =>
@@ -88,19 +106,38 @@ export const SalesModule: React.FC = () => {
       );
       setEditingSale(null);
     } else {
-      const newSale: Sale = {
-        ...saleData,
-        id: `sale-${Date.now()}`,
-      };
-      setSales((prev) => [newSale, ...prev]);
-      setIsCreateModalOpen(false);
-    }
-  };
-
-  const handleConfirmDelete = () => {
-    if (deletingSale) {
-      setSales((prev) => prev.filter((s) => s.id !== deletingSale.id));
-      setDeletingSale(null);
+      try {
+        await createSale(
+          {
+            customerId: saleData.customerId,
+            items: saleData.items.map((i) => ({
+              productId: i.productId,
+              productName: i.productName,
+              sku: i.sku,
+              quantity: i.quantity,
+              unitPrice: i.unitPrice,
+              subtotal: i.subtotal,
+            })),
+            subtotal: saleData.subtotal,
+            discountAmount: saleData.discountAmount,
+            taxAmount: saleData.taxAmount,
+            totalAmount: saleData.totalAmount,
+            paidAmount: saleData.paidAmount,
+            paymentMethod: saleData.paymentMethod,
+            status: saleData.status,
+            notes: saleData.notes,
+          },
+          user?.id,
+        );
+        const updated = await fetchSales();
+        setSales(updated);
+        setIsCreateModalOpen(false);
+      } catch (err: unknown) {
+        alert(
+          (err as Error).message ||
+            "Failed to process sale transaction in database",
+        );
+      }
     }
   };
 
@@ -131,57 +168,47 @@ export const SalesModule: React.FC = () => {
 
       <SalesFilterBar
         searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
         selectedStatus={selectedStatus}
-        onStatusChange={setSelectedStatus}
         selectedPaymentStatus={selectedPaymentStatus}
+        onSearchChange={setSearchTerm}
+        onStatusChange={setSelectedStatus}
         onPaymentStatusChange={setSelectedPaymentStatus}
-        hasActiveFilters={hasActiveFilters}
         onResetFilters={handleResetFilters}
+        hasActiveFilters={hasActiveFilters}
       />
 
       <SalesTable
         sales={filteredSales}
-        totalAllCount={sales.length}
         hasActiveFilters={hasActiveFilters}
         onResetFilters={handleResetFilters}
-        onView={(sale) => setViewingSale(sale)}
-        onEdit={(sale) => setEditingSale(sale)}
-        onDelete={(sale) => setDeletingSale(sale)}
+        onView={(s: Sale) => setViewingSale(s)}
+        onEdit={(s: Sale) => setEditingSale(s)}
+        onDelete={() => {}}
       />
+
+      {isCreateModalOpen && (
+        <SaleModal
+          isOpen={isCreateModalOpen}
+          initialSale={null}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSave={handleSaveSale}
+        />
+      )}
+
+      {editingSale && (
+        <SaleModal
+          isOpen={Boolean(editingSale)}
+          initialSale={editingSale}
+          onClose={() => setEditingSale(null)}
+          onSave={handleSaveSale}
+        />
+      )}
 
       {viewingSale && (
         <SalesViewModal
           isOpen={Boolean(viewingSale)}
           sale={viewingSale}
           onClose={() => setViewingSale(null)}
-        />
-      )}
-
-      {(isCreateModalOpen || editingSale) && (
-        <SaleModal
-          key={editingSale ? editingSale.id : "new-sale-modal"}
-          isOpen={isCreateModalOpen || Boolean(editingSale)}
-          initialSale={editingSale}
-          onClose={() => {
-            setIsCreateModalOpen(false);
-            setEditingSale(null);
-          }}
-          onSave={handleSaveSale}
-        />
-      )}
-
-      {deletingSale && (
-        <GenericModal
-          isOpen={Boolean(deletingSale)}
-          onClose={() => setDeletingSale(null)}
-          variant="danger"
-          size="sm"
-          title={APP_STRINGS.deleteSaleTitle}
-          message={`Are you sure you want to delete invoice "${deletingSale.invoiceNumber}" for ${deletingSale.customerName}? This operation will remove the transaction record.`}
-          confirmText={APP_STRINGS.deleteSaleConfirm}
-          cancelText={APP_STRINGS.cancel}
-          onConfirm={handleConfirmDelete}
         />
       )}
     </SalesContainer>
