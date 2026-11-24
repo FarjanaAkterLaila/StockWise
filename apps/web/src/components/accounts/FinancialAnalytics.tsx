@@ -1,7 +1,6 @@
 import React from "react";
 import { useTheme } from "styled-components";
 import type { MonthlyFinancialSummary, Expense } from "@/types";
-import { MOCK_MONTHLY_FINANCIALS } from "@/data/accounts.mock";
 import { formatCurrency, formatCompactCurrency } from "@/utils/formatters";
 import { useFinancialAnalytics } from "@/hooks/useFinancialAnalytics";
 import { SegmentedToggle } from "@/components/common/SegmentedToggle";
@@ -12,7 +11,6 @@ import {
   TitleBlock,
   TitleRow,
   ChartTitle,
-  DemoBadge,
   ChartSubtitle,
   HeaderControls,
   SummaryStatsRow,
@@ -67,10 +65,10 @@ const RANGE_OPTIONS = [
 ];
 
 export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
-  monthlyData = MOCK_MONTHLY_FINANCIALS,
+  monthlyData = [],
   expenses = [],
-  totalRevenue = 4850000,
-  totalExpenses = 3420000,
+  totalRevenue = 0,
+  totalExpenses = 0,
 }) => {
   const theme = useTheme();
 
@@ -91,7 +89,9 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
 
   const netOperatingProfit = totalRevenue - totalExpenses;
   const netMarginPercent =
-    totalRevenue > 0 ? Math.round((netOperatingProfit / totalRevenue) * 100) : 0;
+    totalRevenue > 0
+      ? Math.round((netOperatingProfit / totalRevenue) * 100)
+      : 0;
 
   return (
     <AnalyticsGrid>
@@ -101,10 +101,10 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
           <TitleBlock>
             <TitleRow>
               <ChartTitle>Monthly Income vs Expense</ChartTitle>
-              <DemoBadge>Demo Data</DemoBadge>
             </TitleRow>
             <ChartSubtitle>
-              Comparative financial trajectory and monthly operating margins in BDT
+              Comparative financial trajectory and monthly operating margins in
+              BDT
             </ChartSubtitle>
           </TitleBlock>
 
@@ -121,11 +121,15 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
         <SummaryStatsRow>
           <SummaryStatItem>
             <StatLabel>Monthly Avg. Income</StatLabel>
-            <StatNumber $variant="primary">{formatCurrency(avgIncome)}</StatNumber>
+            <StatNumber $variant="primary">
+              {formatCurrency(avgIncome)}
+            </StatNumber>
           </SummaryStatItem>
           <SummaryStatItem>
             <StatLabel>Monthly Avg. Expense</StatLabel>
-            <StatNumber $variant="danger">{formatCurrency(avgExpense)}</StatNumber>
+            <StatNumber $variant="danger">
+              {formatCurrency(avgExpense)}
+            </StatNumber>
           </SummaryStatItem>
           <SummaryStatItem>
             <StatLabel>Monthly Avg. Net Profit</StatLabel>
@@ -148,11 +152,15 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
           onMouseLeave={() => setHoveredIdx(null)}
           onMouseMove={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
-            setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+            setTooltipPos({
+              x: e.clientX - rect.left,
+              y: e.clientY - rect.top,
+            });
           }}
         >
-          <SvgContainer viewBox={`0 0 ${chartLayout.svgWidth} ${chartLayout.svgHeight}`}>
-            {/* Grid Lines */}
+          <SvgContainer
+            viewBox={`0 0 ${chartLayout.svgWidth} ${chartLayout.svgHeight}`}
+          >
             {chartLayout.yTicks.map((tick, idx) => (
               <g key={idx}>
                 <line
@@ -175,7 +183,6 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
               </g>
             ))}
 
-            {/* Bars */}
             {chartLayout.bars.map((slot, idx) => {
               const isHovered = hoveredIdx === idx;
               return (
@@ -184,7 +191,9 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
                   onMouseEnter={() => setHoveredIdx(idx)}
                   onTouchStart={(e) => {
                     setHoveredIdx(idx);
-                    const rect = e.currentTarget.closest("svg")?.getBoundingClientRect();
+                    const rect = e.currentTarget
+                      .closest("svg")
+                      ?.getBoundingClientRect();
                     if (rect) {
                       const scaleX = rect.width / chartLayout.svgWidth;
                       const scaleY = rect.height / chartLayout.svgHeight;
@@ -196,46 +205,56 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
                   }}
                   onClick={() => setHoveredIdx(idx)}
                 >
-                  {/* Hover background pillar */}
                   {isHovered && (
                     <rect
                       x={slot.income.x - 6}
                       y={chartLayout.padding.top}
-                      width={slot.expense.x + slot.expense.width - slot.income.x + 12}
-                      height={chartLayout.svgHeight - chartLayout.padding.top - chartLayout.padding.bottom}
+                      width={
+                        slot.expense.x + slot.expense.width - slot.income.x + 12
+                      }
+                      height={
+                        chartLayout.svgHeight -
+                        chartLayout.padding.top -
+                        chartLayout.padding.bottom
+                      }
                       fill={theme.colors.hoverSubtle}
                       rx="4"
                     />
                   )}
 
-                  {/* Income Bar */}
                   <rect
                     x={slot.income.x}
                     y={slot.income.y}
                     width={slot.income.width}
                     height={Math.max(2, slot.income.height)}
-                    fill={isHovered ? theme.colors.primaryHover : theme.colors.primary}
+                    fill={
+                      isHovered
+                        ? theme.colors.primaryHover
+                        : theme.colors.primary
+                    }
                     rx="3"
                   />
 
-                  {/* Expense Bar */}
                   <rect
                     x={slot.expense.x}
                     y={slot.expense.y}
                     width={slot.expense.width}
                     height={Math.max(2, slot.expense.height)}
-                    fill={isHovered ? theme.colors.dangerHover : theme.colors.danger}
+                    fill={
+                      isHovered ? theme.colors.dangerHover : theme.colors.danger
+                    }
                     rx="3"
                   />
 
-                  {/* Month Label */}
                   <text
                     x={slot.slotCenterX}
                     y={chartLayout.svgHeight - 12}
                     textAnchor="middle"
                     fontSize="11.5"
                     fontWeight={isHovered ? 700 : 500}
-                    fill={isHovered ? theme.colors.primary : theme.colors.textMuted}
+                    fill={
+                      isHovered ? theme.colors.primary : theme.colors.textMuted
+                    }
                   >
                     {slot.month}
                   </text>
@@ -244,7 +263,6 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
             })}
           </SvgContainer>
 
-          {/* Interactive Floating Tooltip */}
           {hoveredItem && (
             <TooltipOverlay $x={tooltipPos.x} $y={tooltipPos.y}>
               <TooltipTitle>{hoveredItem.month} Financials</TooltipTitle>
@@ -262,7 +280,13 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
               </TooltipRow>
               <TooltipRow>
                 <TooltipLabel>Net Margin:</TooltipLabel>
-                <TooltipValue $color={hoveredItem.data.netProfit >= 0 ? theme.colors.success : theme.colors.danger}>
+                <TooltipValue
+                  $color={
+                    hoveredItem.data.netProfit >= 0
+                      ? theme.colors.success
+                      : theme.colors.danger
+                  }
+                >
                   {formatCurrency(hoveredItem.data.netProfit)}
                 </TooltipValue>
               </TooltipRow>
@@ -271,22 +295,19 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
         </ChartCanvasWrapper>
       </ChartCard>
 
-      {/* Profit & Loss Summary Card */}
       <PnLCard>
         <PnLHeader>
           <PnLTitle>Profit &amp; Loss Statement</PnLTitle>
-          <PnLSubtitle>Fiscal period operational performance summary</PnLSubtitle>
+          <PnLSubtitle>
+            Fiscal period operational performance summary
+          </PnLSubtitle>
         </PnLHeader>
 
         <PnLSection>
           <PnLSectionTitle>Revenue &amp; Inflows</PnLSectionTitle>
           <PnLRow>
-            <PnLLabel>POS Hardware Sales</PnLLabel>
-            <PnLValue>{formatCurrency(totalRevenue * 0.94)}</PnLValue>
-          </PnLRow>
-          <PnLRow>
-            <PnLLabel>Services &amp; Maintenance</PnLLabel>
-            <PnLValue>{formatCurrency(totalRevenue * 0.06)}</PnLValue>
+            <PnLLabel>POS Sales &amp; Collections</PnLLabel>
+            <PnLValue>{formatCurrency(totalRevenue)}</PnLValue>
           </PnLRow>
           <PnLRow>
             <PnLLabel $bold>Total Gross Inflow</PnLLabel>
@@ -295,18 +316,23 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
         </PnLSection>
 
         <PnLSection>
-          <PnLSectionTitle>Operating Expenses &amp; COGS</PnLSectionTitle>
+          <PnLSectionTitle>Operating Expenses</PnLSectionTitle>
+          {categoryExpenses && categoryExpenses.length > 0 ? (
+            categoryExpenses.map((cat) => (
+              <PnLRow key={cat.name}>
+                <PnLLabel>{cat.name}</PnLLabel>
+                <PnLValue>{formatCurrency(cat.amount)}</PnLValue>
+              </PnLRow>
+            ))
+          ) : (
+            <PnLRow>
+              <PnLLabel>Operational Outflow</PnLLabel>
+              <PnLValue>{formatCurrency(totalExpenses)}</PnLValue>
+            </PnLRow>
+          )}
           <PnLRow>
-            <PnLLabel>Inventory Procurement</PnLLabel>
-            <PnLValue>{formatCurrency(totalExpenses * 0.78)}</PnLValue>
-          </PnLRow>
-          <PnLRow>
-            <PnLLabel>Shop Rent &amp; Multiplan Utilities</PnLLabel>
-            <PnLValue>{formatCurrency(totalExpenses * 0.12)}</PnLValue>
-          </PnLRow>
-          <PnLRow>
-            <PnLLabel>Staff Salaries &amp; Logistics</PnLLabel>
-            <PnLValue>{formatCurrency(totalExpenses * 0.10)}</PnLValue>
+            <PnLLabel $bold>Total Operating Outflow</PnLLabel>
+            <PnLValue $bold>{formatCurrency(totalExpenses)}</PnLValue>
           </PnLRow>
         </PnLSection>
 
@@ -324,7 +350,6 @@ export const FinancialAnalytics: React.FC<FinancialAnalyticsProps> = ({
           </PnLTotalValue>
         </PnLTotalRow>
 
-        {/* Operating Expense Distribution */}
         {categoryExpenses.length > 0 && (
           <PnLBreakdownSection>
             <PnLSectionTitle>Operating Expense Breakdown</PnLSectionTitle>

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import type { Product } from "@/types";
+import { useToast } from "@/context/ToastContext";
 import {
   fetchProducts,
   createProduct,
@@ -13,6 +14,7 @@ import { InventoryTable } from "./InventoryTable";
 import { ProductModal } from "./ProductModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { Plus } from "lucide-react";
+import { GenericLoader } from "@/components/common/GenericLoader";
 import {
   InventoryContainer,
   TopActionHeader,
@@ -24,6 +26,7 @@ import {
 
 export const InventoryModule: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [stockFilter, setStockFilter] = useState<string>(STOCK_STATUS.ALL);
@@ -42,6 +45,9 @@ export const InventoryModule: React.FC = () => {
       })
       .catch((err) => {
         console.error("Failed to fetch products from Supabase:", err);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
       });
     return () => {
       isMounted = false;
@@ -93,6 +99,8 @@ export const InventoryModule: React.FC = () => {
       stockFilter !== STOCK_STATUS.ALL,
   );
 
+  const { showSuccess, showError } = useToast();
+
   const handleResetFilters = () => {
     setSearchQuery("");
     setSelectedCategory("All");
@@ -111,24 +119,32 @@ export const InventoryModule: React.FC = () => {
           ),
         );
         setEditingProduct(null);
+        showSuccess("Product Updated", `"${formData.name}" has been updated.`);
       } else {
         const created = await createProduct(formData);
         setProducts((prev) => [created, ...prev]);
         setIsAddModalOpen(false);
+        showSuccess("Product Created", `"${created.name}" added to inventory.`);
       }
     } catch (err: unknown) {
-      alert((err as Error).message || "Failed to save product in database");
+      showError(
+        "Product Save Failed",
+        (err as Error).message || "Failed to save product in database",
+      );
     }
   };
 
   const handleConfirmDelete = async () => {
     if (deletingProduct) {
+      const prodName = deletingProduct.name;
       try {
         await deleteProduct(deletingProduct.id);
         setProducts((prev) => prev.filter((p) => p.id !== deletingProduct.id));
         setDeletingProduct(null);
+        showSuccess("Product Deleted", `"${prodName}" removed from inventory.`);
       } catch (err: unknown) {
-        alert(
+        showError(
+          "Delete Failed",
           (err as Error).message || "Failed to delete product from database",
         );
       }
@@ -150,31 +166,40 @@ export const InventoryModule: React.FC = () => {
         </AddProductBtn>
       </TopActionHeader>
 
-      <InventoryStats
-        totalCount={stats.totalCount}
-        totalUnits={stats.totalUnits}
-        lowStockCount={stats.lowStockCount}
-        totalValuation={stats.totalValuation}
-      />
+      {loading ? (
+        <GenericLoader
+          message="Loading inventory components..."
+          subtext="Fetching hardware items and stock levels from Supabase"
+        />
+      ) : (
+        <>
+          <InventoryStats
+            totalCount={stats.totalCount}
+            totalUnits={stats.totalUnits}
+            lowStockCount={stats.lowStockCount}
+            totalValuation={stats.totalValuation}
+          />
 
-      <InventoryFilterBar
-        searchTerm={searchQuery}
-        onSearchChange={setSearchQuery}
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
-        selectedStockFilter={stockFilter}
-        onStockFilterChange={setStockFilter}
-        hasActiveFilters={hasActiveFilters}
-        onResetFilters={handleResetFilters}
-      />
+          <InventoryFilterBar
+            searchTerm={searchQuery}
+            onSearchChange={setSearchQuery}
+            selectedCategory={selectedCategory}
+            onCategoryChange={setSelectedCategory}
+            selectedStockFilter={stockFilter}
+            onStockFilterChange={setStockFilter}
+            hasActiveFilters={hasActiveFilters}
+            onResetFilters={handleResetFilters}
+          />
 
-      <InventoryTable
-        products={filteredProducts}
-        hasActiveFilters={hasActiveFilters}
-        onResetFilters={handleResetFilters}
-        onEdit={(p) => setEditingProduct(p)}
-        onDelete={(p) => setDeletingProduct(p)}
-      />
+          <InventoryTable
+            products={filteredProducts}
+            hasActiveFilters={hasActiveFilters}
+            onResetFilters={handleResetFilters}
+            onEdit={(p) => setEditingProduct(p)}
+            onDelete={(p) => setDeletingProduct(p)}
+          />
+        </>
+      )}
 
       {isAddModalOpen && (
         <ProductModal
@@ -187,6 +212,7 @@ export const InventoryModule: React.FC = () => {
 
       {editingProduct && (
         <ProductModal
+          key={editingProduct.id}
           isOpen={Boolean(editingProduct)}
           initialProduct={editingProduct}
           onClose={() => setEditingProduct(null)}

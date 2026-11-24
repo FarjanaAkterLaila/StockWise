@@ -3,8 +3,11 @@ import type { Purchase } from "@/types";
 import {
   fetchPurchases,
   createPurchase,
+  updatePurchase,
+  deletePurchase,
 } from "@/services/purchases.service";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 import { DEFAULT_VALUES, APP_STRINGS } from "@/utils/constants";
 import { PurchaseStats } from "./PurchaseStats";
 import { PurchaseFilterBar } from "./PurchaseFilterBar";
@@ -12,6 +15,8 @@ import { PurchaseTable } from "./PurchaseTable";
 import { PurchaseModal } from "./PurchaseModal";
 import { PurchaseViewModal } from "./PurchaseViewModal";
 import { Plus } from "lucide-react";
+import { GenericLoader } from "@/components/common/GenericLoader";
+import { GenericModal } from "@/components/common/GenericModal";
 import {
   PurchaseContainer,
   TopActionHeader,
@@ -24,7 +29,9 @@ import {
 
 export const PurchaseModule: React.FC = () => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSupplier, setSelectedSupplier] = useState<string>(
     DEFAULT_VALUES.FILTER_ALL,
@@ -39,6 +46,7 @@ export const PurchaseModule: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [viewingPurchase, setViewingPurchase] = useState<Purchase | null>(null);
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
+  const [deletingPurchase, setDeletingPurchase] = useState<Purchase | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -50,6 +58,9 @@ export const PurchaseModule: React.FC = () => {
       })
       .catch((err) => {
         console.error("Failed to fetch purchases from Supabase:", err);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
       });
     return () => {
       isMounted = false;
@@ -119,18 +130,44 @@ export const PurchaseModule: React.FC = () => {
     purchaseData: Omit<Purchase, "id"> & { id?: string },
   ) => {
     if (purchaseData.id) {
-      setPurchases((prev) =>
-        prev.map((item) =>
-          item.id === purchaseData.id
-            ? ({ ...item, ...purchaseData } as Purchase)
-            : item,
-        ),
-      );
-      setEditingPurchase(null);
+      try {
+        await updatePurchase(purchaseData.id, {
+          purchaseNumber: purchaseData.purchaseNumber,
+          supplierId: purchaseData.supplierId,
+          supplierName: purchaseData.supplierName,
+          date: purchaseData.date,
+          paymentMethod: purchaseData.paymentMethod,
+          items: purchaseData.items.map((i) => ({
+            productId: i.productId,
+            productName: i.productName,
+            sku: i.sku,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            subtotal: i.subtotal,
+          })),
+          notes: purchaseData.notes,
+          totalAmount: purchaseData.grandTotal,
+          paidAmount: purchaseData.paidAmount,
+          discountAmount: purchaseData.discountAmount,
+          vatRate: purchaseData.vatRate,
+          vatAmount: purchaseData.vatAmount,
+          status: purchaseData.status,
+        });
+        const updated = await fetchPurchases();
+        setPurchases(updated);
+        setEditingPurchase(null);
+        showSuccess("Purchase Updated", "Purchase order details updated.");
+      } catch (err: unknown) {
+        showError(
+          "Update Failed",
+          (err as Error).message || "Failed to update purchase order.",
+        );
+      }
     } else {
       try {
-        await createPurchase(
+        const created = await createPurchase(
           {
+            purchaseNumber: purchaseData.purchaseNumber,
             supplierId: purchaseData.supplierId,
             supplierName: purchaseData.supplierName,
             items: purchaseData.items.map((i) => ({
@@ -143,21 +180,62 @@ export const PurchaseModule: React.FC = () => {
             })),
             totalAmount: purchaseData.grandTotal,
             paidAmount: purchaseData.paidAmount,
+            discountAmount: purchaseData.discountAmount,
+            vatRate: purchaseData.vatRate,
+            vatAmount: purchaseData.vatAmount,
             paymentMethod: purchaseData.paymentMethod,
             status: purchaseData.status,
             notes: purchaseData.notes,
           },
           user?.id,
         );
-        const updated = await fetchPurchases();
-        setPurchases(updated);
+
+        // 1. Immediately update UI state so new purchase displays instantly without reload
+        setPurchases((prev) => [
+          created,
+          ...prev.filter((p) => p.id !== created.id),
+        ]);
+        // 2. Close modal immediately
         setIsCreateModalOpen(false);
+        // 3. Display success toast
+        showSuccess(
+          "Purchase Order Created",
+          `PO #${created.purchaseNumber} created successfully.`,
+        );
+
+        // 4. Background refresh to sync any server-computed fields
+        fetchPurchases()
+          .then((fresh) => {
+            if (fresh && fresh.length > 0) setPurchases(fresh);
+          })
+          .catch((e) => console.warn("Background fetch warning:", e));
       } catch (err: unknown) {
-        alert(
+        showError(
+          "Purchase Order Failed",
           (err as Error).message ||
             "Failed to create purchase order in database",
         );
       }
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingPurchase) return;
+    const poNumber = deletingPurchase.purchaseNumber;
+    const id = deletingPurchase.id;
+    try {
+      await deletePurchase(id);
+      setPurchases((prev) => prev.filter((p) => p.id !== id));
+      setDeletingPurchase(null);
+      showSuccess(
+        "Purchase Deleted",
+        `Purchase Order #${poNumber} deleted successfully.`,
+      );
+    } catch (err: unknown) {
+      showError(
+        "Delete Failed",
+        (err as Error).message || "Failed to delete purchase order.",
+      );
     }
   };
 
@@ -179,34 +257,43 @@ export const PurchaseModule: React.FC = () => {
         </HeaderActions>
       </TopActionHeader>
 
-      <PurchaseStats
-        totalOrders={stats.totalOrders}
-        totalExpense={stats.totalExpense}
-        totalPaid={stats.totalPaid}
-        totalDue={stats.totalDue}
-      />
+      {loading ? (
+        <GenericLoader
+          message="Loading purchase orders..."
+          subtext="Fetching vendor restock orders and intake status"
+        />
+      ) : (
+        <>
+          <PurchaseStats
+            totalOrders={stats.totalOrders}
+            totalExpense={stats.totalExpense}
+            totalPaid={stats.totalPaid}
+            totalDue={stats.totalDue}
+          />
 
-      <PurchaseFilterBar
-        searchTerm={searchTerm}
-        selectedSupplier={selectedSupplier}
-        selectedStatus={selectedStatus}
-        selectedPaymentStatus={selectedPaymentStatus}
-        onSearchChange={setSearchTerm}
-        onSupplierChange={setSelectedSupplier}
-        onStatusChange={setSelectedStatus}
-        onPaymentStatusChange={setSelectedPaymentStatus}
-        onResetFilters={handleResetFilters}
-        hasActiveFilters={hasActiveFilters}
-      />
+          <PurchaseFilterBar
+            searchTerm={searchTerm}
+            selectedSupplier={selectedSupplier}
+            selectedStatus={selectedStatus}
+            selectedPaymentStatus={selectedPaymentStatus}
+            onSearchChange={setSearchTerm}
+            onSupplierChange={setSelectedSupplier}
+            onStatusChange={setSelectedStatus}
+            onPaymentStatusChange={setSelectedPaymentStatus}
+            onResetFilters={handleResetFilters}
+            hasActiveFilters={hasActiveFilters}
+          />
 
-      <PurchaseTable
-        purchases={filteredPurchases}
-        hasActiveFilters={hasActiveFilters}
-        onResetFilters={handleResetFilters}
-        onView={(p: Purchase) => setViewingPurchase(p)}
-        onEdit={(p: Purchase) => setEditingPurchase(p)}
-        onDelete={() => {}}
-      />
+          <PurchaseTable
+            purchases={filteredPurchases}
+            hasActiveFilters={hasActiveFilters}
+            onResetFilters={handleResetFilters}
+            onView={(p: Purchase) => setViewingPurchase(p)}
+            onEdit={(p: Purchase) => setEditingPurchase(p)}
+            onDelete={(p: Purchase) => setDeletingPurchase(p)}
+          />
+        </>
+      )}
 
       {isCreateModalOpen && (
         <PurchaseModal
@@ -219,6 +306,7 @@ export const PurchaseModule: React.FC = () => {
 
       {editingPurchase && (
         <PurchaseModal
+          key={editingPurchase.id}
           isOpen={Boolean(editingPurchase)}
           initialPurchase={editingPurchase}
           onClose={() => setEditingPurchase(null)}
@@ -231,6 +319,20 @@ export const PurchaseModule: React.FC = () => {
           isOpen={Boolean(viewingPurchase)}
           purchase={viewingPurchase}
           onClose={() => setViewingPurchase(null)}
+        />
+      )}
+
+      {deletingPurchase && (
+        <GenericModal
+          isOpen={Boolean(deletingPurchase)}
+          onClose={() => setDeletingPurchase(null)}
+          variant="danger"
+          size="sm"
+          title="Delete Purchase Order"
+          message={`Are you sure you want to delete purchase order #${deletingPurchase.purchaseNumber}? This will reverse received stock.`}
+          confirmText="Delete Order"
+          cancelText={APP_STRINGS.cancel}
+          onConfirm={handleConfirmDelete}
         />
       )}
     </PurchaseContainer>

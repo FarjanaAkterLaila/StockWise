@@ -1,6 +1,13 @@
-import { useState, useMemo } from "react";
-import type { Purchase, PaymentMethod, PurchaseStatus } from "@/types";
-import { INITIAL_PRODUCTS, MOCK_SUPPLIERS } from "@/data/mockData";
+import { useState, useMemo, useEffect } from "react";
+import type {
+  Purchase,
+  PaymentMethod,
+  PurchaseStatus,
+  Supplier,
+  Product,
+} from "@/types";
+import { fetchSuppliers } from "@/services/suppliers.service";
+import { fetchProducts } from "@/services/products.service";
 import { PAYMENT_METHODS, APP_STRINGS } from "@/utils/constants";
 import {
   validatePurchaseForm,
@@ -64,10 +71,31 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
   initialPurchase,
 }) => {
   const isEditing = Boolean(initialPurchase);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [formData, setFormData] = useState<PurchaseFormData>(() =>
     getInitialPurchaseFormData(initialPurchase),
   );
+  const [isCustomSupplier, setIsCustomSupplier] = useState<boolean>(() =>
+    Boolean(!initialPurchase?.supplierId && initialPurchase?.supplierName),
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all([
+      fetchSuppliers().catch(() => []),
+      fetchProducts().catch(() => []),
+    ]).then(([supps, prods]) => {
+      if (isMounted) {
+        setSuppliers(supps);
+        setProducts(prods);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const calculations = useMemo(() => {
     return calculatePurchaseTotals(
@@ -83,29 +111,110 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
     formData.paidAmount,
   ]);
 
-  const supplierOptions = MOCK_SUPPLIERS.map((s) => ({
-    value: s.id,
-    label: `${s.name} (${s.distributorOf.slice(0, 2).join(", ")})`,
-  }));
+  const supplierOptions = useMemo(() => {
+    const list = suppliers
+      .filter((s) => {
+        const lower = (s.name || "").toLowerCase();
+        return (
+          !lower.includes("authorized hardware distributor") &&
+          !lower.includes("authorized distributor")
+        );
+      })
+      .map((s) => ({
+        value: s.id,
+        label:
+          s.contactPerson && s.contactPerson !== s.name
+            ? `${s.name} (${s.contactPerson})`
+            : s.name,
+      }));
 
-  const productOptions = INITIAL_PRODUCTS.map((p) => ({
-    value: p.id,
-    label: `${p.name} [${p.sku}] - Default Cost: ৳${p.costPrice.toLocaleString()}`,
-  }));
+    // Ensure selected supplier is NEVER omitted or rendered as blank
+    if (
+      formData.supplierId &&
+      formData.supplierId !== "__add_new_supplier__" &&
+      !list.some((opt) => opt.value === formData.supplierId)
+    ) {
+      const existingInRaw = suppliers.find((s) => s.id === formData.supplierId);
+      list.unshift({
+        value: formData.supplierId,
+        label: existingInRaw
+          ? existingInRaw.name
+          : formData.supplierName || "Selected Supplier",
+      });
+    }
+
+    // Include "+ Add New Supplier" option directly within the dropdown
+    list.push({
+      value: "__add_new_supplier__",
+      label: "+ Add New Supplier",
+    });
+
+    return list;
+  }, [suppliers, formData.supplierId, formData.supplierName]);
+
+  const productOptions = useMemo(() => {
+    const list = products.map((p) => ({
+      value: p.id,
+      label: `${p.name} [${p.sku || "No SKU"}] - Cost: ৳${p.costPrice.toLocaleString()}`,
+    }));
+
+    // Inject any items in current purchase whose products haven't loaded or are archived
+    for (const item of formData.items) {
+      if (item.productId && !list.some((p) => p.value === item.productId)) {
+        list.push({
+          value: item.productId,
+          label: `${item.productName || "Hardware Item"} [${item.sku || "Component"}] - Cost: ৳${Number(item.unitPrice || 0).toLocaleString()}`,
+        });
+      }
+    }
+
+    return list;
+  }, [products, formData.items]);
 
   const handleSupplierSelect = (supplierId: string) => {
-    const found = MOCK_SUPPLIERS.find((s) => s.id === supplierId);
+    if (supplierId === "__add_new_supplier__") {
+      setIsCustomSupplier(true);
+      setFormData((prev) => ({
+        ...prev,
+        supplierId: "",
+        supplierName: "",
+      }));
+      return;
+    }
+    const found = suppliers.find((s) => s.id === supplierId);
     if (found) {
       setFormData((prev) => ({
         ...prev,
         supplierId: found.id,
         supplierName: found.name,
       }));
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.supplier;
+        return next;
+      });
+    }
+  };
+
+  const handleSupplierNameChange = (name: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      supplierName: name,
+      supplierId:
+        suppliers.find((s) => s.name.toLowerCase() === name.trim().toLowerCase())
+          ?.id || "",
+    }));
+    if (name.trim()) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.supplier;
+        return next;
+      });
     }
   };
 
   const handleItemProductChange = (index: number, productId: string) => {
-    const prod = INITIAL_PRODUCTS.find((p) => p.id === productId);
+    const prod = products.find((p) => p.id === productId);
     if (!prod) return;
     const updated = [...formData.items];
     updated[index] = {
@@ -173,7 +282,10 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
       ...(initialPurchase?.id ? { id: initialPurchase.id } : {}),
       purchaseNumber: formData.purchaseNumber,
       supplierId: formData.supplierId,
-      supplierName: formData.supplierName,
+      supplierName:
+        formData.supplierName.trim() ||
+        suppliers.find((s) => s.id === formData.supplierId)?.name ||
+        "",
       date: formData.date,
       time: initialPurchase?.time || formatTime(),
       items: formData.items.map((i) => ({
@@ -227,8 +339,13 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
           <FormInput
             type="text"
             value={formData.purchaseNumber}
-            disabled
-            readOnly
+            placeholder="e.g. PO-20261124-1001"
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                purchaseNumber: e.target.value,
+              }))
+            }
           />
         </FormGroup>
 
@@ -245,22 +362,73 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
         </FormGroup>
       </FormRow>
 
-      {/* Supplier / Distributor Selection */}
-      <FormRow $cols="1fr">
-        <FormGroup>
-          <FormLabel>Distributor / Supplier *</FormLabel>
-          <CustomSelect
-            options={supplierOptions}
-            value={formData.supplierId}
-            onChange={handleSupplierSelect}
-            placeholder="Select Authorized Hardware Distributor"
-            ariaLabel="Select hardware supplier"
-          />
-          {errors.supplier && <FormError>{errors.supplier}</FormError>}
-        </FormGroup>
-      </FormRow>
+      {supplierOptions.length > 0 && !isCustomSupplier ? (
+        <FormRow $cols="1fr">
+          <FormGroup>
+            <FormLabel>Distributor / Supplier *</FormLabel>
+            <CustomSelect
+              fullWidth
+              options={supplierOptions}
+              value={formData.supplierId}
+              onChange={handleSupplierSelect}
+              placeholder="Select supplier (or + Add New Supplier)"
+              ariaLabel="Select hardware supplier"
+            />
+            {errors.supplier && <FormError>{errors.supplier}</FormError>}
+          </FormGroup>
+        </FormRow>
+      ) : (
+        <FormRow $cols="1fr">
+          <FormGroup>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "6px",
+              }}
+            >
+              <FormLabel style={{ marginBottom: 0 }}>
+                New Distributor / Supplier Name *
+              </FormLabel>
+              {supplierOptions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustomSupplier(false);
+                    const defaultSupp = supplierOptions.find(
+                      (s) => s.value !== "__add_new_supplier__",
+                    );
+                    if (defaultSupp) {
+                      handleSupplierSelect(defaultSupp.value);
+                    }
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#4f46e5",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
+                >
+                  ← Back to Supplier Dropdown
+                </button>
+              )}
+            </div>
+            <FormInput
+              type="text"
+              value={formData.supplierName}
+              placeholder="Enter Supplier or Distributor Name (e.g. Smart Technologies BD, UCC, Ryans...)"
+              onChange={(e) => handleSupplierNameChange(e.target.value)}
+              autoFocus
+            />
+            {errors.supplier && <FormError>{errors.supplier}</FormError>}
+          </FormGroup>
+        </FormRow>
+      )}
 
-      {/* Product Line Items */}
       <ItemLinesSection>
         <ItemLinesHeader>
           <ItemLinesTitle>
@@ -357,13 +525,12 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
         })}
       </ItemLinesSection>
 
-      {/* Summary Calculations & Discount / VAT */}
       <FormRow $cols="1.2fr 1.8fr">
-        {/* Left Column: Settlement & Status */}
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <FormGroup>
             <FormLabel>Payment Method</FormLabel>
             <CustomSelect
+              fullWidth
               options={PAYMENT_METHOD_OPTIONS}
               value={formData.paymentMethod}
               onChange={(val) =>
@@ -379,6 +546,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
           <FormGroup>
             <FormLabel>Purchase Order Status</FormLabel>
             <CustomSelect
+              fullWidth
               options={PURCHASE_STATUS_MODAL_OPTIONS}
               value={formData.status}
               onChange={(val) =>
@@ -392,7 +560,40 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
           </FormGroup>
 
           <FormGroup>
-            <FormLabel>Paid Amount (BDT ৳)</FormLabel>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "4px",
+              }}
+            >
+              <FormLabel style={{ margin: 0 }}>Paid Amount (BDT ৳)</FormLabel>
+              {calculations.grandTotal > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      paidAmount: String(calculations.grandTotal),
+                    }))
+                  }
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    color: "var(--color-primary, #6366f1)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                    textDecoration: "underline",
+                  }}
+                  title="Set paid amount to full grand total"
+                >
+                  Pay Full ({formatCurrency(calculations.grandTotal)})
+                </button>
+              )}
+            </div>
             <FormInput
               type="number"
               min="0"
@@ -409,7 +610,6 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
           </FormGroup>
         </div>
 
-        {/* Right Column: Calculations Card */}
         <TotalsCard>
           <TotalsRow>
             <span>Items Subtotal:</span>
@@ -485,7 +685,6 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
         </TotalsCard>
       </FormRow>
 
-      {/* Notes */}
       <FormGroup>
         <FormLabel>Order Remarks / Warranty Tracking Notes</FormLabel>
         <FormTextarea

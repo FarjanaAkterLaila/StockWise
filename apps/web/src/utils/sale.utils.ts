@@ -1,5 +1,4 @@
 import type { Sale, PaymentStatus } from "@/types";
-import { INITIAL_PRODUCTS } from "@/data/mockData";
 import { DEFAULT_VALUES } from "@/utils/constants";
 import type {
   SaleFormData,
@@ -19,14 +18,13 @@ export const generateInvoiceNumber = (): string => {
 };
 
 export const createInitialSaleItem = (): SaleItemFormData => {
-  const defaultProduct = INITIAL_PRODUCTS[0];
   return {
     id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    productId: defaultProduct?.id || "",
-    productName: defaultProduct?.name || "",
-    sku: defaultProduct?.sku || "",
+    productId: "",
+    productName: "",
+    sku: "",
     quantity: DEFAULT_VALUES.DEFAULT_QUANTITY,
-    unitPrice: String(defaultProduct?.sellingPrice || 0),
+    unitPrice: "0",
   };
 };
 
@@ -37,19 +35,20 @@ export const getInitialSaleFormData = (sale?: Sale | null): SaleFormData => ({
   customerType: sale?.customerType || DEFAULT_VALUES.CUSTOMER_TYPE,
   customerPhone: sale?.customerPhone || "",
   date: sale?.date || new Date().toISOString().split("T")[0],
-  items: sale?.items.map((i) => ({
-    id: i.id,
-    productId: i.productId,
-    productName: i.productName,
-    sku: i.sku,
-    quantity: String(i.quantity),
-    unitPrice: String(i.unitPrice),
-  })) || [createInitialSaleItem()],
+  items:
+    sale?.items && sale.items.length > 0
+      ? sale.items.map((i) => ({
+          id: i.id || `item-${Math.random().toString(36).slice(2, 7)}`,
+          productId: i.productId || "",
+          productName: i.productName || "",
+          sku: i.sku || "",
+          quantity: String(i.quantity ?? DEFAULT_VALUES.DEFAULT_QUANTITY),
+          unitPrice: String(i.unitPrice ?? 0),
+        }))
+      : [createInitialSaleItem()],
   discountAmount: String(sale?.discountAmount || 0),
   taxAmount: String(sale?.taxAmount || 0),
-  paidAmount: String(
-    sale ? sale.paidAmount : INITIAL_PRODUCTS[0]?.sellingPrice || 0,
-  ),
+  paidAmount: String(sale ? sale.paidAmount : 0),
   paymentStatus: sale?.paymentStatus || DEFAULT_VALUES.PAYMENT_STATUS_PAID,
   paymentMethod: sale?.paymentMethod || DEFAULT_VALUES.PAYMENT_METHOD,
   status: sale?.status || DEFAULT_VALUES.SALE_STATUS_COMPLETED,

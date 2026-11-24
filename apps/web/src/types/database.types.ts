@@ -44,12 +44,12 @@ export interface ProductRow {
   id: string;
   name: string;
   sku: string | null;
-  barcode: string | null;
+  barcode?: string | null;
   category_id: string | null;
   purchase_price: number;
   selling_price: number;
   quantity: number;
-  min_stock_level: number | null;
+  min_stock_level?: number | null;
   unit: string | null;
   image_url: string | null;
   status: DbProductStatus;
@@ -93,7 +93,7 @@ export interface PurchaseRow {
   status: DbPurchaseStatus;
   payment_status: DbPaymentStatus;
   notes: string | null;
-  created_by: string | null;
+  created_by?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -122,7 +122,7 @@ export interface SaleRow {
   payment_status: DbPaymentStatus;
   status: DbSaleStatus;
   notes: string | null;
-  created_by: string | null;
+  created_by?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -146,7 +146,7 @@ export interface StockMovementRow {
   current_stock: number | null;
   reference_id: string | null;
   notes: string | null;
-  created_by: string | null;
+  created_by?: string | null;
   created_at: string;
 }
 
@@ -163,7 +163,7 @@ export interface PaymentRow {
   payment_method: DbPaymentMethod;
   reference_number: string | null;
   notes: string | null;
-  created_by: string | null;
+  created_by?: string | null;
   created_at: string;
 }
 
@@ -177,7 +177,7 @@ export interface ExpenseRow {
   reference_number: string | null;
   receipt_url: string | null;
   notes: string | null;
-  created_by: string | null;
+  created_by?: string | null;
   created_at: string;
   updated_at: string;
 }

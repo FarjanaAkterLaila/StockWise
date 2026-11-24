@@ -7,7 +7,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import type { NavModule, NavSubModule } from "@/types";
-import { NAV_MODULES, BADGE_VARIANTS } from "@/utils/constants";
+import { NAV_MODULES } from "@/utils/constants";
 
 export type { NavSubModule };
 
@@ -27,8 +27,6 @@ export const NAV_ITEMS: NavItemConfig[] = [
     id: NAV_MODULES.INVENTORY,
     label: "Inventory",
     icon: Package,
-    badge: "5 Low",
-    badgeVariant: BADGE_VARIANTS.WARNING,
   },
   { id: NAV_MODULES.ACCOUNTS, label: "Accounts", icon: WalletCards },
 ];

@@ -1,8 +1,8 @@
 import React from "react";
 import { ACCOUNTS_TABS, APP_STRINGS } from "@/utils/constants";
-import { MOCK_MONTHLY_FINANCIALS } from "@/data/mockData";
 import { useAccounts } from "@/hooks/useAccounts";
 import { AccountsOverviewStats } from "./AccountsOverviewStats";
+import { GenericLoader } from "@/components/common/GenericLoader";
 import { FinancialAnalytics } from "./FinancialAnalytics";
 import { ExpenseManagement } from "./ExpenseManagement";
 import { IncomeManagement } from "./IncomeManagement";
@@ -28,6 +28,7 @@ import {
 
 export const AccountsModule: React.FC = () => {
   const {
+    loading,
     activeTab,
     setActiveTab,
     isCreateExpenseOpen,
@@ -36,6 +37,7 @@ export const AccountsModule: React.FC = () => {
     incomes,
     customerPayments,
     supplierPayments,
+    monthlyFinancials,
     overviewMetrics,
     handleSaveExpense,
     handleDeleteExpense,
@@ -67,108 +69,117 @@ export const AccountsModule: React.FC = () => {
         </HeaderActions>
       </TopActionHeader>
 
-      <AccountsOverviewStats
-        totalRevenue={overviewMetrics.totalRevenue}
-        totalExpenses={overviewMetrics.totalExpenses}
-        totalReceived={overviewMetrics.totalReceived}
-        totalPayable={overviewMetrics.totalPayable}
-        netProfit={overviewMetrics.netProfit}
-        marginPercentage={overviewMetrics.marginPercentage}
-      />
-
-      <TabNav>
-        <TabItem
-          type="button"
-          $isActive={activeTab === ACCOUNTS_TABS.ANALYTICS}
-          onClick={() => setActiveTab(ACCOUNTS_TABS.ANALYTICS)}
-        >
-          <BarChart3 size={16} />
-          <span>Financial Analytics</span>
-        </TabItem>
-
-        <TabItem
-          type="button"
-          $isActive={activeTab === ACCOUNTS_TABS.EXPENSES}
-          onClick={() => setActiveTab(ACCOUNTS_TABS.EXPENSES)}
-        >
-          <Receipt size={16} />
-          <span>Expense Management</span>
-          <TabBadge $isActive={activeTab === ACCOUNTS_TABS.EXPENSES}>
-            {expenses.length}
-          </TabBadge>
-        </TabItem>
-
-        <TabItem
-          type="button"
-          $isActive={activeTab === ACCOUNTS_TABS.INCOME}
-          onClick={() => setActiveTab(ACCOUNTS_TABS.INCOME)}
-        >
-          <Coins size={16} />
-          <span>Income Management</span>
-          <TabBadge $isActive={activeTab === ACCOUNTS_TABS.INCOME}>
-            {incomes.length}
-          </TabBadge>
-        </TabItem>
-
-        <TabItem
-          type="button"
-          $isActive={activeTab === ACCOUNTS_TABS.CUSTOMER_PAYMENTS}
-          onClick={() => setActiveTab(ACCOUNTS_TABS.CUSTOMER_PAYMENTS)}
-        >
-          <Users size={16} />
-          <span>Customer Payments</span>
-          <TabBadge $isActive={activeTab === ACCOUNTS_TABS.CUSTOMER_PAYMENTS}>
-            {customerPayments.length}
-          </TabBadge>
-        </TabItem>
-
-        <TabItem
-          type="button"
-          $isActive={activeTab === ACCOUNTS_TABS.SUPPLIER_PAYMENTS}
-          onClick={() => setActiveTab(ACCOUNTS_TABS.SUPPLIER_PAYMENTS)}
-        >
-          <Truck size={16} />
-          <span>Supplier Payments</span>
-          <TabBadge $isActive={activeTab === ACCOUNTS_TABS.SUPPLIER_PAYMENTS}>
-            {supplierPayments.length}
-          </TabBadge>
-        </TabItem>
-      </TabNav>
-
-      <TabContentPanel key={activeTab}>
-        {activeTab === ACCOUNTS_TABS.ANALYTICS && (
-          <FinancialAnalytics
-            monthlyData={MOCK_MONTHLY_FINANCIALS}
-            expenses={expenses}
+      {loading ? (
+        <GenericLoader
+          message="Loading financial ledger..."
+          subtext="Fetching live expenses, customer receipts, and vendor payouts"
+        />
+      ) : (
+        <>
+          <AccountsOverviewStats
             totalRevenue={overviewMetrics.totalRevenue}
             totalExpenses={overviewMetrics.totalExpenses}
+            totalReceived={overviewMetrics.totalReceived}
+            totalPayable={overviewMetrics.totalPayable}
+            netProfit={overviewMetrics.netProfit}
+            marginPercentage={overviewMetrics.marginPercentage}
           />
-        )}
 
-        {activeTab === ACCOUNTS_TABS.EXPENSES && (
-          <ExpenseManagement
-            expenses={expenses}
-            onSaveExpense={handleSaveExpense}
-            onDeleteExpense={handleDeleteExpense}
-            onOpenCreate={handleOpenRecordExpense}
-          />
-        )}
+          <TabNav>
+            <TabItem
+              type="button"
+              $isActive={activeTab === ACCOUNTS_TABS.ANALYTICS}
+              onClick={() => setActiveTab(ACCOUNTS_TABS.ANALYTICS)}
+            >
+              <BarChart3 size={16} />
+              <span>Financial Analytics</span>
+            </TabItem>
 
-        {activeTab === ACCOUNTS_TABS.INCOME && (
-          <IncomeManagement
-            incomes={incomes}
-            onOpenCreate={handleOpenRecordIncome}
-          />
-        )}
+            <TabItem
+              type="button"
+              $isActive={activeTab === ACCOUNTS_TABS.EXPENSES}
+              onClick={() => setActiveTab(ACCOUNTS_TABS.EXPENSES)}
+            >
+              <Receipt size={16} />
+              <span>Expense Management</span>
+              <TabBadge $isActive={activeTab === ACCOUNTS_TABS.EXPENSES}>
+                {expenses.length}
+              </TabBadge>
+            </TabItem>
 
-        {activeTab === ACCOUNTS_TABS.CUSTOMER_PAYMENTS && (
-          <CustomerPayments payments={customerPayments} />
-        )}
+            <TabItem
+              type="button"
+              $isActive={activeTab === ACCOUNTS_TABS.INCOME}
+              onClick={() => setActiveTab(ACCOUNTS_TABS.INCOME)}
+            >
+              <Coins size={16} />
+              <span>Income Management</span>
+              <TabBadge $isActive={activeTab === ACCOUNTS_TABS.INCOME}>
+                {incomes.length}
+              </TabBadge>
+            </TabItem>
 
-        {activeTab === ACCOUNTS_TABS.SUPPLIER_PAYMENTS && (
-          <SupplierPayments payments={supplierPayments} />
-        )}
-      </TabContentPanel>
+            <TabItem
+              type="button"
+              $isActive={activeTab === ACCOUNTS_TABS.CUSTOMER_PAYMENTS}
+              onClick={() => setActiveTab(ACCOUNTS_TABS.CUSTOMER_PAYMENTS)}
+            >
+              <Users size={16} />
+              <span>Customer Payments</span>
+              <TabBadge $isActive={activeTab === ACCOUNTS_TABS.CUSTOMER_PAYMENTS}>
+                {customerPayments.length}
+              </TabBadge>
+            </TabItem>
+
+            <TabItem
+              type="button"
+              $isActive={activeTab === ACCOUNTS_TABS.SUPPLIER_PAYMENTS}
+              onClick={() => setActiveTab(ACCOUNTS_TABS.SUPPLIER_PAYMENTS)}
+            >
+              <Truck size={16} />
+              <span>Supplier Payments</span>
+              <TabBadge $isActive={activeTab === ACCOUNTS_TABS.SUPPLIER_PAYMENTS}>
+                {supplierPayments.length}
+              </TabBadge>
+            </TabItem>
+          </TabNav>
+
+          <TabContentPanel key={activeTab}>
+            {activeTab === ACCOUNTS_TABS.ANALYTICS && (
+              <FinancialAnalytics
+                monthlyData={monthlyFinancials}
+                expenses={expenses}
+                totalRevenue={overviewMetrics.totalRevenue}
+                totalExpenses={overviewMetrics.totalExpenses}
+              />
+            )}
+
+            {activeTab === ACCOUNTS_TABS.EXPENSES && (
+              <ExpenseManagement
+                expenses={expenses}
+                onSaveExpense={handleSaveExpense}
+                onDeleteExpense={handleDeleteExpense}
+                onOpenCreate={handleOpenRecordExpense}
+              />
+            )}
+
+            {activeTab === ACCOUNTS_TABS.INCOME && (
+              <IncomeManagement
+                incomes={incomes}
+                onOpenCreate={handleOpenRecordIncome}
+              />
+            )}
+
+            {activeTab === ACCOUNTS_TABS.CUSTOMER_PAYMENTS && (
+              <CustomerPayments payments={customerPayments} />
+            )}
+
+            {activeTab === ACCOUNTS_TABS.SUPPLIER_PAYMENTS && (
+              <SupplierPayments payments={supplierPayments} />
+            )}
+          </TabContentPanel>
+        </>
+      )}
 
       {isCreateExpenseOpen && (
         <ExpenseModal

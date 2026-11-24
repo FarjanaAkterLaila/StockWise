@@ -1,5 +1,4 @@
 import type { Purchase, PaymentStatus } from "@/types";
-import { INITIAL_PRODUCTS, MOCK_SUPPLIERS } from "@/data/mockData";
 import { DEFAULT_VALUES } from "@/utils/constants";
 import type {
   PurchaseFormData,
@@ -19,39 +18,47 @@ export const generatePurchaseNumber = (): string => {
 };
 
 export const createInitialPurchaseItem = (): PurchaseItemFormData => {
-  const defaultProduct = INITIAL_PRODUCTS[0];
   return {
     id: `poi-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    productId: defaultProduct?.id || "",
-    productName: defaultProduct?.name || "",
-    sku: defaultProduct?.sku || "",
-    quantity: "5",
-    unitPrice: String(defaultProduct?.costPrice || 0),
+    productId: "",
+    productName: "",
+    sku: "",
+    quantity: "1",
+    unitPrice: "0",
   };
 };
 
 export const getInitialPurchaseFormData = (
   purchase?: Purchase | null,
 ): PurchaseFormData => {
-  const defaultSupplier = MOCK_SUPPLIERS[0];
   return {
     purchaseNumber: purchase?.purchaseNumber || generatePurchaseNumber(),
-    supplierId: purchase?.supplierId || defaultSupplier?.id || "",
-    supplierName: purchase?.supplierName || defaultSupplier?.name || "",
+    supplierId: purchase?.supplierId || "",
+    supplierName: purchase?.supplierName || "",
     date: purchase?.date || new Date().toISOString().split("T")[0],
-    items: purchase?.items.map((i) => ({
-      id: i.id,
-      productId: i.productId,
-      productName: i.productName,
-      sku: i.sku,
-      quantity: String(i.quantity),
-      unitPrice: String(i.unitPrice),
-    })) || [createInitialPurchaseItem()],
-    discountAmount: String(purchase?.discountAmount || 0),
-    vatRate: String(purchase?.vatRate ?? DEFAULT_VALUES.DEFAULT_VAT_RATE),
-    paidAmount: String(purchase ? purchase.paidAmount : 0),
+    items:
+      purchase?.items && purchase.items.length > 0
+        ? purchase.items.map((i) => ({
+          id: i.id || `poi-${Math.random().toString(36).slice(2, 7)}`,
+          productId: i.productId || "",
+          productName: i.productName || "",
+          sku: i.sku || "",
+          quantity: String(i.quantity ?? 1),
+          unitPrice: String(i.unitPrice ?? 0),
+        }))
+        : [createInitialPurchaseItem()],
+    discountAmount: String(purchase ? (purchase.discountAmount ?? 0) : 0),
+    vatRate: String(
+      purchase
+        ? (purchase.vatRate ?? 0)
+        : (DEFAULT_VALUES.DEFAULT_VAT_RATE || 0),
+    ),
+    paidAmount: String(purchase ? (purchase.paidAmount ?? 0) : 0),
     paymentStatus:
-      purchase?.paymentStatus || DEFAULT_VALUES.PAYMENT_STATUS_PAID,
+      purchase?.paymentStatus ||
+      (Number(purchase?.paidAmount || 0) > 0
+        ? DEFAULT_VALUES.PAYMENT_STATUS_PAID
+        : DEFAULT_VALUES.PAYMENT_STATUS_UNPAID),
     paymentMethod: purchase?.paymentMethod || DEFAULT_VALUES.PAYMENT_METHOD,
     status: purchase?.status || DEFAULT_VALUES.PURCHASE_STATUS_RECEIVED,
     notes: purchase?.notes || "",

@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useTheme } from "styled-components";
 import type { SalesPurchaseComparison } from "@/types";
-import { MOCK_MONTHLY_SALES_PURCHASE } from "@/data/dashboardCharts.mock";
 import { formatCurrency, formatCompactCurrency } from "@/utils/formatters";
 import { SegmentedToggle } from "@/components/common/SegmentedToggle";
 import {
@@ -16,7 +15,6 @@ import {
   TitleBlock,
   TitleRow,
   ChartTitle,
-  DemoBadge,
   ChartSubtitle,
   HeaderControls,
   SummaryStatsRow,
@@ -45,7 +43,7 @@ const RANGE_OPTIONS = [
 ];
 
 export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
-  data = MOCK_MONTHLY_SALES_PURCHASE,
+  data = [],
 }) => {
   const theme = useTheme();
   const [range, setRange] = useState<"6m" | "12m">("6m");
@@ -82,7 +80,6 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
         <TitleBlock>
           <TitleRow>
             <ChartTitle>Sales vs Purchase Overview</ChartTitle>
-            <DemoBadge>Demo Data</DemoBadge>
           </TitleRow>
           <ChartSubtitle>
             Monthly sales revenue vs. vendor restock expense in BDT
@@ -141,7 +138,6 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
             viewBox={`0 0 ${svgWidth} ${svgHeight}`}
             preserveAspectRatio="xMidYMid meet"
           >
-            {/* Background horizontal grid lines & Y-axis labels */}
             {yTicks.map((tickVal, i) => {
               const y =
                 padding.top + plotHeight - (tickVal / maxY) * plotHeight;
@@ -170,7 +166,6 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
               );
             })}
 
-            {/* Bars for Sales & Purchase */}
             {activeData.map((d, idx) => {
               const centerX = padding.left + (idx + 0.5) * slotWidth;
               const salesHeight = (d.sales / maxY) * plotHeight;
@@ -185,7 +180,6 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
 
               return (
                 <g key={d.month}>
-                  {/* Subtle hover column background */}
                   {isHovered && (
                     <rect
                       x={centerX - slotWidth / 2 + 2}
@@ -216,7 +210,6 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
                     }}
                   />
 
-                  {/* Purchase Bar */}
                   <rect
                     x={purchaseX}
                     y={purchaseY}
@@ -234,7 +227,6 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
                     }}
                   />
 
-                  {/* X-axis Month Label */}
                   <text
                     x={centerX}
                     y={svgHeight - 8}
@@ -251,7 +243,6 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
                     {d.month}
                   </text>
 
-                  {/* Interactive touch/hover overlay */}
                   <rect
                     x={centerX - slotWidth / 2}
                     y={padding.top}
@@ -293,7 +284,6 @@ export const SalesPurchaseBarChart: React.FC<SalesPurchaseBarChartProps> = ({
             })}
           </svg>
 
-          {/* Floating Tooltip */}
           {hoveredItem && (
             <TooltipOverlay
               $x={tooltipPos.x}

@@ -5,7 +5,6 @@ import { useAuth } from "@/context/AuthContext";
 import {
   Menu,
   Search,
-  Bell,
   PlusCircle,
   CheckCircle2,
   LogOut,
@@ -23,9 +22,7 @@ import {
   SearchInput,
   SearchShortcut,
   ActionButton,
-  IconBtnWrap,
   HeaderIconButton,
-  NotificationDot,
   HeaderDivider,
   ProfileButton,
   AvatarWrap,
@@ -95,16 +92,6 @@ export const Header: React.FC<HeaderProps> = ({
           <PlusCircle size={16} />
           <span>New Sale</span>
         </ActionButton>
-
-        <IconBtnWrap>
-          <HeaderIconButton
-            aria-label="Notifications"
-            title="5 low stock items need attention"
-          >
-            <Bell size={18} />
-            <NotificationDot />
-          </HeaderIconButton>
-        </IconBtnWrap>
 
         <HeaderDivider />
 

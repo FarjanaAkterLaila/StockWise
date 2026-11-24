@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useTheme } from "styled-components";
 import type { RevenueTrendPoint } from "@/types";
-import { MOCK_REVENUE_TREND_DATA } from "@/data/dashboardCharts.mock";
 import { formatCurrency, formatCompactCurrency } from "@/utils/formatters";
 import { TrendingUp } from "lucide-react";
 import { SegmentedToggle } from "@/components/common/SegmentedToggle";
@@ -16,7 +15,6 @@ import {
   TitleBlock,
   TitleRow,
   ChartTitle,
-  DemoBadge,
   ChartSubtitle,
   HeaderControls,
   MetricHighlightRow,
@@ -42,8 +40,14 @@ const RANGE_OPTIONS = [
   { value: "6m" as const, label: "6 Months" },
 ];
 
+const DEFAULT_TREND_DATA: Record<"7d" | "30d" | "6m", RevenueTrendPoint[]> = {
+  "7d": [],
+  "30d": [],
+  "6m": [],
+};
+
 export const RevenueTrendLineChart: React.FC<RevenueTrendLineChartProps> = ({
-  data = MOCK_REVENUE_TREND_DATA,
+  data = DEFAULT_TREND_DATA,
 }) => {
   const theme = useTheme();
   const [range, setRange] = useState<"7d" | "30d" | "6m">("7d");
@@ -58,6 +62,22 @@ export const RevenueTrendLineChart: React.FC<RevenueTrendLineChartProps> = ({
     () => calculateRevenueTrendTotals(activePoints),
     [activePoints],
   );
+
+  const growthRate = useMemo(() => {
+    if (!activePoints || activePoints.length < 2 || totalRevenue === 0)
+      return 0;
+    const mid = Math.floor(activePoints.length / 2);
+    const firstHalfRevenue = activePoints
+      .slice(0, mid)
+      .reduce((sum, p) => sum + p.revenue, 0);
+    const secondHalfRevenue = activePoints
+      .slice(mid)
+      .reduce((sum, p) => sum + p.revenue, 0);
+    if (firstHalfRevenue === 0) return secondHalfRevenue > 0 ? 100 : 0;
+    return Math.round(
+      ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 100,
+    );
+  }, [activePoints, totalRevenue]);
 
   const {
     svgWidth,
@@ -79,7 +99,6 @@ export const RevenueTrendLineChart: React.FC<RevenueTrendLineChartProps> = ({
         <TitleBlock>
           <TitleRow>
             <ChartTitle>Revenue Trend</ChartTitle>
-            <DemoBadge>Demo Data</DemoBadge>
           </TitleRow>
           <ChartSubtitle>
             Historical sales trajectories and daily POS gross revenue
@@ -103,9 +122,11 @@ export const RevenueTrendLineChart: React.FC<RevenueTrendLineChartProps> = ({
             Total in period ({totalInvoices} Invoices)
           </HighlightLabel>
         </HighlightLeft>
-        <GrowthBadge $isPositive={true}>
+        <GrowthBadge $isPositive={growthRate >= 0}>
           <TrendingUp size={13} />
-          <span>+14.2% Growth</span>
+          <span>
+            {growthRate >= 0 ? `+${growthRate}%` : `${growthRate}%`} Growth
+          </span>
         </GrowthBadge>
       </MetricHighlightRow>
 
@@ -139,7 +160,6 @@ export const RevenueTrendLineChart: React.FC<RevenueTrendLineChartProps> = ({
               </linearGradient>
             </defs>
 
-            {/* Grid lines & Y-axis labels */}
             {yTicks.map((tickVal, i) => {
               const y =
                 padding.top + plotHeight - (tickVal / maxY) * plotHeight;
@@ -168,10 +188,8 @@ export const RevenueTrendLineChart: React.FC<RevenueTrendLineChartProps> = ({
               );
             })}
 
-            {/* Gradient area underneath */}
             {areaPath && <path d={areaPath} fill="url(#revenueGradient)" />}
 
-            {/* Curve Line */}
             {linePath && (
               <path
                 d={linePath}
@@ -183,7 +201,6 @@ export const RevenueTrendLineChart: React.FC<RevenueTrendLineChartProps> = ({
               />
             )}
 
-            {/* Hover Crosshair Vertical Line */}
             {hoveredPoint && (
               <line
                 x1={hoveredPoint.x}
@@ -196,7 +213,6 @@ export const RevenueTrendLineChart: React.FC<RevenueTrendLineChartProps> = ({
               />
             )}
 
-            {/* Circles for each point & X-axis labels */}
             {points.map((pt, idx) => {
               const isHovered = hoveredIdx === idx;
               return (
@@ -229,7 +245,6 @@ export const RevenueTrendLineChart: React.FC<RevenueTrendLineChartProps> = ({
                     {pt.raw.label}
                   </text>
 
-                  {/* Interactive touch/hover target */}
                   <circle
                     cx={pt.x}
                     cy={pt.y}
@@ -270,7 +285,6 @@ export const RevenueTrendLineChart: React.FC<RevenueTrendLineChartProps> = ({
             })}
           </svg>
 
-          {/* Floating Tooltip */}
           {hoveredPoint && (
             <TooltipOverlay
               $x={tooltipPos.x}

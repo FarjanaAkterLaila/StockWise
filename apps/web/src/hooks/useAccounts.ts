@@ -2,34 +2,37 @@ import { useState, useMemo, useEffect } from "react";
 import type {
   Expense,
   Income,
+  IncomeSource,
   CustomerPaymentRecord,
   SupplierPaymentRecord,
+  MonthlyFinancialSummary,
 } from "@/types";
-import {
-  INITIAL_INCOMES,
-} from "@/data/mockData";
 import { ACCOUNTS_TABS, type AccountsTabId } from "@/utils/constants";
 import { calculateAccountsOverview } from "@/utils/accounts.utils";
 import {
   fetchExpenses,
   createExpense,
+  updateExpense,
   deleteExpense,
+  createIncome,
   fetchCustomerPayments,
   fetchSupplierPayments,
 } from "@/services/accounts.service";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 
 export const useAccounts = () => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [activeTab, setActiveTab] = useState<AccountsTabId>(
     ACCOUNTS_TABS.ANALYTICS,
   );
 
   const [isCreateExpenseOpen, setIsCreateExpenseOpen] = useState(false);
   const [isCreateIncomeOpen, setIsCreateIncomeOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [incomes, setIncomes] = useState<Income[]>(INITIAL_INCOMES);
   const [customerPayments, setCustomerPayments] = useState<
     CustomerPaymentRecord[]
   >([]);
@@ -43,17 +46,76 @@ export const useAccounts = () => {
       fetchExpenses().catch(() => []),
       fetchCustomerPayments().catch(() => []),
       fetchSupplierPayments().catch(() => []),
-    ]).then(([expData, custPayData, suppPayData]) => {
-      if (!isMounted) return;
-      setExpenses(expData);
-      setCustomerPayments(custPayData);
-      setSupplierPayments(suppPayData);
-    });
+    ])
+      .then(([expData, custPayData, suppPayData]) => {
+        if (!isMounted) return;
+        setExpenses(expData);
+        setCustomerPayments(custPayData);
+        setSupplierPayments(suppPayData);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
 
     return () => {
       isMounted = false;
     };
   }, []);
+
+  const incomes = useMemo(() => {
+    return customerPayments.map((cp) => ({
+      id: cp.id,
+      source: "POS Sales" as IncomeSource,
+      referenceNumber: cp.invoiceNumber,
+      date: cp.date,
+      amount: cp.paidAmount,
+      paymentMethod: cp.paymentMethod,
+      payerName: cp.customerName,
+      description: `Payment for invoice ${cp.invoiceNumber}`,
+    }));
+  }, [customerPayments]);
+
+  const monthlyFinancials = useMemo<MonthlyFinancialSummary[]>(() => {
+    const now = new Date();
+    const result: MonthlyFinancialSummary[] = [];
+
+    for (let i = 11; i >= 0; i--) {
+      const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const yearMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, "0")}`;
+      const monthShort = targetDate.toLocaleString("en-US", { month: "short" });
+      const monthFull = targetDate.toLocaleString("en-US", {
+        month: "long",
+        year: "numeric",
+      });
+
+      const monthIncome = customerPayments
+        .filter((cp) => (cp.date || "").slice(0, 7) === yearMonth)
+        .reduce((sum, cp) => sum + (Number(cp.paidAmount) || 0), 0);
+
+      const monthExpenses =
+        expenses
+          .filter((e) => (e.date || "").slice(0, 7) === yearMonth)
+          .reduce((sum, e) => sum + (Number(e.amount) || 0), 0) +
+        supplierPayments
+          .filter((sp) => (sp.date || "").slice(0, 7) === yearMonth)
+          .reduce((sum, sp) => sum + (Number(sp.paidAmount) || 0), 0);
+
+      const netProfit = monthIncome - monthExpenses;
+      const marginPercentage =
+        monthIncome > 0 ? Math.round((netProfit / monthIncome) * 100) : 0;
+
+      result.push({
+        month: monthShort,
+        monthFull,
+        income: monthIncome,
+        expense: monthExpenses,
+        netProfit,
+        marginPercentage,
+      });
+    }
+
+    return result;
+  }, [customerPayments, expenses, supplierPayments]);
 
   const overviewMetrics = useMemo(() => {
     return calculateAccountsOverview(
@@ -66,11 +128,26 @@ export const useAccounts = () => {
 
   const handleSaveExpense = async (newOrUpdatedExpense: Expense) => {
     try {
-      await createExpense(newOrUpdatedExpense, user?.id);
+      if (newOrUpdatedExpense.id) {
+        await updateExpense(newOrUpdatedExpense.id, newOrUpdatedExpense);
+        showSuccess(
+          "Expense Updated",
+          `"${newOrUpdatedExpense.title}" voucher updated.`,
+        );
+      } else {
+        await createExpense(newOrUpdatedExpense, user?.id);
+        showSuccess(
+          "Expense Recorded",
+          `"${newOrUpdatedExpense.title}" voucher saved.`,
+        );
+      }
       const updated = await fetchExpenses();
       setExpenses(updated);
     } catch (err: unknown) {
-      alert((err as Error).message || "Failed to save expense in database");
+      showError(
+        "Expense Failed",
+        (err as Error).message || "Failed to save expense in database",
+      );
     }
   };
 
@@ -78,13 +155,30 @@ export const useAccounts = () => {
     try {
       await deleteExpense(expenseId);
       setExpenses((prev) => prev.filter((e) => e.id !== expenseId));
+      showSuccess("Expense Deleted", "Expense voucher removed successfully.");
     } catch (err: unknown) {
-      alert((err as Error).message || "Failed to delete expense from database");
+      showError(
+        "Delete Failed",
+        (err as Error).message || "Failed to delete expense from database",
+      );
     }
   };
 
-  const handleSaveIncome = (newIncome: Income) => {
-    setIncomes((prev) => [newIncome, ...prev]);
+  const handleSaveIncome = async (newIncome: Income) => {
+    try {
+      await createIncome(newIncome, user?.id);
+      const updated = await fetchCustomerPayments();
+      setCustomerPayments(updated);
+      showSuccess(
+        "Income Recorded",
+        `Direct income from "${newIncome.source}" saved.`,
+      );
+    } catch (err: unknown) {
+      showError(
+        "Income Failed",
+        (err as Error).message || "Failed to save income in database",
+      );
+    }
   };
 
   const handleOpenRecordExpense = () => {
@@ -104,6 +198,7 @@ export const useAccounts = () => {
   };
 
   return {
+    loading,
     activeTab,
     setActiveTab,
     isCreateExpenseOpen,
@@ -112,6 +207,7 @@ export const useAccounts = () => {
     incomes,
     customerPayments,
     supplierPayments,
+    monthlyFinancials,
     overviewMetrics,
     handleSaveExpense,
     handleDeleteExpense,

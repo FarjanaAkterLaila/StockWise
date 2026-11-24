@@ -243,6 +243,7 @@ export const ExpenseManagement: React.FC<ExpenseManagementProps> = ({
       {/* Edit Expense Modal */}
       {editingExpense && (
         <ExpenseModal
+          key={editingExpense.id}
           isOpen={Boolean(editingExpense)}
           initialExpense={editingExpense}
           onClose={() => setEditingExpense(null)}

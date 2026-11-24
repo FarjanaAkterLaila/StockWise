@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Search, RotateCcw } from "lucide-react";
 import { CustomSelect } from "@/components/common/CustomSelect";
 import {
@@ -6,7 +6,8 @@ import {
   PAYMENT_STATUS_OPTIONS,
   APP_STRINGS,
 } from "@/utils/constants";
-import { MOCK_SUPPLIERS } from "@/data/mockData";
+import type { Supplier } from "@/types";
+import { fetchSuppliers } from "@/services/suppliers.service";
 import {
   FilterBarContainer,
   SearchWrap,
@@ -40,9 +41,31 @@ export const PurchaseFilterBar: React.FC<PurchaseFilterBarProps> = ({
   hasActiveFilters,
   onResetFilters,
 }) => {
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchSuppliers()
+      .then((data) => {
+        if (isMounted) setSuppliers(data);
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const supplierOptions = [
     { value: "all", label: "All Suppliers & Distributors" },
-    ...MOCK_SUPPLIERS.map((s) => ({ value: s.id, label: s.name })),
+    ...suppliers
+      .filter((s) => {
+        const lower = (s.name || "").toLowerCase();
+        return (
+          !lower.includes("authorized hardware distributor") &&
+          !lower.includes("authorized distributor")
+        );
+      })
+      .map((s) => ({ value: s.id, label: s.name })),
   ];
 
   const statusOptions = PURCHASE_STATUS_OPTIONS.map((opt) => ({

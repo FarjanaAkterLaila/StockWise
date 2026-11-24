@@ -77,11 +77,16 @@ export const PurchaseTableRow: React.FC<PurchaseTableRowProps> = ({
       <TableCell>
         <AmountBlock>
           <MainAmount>{formatCurrency(purchase.grandTotal)}</MainAmount>
-          <DueAmount $hasDue={purchase.dueAmount > 0}>
-            {purchase.dueAmount > 0
-              ? `Due: ${formatCurrency(purchase.dueAmount)}`
-              : "Fully Settled"}
-          </DueAmount>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+            <span style={{ fontSize: "11px", color: "var(--color-text-secondary, #64748b)" }}>
+              Paid: {formatCurrency(purchase.paidAmount)}
+            </span>
+            <DueAmount $hasDue={purchase.dueAmount > 0}>
+              {purchase.dueAmount > 0
+                ? `Due: ${formatCurrency(purchase.dueAmount)}`
+                : "Fully Settled"}
+            </DueAmount>
+          </div>
         </AmountBlock>
       </TableCell>
 

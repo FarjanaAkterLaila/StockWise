@@ -14,10 +14,22 @@ export const getInitialProductFormData = (
   barcode: p?.barcode || "",
   category:
     p?.category || AVAILABLE_CATEGORIES[0] || DEFAULT_VALUES.DEFAULT_CATEGORY,
-  costPrice: p ? String(p.costPrice) : "",
-  sellingPrice: p ? String(p.sellingPrice) : "",
-  stockQuantity: p ? String(p.stockQuantity) : "",
-  minStockLevel: p ? String(p.minStockLevel) : DEFAULT_VALUES.DEFAULT_MIN_STOCK,
+  costPrice:
+    p && p.costPrice !== undefined && p.costPrice !== null
+      ? String(p.costPrice)
+      : "",
+  sellingPrice:
+    p && p.sellingPrice !== undefined && p.sellingPrice !== null
+      ? String(p.sellingPrice)
+      : "",
+  stockQuantity:
+    p && p.stockQuantity !== undefined && p.stockQuantity !== null
+      ? String(p.stockQuantity)
+      : "",
+  minStockLevel:
+    p && p.minStockLevel !== undefined && p.minStockLevel !== null
+      ? String(p.minStockLevel)
+      : String(DEFAULT_VALUES.DEFAULT_MIN_STOCK),
   unit: p?.unit || DEFAULT_VALUES.PRODUCT_UNIT,
   status: p?.status || DEFAULT_VALUES.PRODUCT_STATUS_ACTIVE,
 });

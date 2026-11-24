@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from "react";
 import type { InventoryStatusBreakdown } from "@/types";
-import { MOCK_INVENTORY_STATUS_BREAKDOWN } from "@/data/dashboardCharts.mock";
 import { DonutChartIcon } from "@/components/icons";
 import {
   ChartCard,
@@ -8,7 +7,6 @@ import {
   TitleBlock,
   TitleRow,
   ChartTitle,
-  DemoBadge,
   ChartSubtitle,
   DonutLayout,
   DonutVisualWrap,
@@ -49,12 +47,11 @@ const calculateDonutSegments = (
 
 export const InventoryStatusDonutChart: React.FC<
   InventoryStatusDonutChartProps
-> = ({ data = MOCK_INVENTORY_STATUS_BREAKDOWN }) => {
+> = ({ data = [] }) => {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   const totalCount = data.reduce((acc, item) => acc + item.count, 0);
 
-  // SVG Donut calculation
   const size = 180;
   const strokeWidth = 24;
   const radius = (size - strokeWidth) / 2; // (180 - 24) / 2 = 78
@@ -76,7 +73,6 @@ export const InventoryStatusDonutChart: React.FC<
         <TitleBlock>
           <TitleRow>
             <ChartTitle>Inventory Status</ChartTitle>
-            <DemoBadge>Demo Data</DemoBadge>
           </TitleRow>
           <ChartSubtitle>
             Hardware catalog distribution across stock health categories
@@ -95,7 +91,6 @@ export const InventoryStatusDonutChart: React.FC<
             onHoverSegment={setActiveCategory}
           />
 
-          {/* Center Info */}
           <DonutCenterText>
             <CenterCount>
               {activeItem ? activeItem.count : totalCount}
@@ -106,7 +101,6 @@ export const InventoryStatusDonutChart: React.FC<
           </DonutCenterText>
         </DonutVisualWrap>
 
-        {/* Detailed Legend Cards */}
         <LegendList>
           {data.map((item) => {
             const isHovered = activeCategory === item.category;

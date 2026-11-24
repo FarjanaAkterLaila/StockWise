@@ -29,9 +29,9 @@ export const validatePurchaseForm = (
 ): Record<string, string> => {
   const errors: Record<string, string> = {};
 
-  if (!data.supplierId || !data.supplierName.trim()) {
+  if (!data.supplierId && !data.supplierName?.trim()) {
     errors.supplier =
-      "Please select a registered hardware distributor / supplier";
+      "Please select or enter a hardware distributor / supplier";
   }
 
   if (!data.date) {

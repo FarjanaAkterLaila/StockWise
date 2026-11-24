@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { NavModule, LowStockProduct } from "@/types";
 import { NAV_MODULES } from "@/utils/constants";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { ToastProvider } from "@/context/ToastContext";
 import { LoginPage } from "@/components/auth/LoginPage";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AppRoutes } from "@/routes/AppRoutes";
@@ -56,7 +57,9 @@ function MainERP() {
 export function App() {
   return (
     <AuthProvider>
-      <MainERP />
+      <ToastProvider>
+        <MainERP />
+      </ToastProvider>
     </AuthProvider>
   );
 }

@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
-import type { Sale, PaymentMethod } from "@/types";
-import { INITIAL_PRODUCTS, MOCK_CUSTOMERS } from "@/data/mockData";
+import { useState, useMemo, useEffect } from "react";
+import type { Sale, PaymentMethod, Customer, Product } from "@/types";
+import { fetchCustomers } from "@/services/customers.service";
+import { fetchProducts } from "@/services/products.service";
 import { PAYMENT_METHODS, APP_STRINGS } from "@/utils/constants";
 import {
   validateSaleForm,
@@ -51,10 +52,74 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   initialSale,
 }) => {
   const isEditing = Boolean(initialSale);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [formData, setFormData] = useState<SaleFormData>(() =>
     getInitialSaleFormData(initialSale),
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all([
+      fetchProducts().catch(() => []),
+      fetchCustomers().catch(() => []),
+    ]).then(([prods, custs]) => {
+      if (isMounted) {
+        setProducts(prods);
+        setCustomers(custs);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const customerOptions = useMemo(() => {
+    const list = customers.map((c) => ({
+      value: c.id,
+      label: `${c.name} (${c.phone && c.phone !== "N/A" ? c.phone : c.customerType})`,
+    }));
+
+    if (
+      formData.customerId &&
+      !list.some((opt) => opt.value === formData.customerId)
+    ) {
+      const existingInRaw = customers.find((c) => c.id === formData.customerId);
+      list.unshift({
+        value: formData.customerId,
+        label: existingInRaw
+          ? existingInRaw.name
+          : `${formData.customerName || "Customer"} (${formData.customerPhone || "Profile"})`,
+      });
+    }
+
+    return list;
+  }, [
+    customers,
+    formData.customerId,
+    formData.customerName,
+    formData.customerPhone,
+  ]);
+
+  const productOptions = useMemo(() => {
+    const list = products.map((p) => ({
+      value: p.id,
+      label: `${p.name} [${p.sku || "No SKU"}] (Stock: ${p.stockQuantity}) - ৳${p.sellingPrice.toLocaleString()}`,
+    }));
+
+    // Ensure all items in the invoice are present in the options list so names display
+    for (const item of formData.items) {
+      if (item.productId && !list.some((p) => p.value === item.productId)) {
+        list.push({
+          value: item.productId,
+          label: `${item.productName || "Hardware Product"} [${item.sku || "Item"}] - ৳${Number(item.unitPrice || 0).toLocaleString()}`,
+        });
+      }
+    }
+
+    return list;
+  }, [products, formData.items]);
 
   const calculations = useMemo(() => {
     return calculateSaleTotals(
@@ -71,7 +136,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   ]);
 
   const handleCustomerSelect = (customerId: string) => {
-    const found = MOCK_CUSTOMERS.find((c) => c.id === customerId);
+    const found = customers.find((c) => c.id === customerId);
     if (found) {
       setFormData((prev) => ({
         ...prev,
@@ -84,7 +149,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   };
 
   const handleItemProductChange = (index: number, productId: string) => {
-    const prod = INITIAL_PRODUCTS.find((p) => p.id === productId);
+    const prod = products.find((p) => p.id === productId);
     if (!prod) return;
     const updated = [...formData.items];
     updated[index] = {
@@ -195,10 +260,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
               value={formData.customerId || ""}
               onChange={handleCustomerSelect}
               placeholder="Select customer profile..."
-              options={MOCK_CUSTOMERS.map((c) => ({
-                value: c.id,
-                label: `${c.name} (${c.customerType})`,
-              }))}
+              options={customerOptions}
             />
           </FormGroup>
           <FormGroup>
@@ -254,11 +316,8 @@ export const SaleModal: React.FC<SaleModalProps> = ({
                   fullWidth
                   value={item.productId}
                   onChange={(val) => handleItemProductChange(idx, val)}
-                  placeholder="Select hardware component..."
-                  options={INITIAL_PRODUCTS.map((p) => ({
-                    value: p.id,
-                    label: `${p.name} (${p.sku})`,
-                  }))}
+                  placeholder={item.productName ? `${item.productName} [${item.sku || 'Product'}]` : "Select hardware component..."}
+                  options={productOptions}
                 />
                 <FormInput
                   type="number"

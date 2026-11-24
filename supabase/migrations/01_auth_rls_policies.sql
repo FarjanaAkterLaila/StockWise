@@ -19,6 +19,191 @@ BEGIN
   WHERE u.id NOT IN (SELECT id FROM public.profiles)
   ON CONFLICT (id) DO NOTHING;
 
+  -- Ensure public.products has min_stock_level column if missing in live schema
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' 
+      AND table_schema = 'public' 
+      AND column_name = 'min_stock_level'
+  ) THEN
+    ALTER TABLE public.products ADD COLUMN min_stock_level numeric DEFAULT 5;
+    RAISE NOTICE 'Added min_stock_level column to public.products.';
+  END IF;
+
+  -- Ensure public.products has barcode column if missing in live schema
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' 
+      AND table_schema = 'public' 
+      AND column_name = 'barcode'
+  ) THEN
+    ALTER TABLE public.products ADD COLUMN barcode text;
+    RAISE NOTICE 'Added barcode column to public.products.';
+  END IF;
+
+  -- Ensure public.products has unit column if missing in live schema
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' 
+      AND table_schema = 'public' 
+      AND column_name = 'unit'
+  ) THEN
+    ALTER TABLE public.products ADD COLUMN unit text DEFAULT 'Pcs';
+    RAISE NOTICE 'Added unit column to public.products.';
+  END IF;
+
+  -- Ensure public.products has status column if missing in live schema
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' 
+      AND table_schema = 'public' 
+      AND column_name = 'status'
+  ) THEN
+    ALTER TABLE public.products ADD COLUMN status text DEFAULT 'active';
+    RAISE NOTICE 'Added status column to public.products.';
+  END IF;
+
+  -- Ensure public.payments has created_by column if missing in live schema
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'payments' 
+      AND table_schema = 'public' 
+      AND column_name = 'created_by'
+  ) THEN
+    ALTER TABLE public.payments ADD COLUMN created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+    RAISE NOTICE 'Added created_by column to public.payments.';
+  END IF;
+
+  -- Ensure public.purchases has created_by column if missing in live schema
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'purchases' 
+      AND table_schema = 'public' 
+      AND column_name = 'created_by'
+  ) THEN
+    ALTER TABLE public.purchases ADD COLUMN created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+    RAISE NOTICE 'Added created_by column to public.purchases.';
+  END IF;
+
+  -- Ensure public.sales has created_by column if missing in live schema
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'sales' 
+      AND table_schema = 'public' 
+      AND column_name = 'created_by'
+  ) THEN
+    ALTER TABLE public.sales ADD COLUMN created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+    RAISE NOTICE 'Added created_by column to public.sales.';
+  END IF;
+
+  -- Ensure public.expenses has created_by column if missing in live schema
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'expenses' 
+      AND table_schema = 'public' 
+      AND column_name = 'created_by'
+  ) THEN
+    ALTER TABLE public.expenses ADD COLUMN created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+    RAISE NOTICE 'Added created_by column to public.expenses.';
+  END IF;
+
+  -- Ensure public.stock_movements has created_by column if missing in live schema
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'stock_movements' 
+      AND table_schema = 'public' 
+      AND column_name = 'created_by'
+  ) THEN
+    ALTER TABLE public.stock_movements ADD COLUMN created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+    RAISE NOTICE 'Added created_by column to public.stock_movements.';
+  END IF;
+
+  -- Ensure public.suppliers has contact_person column if missing in live schema
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'suppliers' 
+      AND table_schema = 'public' 
+      AND column_name = 'contact_person'
+  ) THEN
+    ALTER TABLE public.suppliers ADD COLUMN contact_person text;
+    RAISE NOTICE 'Added contact_person column to public.suppliers.';
+  END IF;
+
+  -- Ensure public.suppliers has balance column if missing in live schema
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'suppliers' 
+      AND table_schema = 'public' 
+      AND column_name = 'balance'
+  ) THEN
+    ALTER TABLE public.suppliers ADD COLUMN balance numeric DEFAULT 0;
+    RAISE NOTICE 'Added balance column to public.suppliers.';
+  END IF;
+
+
+  -- Ensure purchases_status_check allows 'ordered', 'received', 'pending', 'cancelled'
+  BEGIN
+    ALTER TABLE public.purchases DROP CONSTRAINT IF EXISTS purchases_status_check;
+    ALTER TABLE public.purchases ADD CONSTRAINT purchases_status_check 
+      CHECK (status IN ('ordered', 'received', 'pending', 'cancelled'));
+    RAISE NOTICE 'Updated purchases_status_check constraint.';
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE NOTICE 'Notice: Could not modify purchases_status_check constraint: %', SQLERRM;
+  END;
+
+  -- Ensure sales_status_check allows 'draft', 'completed', 'cancelled', 'refunded'
+  BEGIN
+    ALTER TABLE public.sales DROP CONSTRAINT IF EXISTS sales_status_check;
+    ALTER TABLE public.sales ADD CONSTRAINT sales_status_check 
+      CHECK (status IN ('draft', 'completed', 'cancelled', 'refunded'));
+    RAISE NOTICE 'Updated sales_status_check constraint.';
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE NOTICE 'Notice: Could not modify sales_status_check constraint: %', SQLERRM;
+  END;
+
+  -- Ensure payments_payment_type_check allows 'inward', 'outward', 'sale', 'purchase'
+  BEGIN
+    ALTER TABLE public.payments DROP CONSTRAINT IF EXISTS payments_payment_type_check;
+    ALTER TABLE public.payments ADD CONSTRAINT payments_payment_type_check 
+      CHECK (payment_type IN ('inward', 'outward', 'sale', 'purchase'));
+    RAISE NOTICE 'Updated payments_payment_type_check constraint.';
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE NOTICE 'Notice: Could not modify payments_payment_type_check constraint: %', SQLERRM;
+  END;
+
+  -- Ensure purchase_items has unit_price column
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'purchase_items' 
+      AND table_schema = 'public' 
+      AND column_name = 'unit_price'
+  ) THEN
+    ALTER TABLE public.purchase_items ADD COLUMN unit_price numeric DEFAULT 0;
+  END IF;
+
+  -- Ensure sale_items has unit_price column
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'sale_items' 
+      AND table_schema = 'public' 
+      AND column_name = 'unit_price'
+  ) THEN
+    ALTER TABLE public.sale_items ADD COLUMN unit_price numeric DEFAULT 0;
+  END IF;
+
+  -- Ensure customers has balance column
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'customers' 
+      AND table_schema = 'public' 
+      AND column_name = 'balance'
+  ) THEN
+    ALTER TABLE public.customers ADD COLUMN balance numeric DEFAULT 0;
+  END IF;
+
   -- Add FK constraint only if all profiles map cleanly to auth.users
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.table_constraints 
@@ -165,8 +350,8 @@ CREATE POLICY "Categories readable by authenticated"
 DROP POLICY IF EXISTS "Categories editable by admin and manager" ON public.categories;
 CREATE POLICY "Categories editable by admin and manager"
   ON public.categories FOR ALL TO authenticated
-  USING (public.current_user_role() IN ('admin', 'manager'))
-  WITH CHECK (public.current_user_role() IN ('admin', 'manager'));
+  USING (public.current_user_role() IN ('admin', 'manager', 'staff'))
+  WITH CHECK (public.current_user_role() IN ('admin', 'manager', 'staff'));
 
 -- PRODUCTS
 DROP POLICY IF EXISTS "Products readable by authenticated" ON public.products;
@@ -176,8 +361,8 @@ CREATE POLICY "Products readable by authenticated"
 DROP POLICY IF EXISTS "Products editable by admin and manager" ON public.products;
 CREATE POLICY "Products editable by admin and manager"
   ON public.products FOR ALL TO authenticated
-  USING (public.current_user_role() IN ('admin', 'manager'))
-  WITH CHECK (public.current_user_role() IN ('admin', 'manager'));
+  USING (public.current_user_role() IN ('admin', 'manager', 'staff'))
+  WITH CHECK (public.current_user_role() IN ('admin', 'manager', 'staff'));
 
 -- CUSTOMERS & SUPPLIERS
 DROP POLICY IF EXISTS "Customers accessible by authenticated" ON public.customers;
@@ -227,13 +412,13 @@ CREATE POLICY "Expenses insertable by authenticated"
 DROP POLICY IF EXISTS "Expenses editable by admin and manager only" ON public.expenses;
 CREATE POLICY "Expenses editable by admin and manager only"
   ON public.expenses FOR UPDATE TO authenticated
-  USING (public.current_user_role() IN ('admin', 'manager'))
-  WITH CHECK (public.current_user_role() IN ('admin', 'manager'));
+  USING (public.current_user_role() IN ('admin', 'manager', 'staff'))
+  WITH CHECK (public.current_user_role() IN ('admin', 'manager', 'staff'));
 
 DROP POLICY IF EXISTS "Expenses deletable by admin and manager only" ON public.expenses;
 CREATE POLICY "Expenses deletable by admin and manager only"
   ON public.expenses FOR DELETE TO authenticated
-  USING (public.current_user_role() IN ('admin', 'manager'));
+  USING (public.current_user_role() IN ('admin', 'manager', 'staff'));
 
 -- 8. Atomic Stored Procedures (RPCs) for Stock and Financial Consistency
 
@@ -291,7 +476,7 @@ BEGIN
   -- 1. If completed, acquire locks on all products in deterministic order to prevent deadlocks
   IF v_is_completed THEN
     FOR v_prod_id IN 
-      SELECT DISTINCT (elem->>'productId')::uuid 
+      SELECT DISTINCT (COALESCE(elem->>'productId', elem->>'product_id'))::uuid 
       FROM jsonb_array_elements(p_items) AS elem 
       ORDER BY 1
     LOOP
@@ -311,8 +496,8 @@ BEGIN
 
     -- Validate stock availability after locking
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_items) LOOP
-      v_prod_id := (v_item->>'productId')::uuid;
-      v_qty := (v_item->>'quantity')::int;
+      v_prod_id := (COALESCE(v_item->>'productId', v_item->>'product_id'))::uuid;
+      v_qty := (COALESCE(v_item->>'quantity', v_item->>'qty'))::int;
 
       IF v_qty IS NULL OR v_qty <= 0 THEN
         RAISE EXCEPTION 'Item quantity must be greater than zero for product ID %.', v_prod_id;
@@ -339,9 +524,9 @@ BEGIN
 
   -- 3. Insert sale items & deduct stock atomically
   FOR v_item IN SELECT * FROM jsonb_array_elements(p_items) LOOP
-    v_prod_id := (v_item->>'productId')::uuid;
-    v_qty := (v_item->>'quantity')::int;
-    v_unit_price := (v_item->>'unitPrice')::numeric;
+    v_prod_id := (COALESCE(v_item->>'productId', v_item->>'product_id'))::uuid;
+    v_qty := (COALESCE(v_item->>'quantity', v_item->>'qty'))::int;
+    v_unit_price := (COALESCE(v_item->>'unitPrice', v_item->>'unit_price', v_item->>'unitCost', v_item->>'unit_cost'))::numeric;
     v_subtotal := COALESCE((v_item->>'subtotal')::numeric, v_qty * v_unit_price);
 
     INSERT INTO public.sale_items (sale_id, product_id, quantity, unit_price, subtotal, created_at)
@@ -405,12 +590,12 @@ DECLARE
   v_item RECORD;
   v_curr_qty int;
 BEGIN
-  -- Authenticate caller role: Only admin and manager can receive goods
+  -- Authenticate caller role: admin, manager, or staff can receive goods
   IF auth.role() = 'authenticated' THEN
     v_caller_id := auth.uid();
     SELECT role INTO v_caller_role FROM public.profiles WHERE id = v_caller_id;
-    IF COALESCE(v_caller_role, 'staff') NOT IN ('admin', 'manager') THEN
-      RAISE EXCEPTION 'Unauthorized: Only administrators and managers can confirm goods receipt.';
+    IF COALESCE(v_caller_role, 'staff') NOT IN ('admin', 'manager', 'staff') THEN
+      RAISE EXCEPTION 'Unauthorized: Only store staff can confirm goods receipt.';
     END IF;
   ELSIF auth.role() = 'service_role' THEN
     v_caller_id := p_user_id;

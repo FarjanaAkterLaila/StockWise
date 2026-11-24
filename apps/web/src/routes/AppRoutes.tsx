@@ -7,12 +7,6 @@ import { SalesModule } from "@/components/sales/SalesModule";
 import { PurchaseModule } from "@/components/purchase/PurchaseModule";
 import { AccountsModule } from "@/components/accounts/AccountsModule";
 import { ModulePlaceholder } from "@/components/common/ModulePlaceholder";
-import {
-  METRIC_SUMMARIES,
-  RECENT_SALES,
-  LOW_STOCK_PRODUCTS,
-  SHOP_QUICK_STATS,
-} from "@/data/mockData";
 
 export interface AppRoutesProps {
   activeModule: NavModule;
@@ -31,10 +25,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
     case NAV_MODULES.DASHBOARD:
       return (
         <DashboardOverview
-          metrics={METRIC_SUMMARIES}
-          sales={RECENT_SALES}
-          lowStockProducts={LOW_STOCK_PRODUCTS}
-          quickStats={SHOP_QUICK_STATS}
           onNavigateModule={(mod) => onNavigateModule(mod as NavModule)}
           onQuickSale={onQuickSale}
           onRestockProduct={onRestockProduct}

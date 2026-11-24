@@ -8,7 +8,7 @@ import type {
   CustomerType,
   PaymentStatus,
 } from "@/types";
-import type { ExpenseRow, PaymentRow } from "@/types/database.types";
+import type { ExpenseRow, PaymentRow, DbPaymentMethod } from "@/types/database.types";
 
 interface CustomerPaymentRowWithRelations extends PaymentRow {
   customers: { id: string; name: string; phone: string | null } | null;
@@ -80,20 +80,40 @@ export const createExpense = async (
   const refNo =
     data.referenceNumber || `EXP-${Date.now().toString().slice(-6)}`;
 
-  const { data: exp, error } = await supabase
+  const expensePayload: Record<string, unknown> = {
+    title: data.title.trim(),
+    category: data.category.trim(),
+    amount: Number(data.amount),
+    expense_date: data.date || new Date().toISOString().split("T")[0],
+    payment_method: data.paymentMethod || "Bank Transfer",
+    reference_number: refNo,
+    notes: data.description || data.recipient || null,
+  };
+  if (userId) {
+    expensePayload.created_by = userId;
+  }
+
+  let { data: exp, error } = await supabase
     .from("expenses")
-    .insert({
-      title: data.title.trim(),
-      category: data.category.trim(),
-      amount: Number(data.amount),
-      expense_date: data.date || new Date().toISOString().split("T")[0],
-      payment_method: data.paymentMethod || "Bank Transfer",
-      reference_number: refNo,
-      notes: data.description || data.recipient || null,
-      created_by: userId || null,
-    })
+    .insert(expensePayload)
     .select()
     .single();
+
+  while (error && error.message.includes("Could not find the '")) {
+    const match = error.message.match(/Could not find the '([^']+)' column/);
+    if (match && match[1] && match[1] in expensePayload) {
+      delete expensePayload[match[1]];
+      const retry = await supabase
+        .from("expenses")
+        .insert(expensePayload)
+        .select()
+        .single();
+      exp = retry.data;
+      error = retry.error;
+    } else {
+      break;
+    }
+  }
 
   if (error) throw new Error(error.message);
 
@@ -114,6 +134,77 @@ export const createExpense = async (
     description: row.notes || "",
     recipient: data.recipient || row.notes || "Store Ops",
     referenceNumber: row.reference_number || refNo,
+  };
+};
+
+export const updateExpense = async (
+  id: string,
+  data: Partial<{
+    title: string;
+    category: string;
+    amount: number;
+    date?: string;
+    paymentMethod?: string;
+    description?: string;
+    recipient?: string;
+    referenceNumber?: string;
+  }>,
+): Promise<Expense> => {
+  const payload: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (data.title !== undefined) payload.title = data.title.trim();
+  if (data.category !== undefined) payload.category = data.category.trim();
+  if (data.amount !== undefined) payload.amount = Number(data.amount);
+  if (data.date !== undefined) payload.expense_date = data.date;
+  if (data.paymentMethod !== undefined) payload.payment_method = data.paymentMethod;
+  if (data.referenceNumber !== undefined) payload.reference_number = data.referenceNumber;
+  if (data.description !== undefined || data.recipient !== undefined) {
+    payload.notes = data.description || data.recipient || null;
+  }
+
+  let { data: exp, error } = await supabase
+    .from("expenses")
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .single();
+
+  while (error && error.message.includes("Could not find the '")) {
+    const match = error.message.match(/Could not find the '([^']+)' column/);
+    if (match && match[1] && match[1] in payload) {
+      delete payload[match[1]];
+      const retry = await supabase
+        .from("expenses")
+        .update(payload)
+        .eq("id", id)
+        .select()
+        .single();
+      exp = retry.data;
+      error = retry.error;
+    } else {
+      break;
+    }
+  }
+
+  if (error) throw new Error(error.message);
+
+  const row = exp as unknown as ExpenseRow;
+  let method: PaymentMethod = "Bank Transfer";
+  if (row.payment_method === "Cash") method = "Cash";
+  else if (row.payment_method === "Card") method = "Card";
+  else if (row.payment_method === "MFS") method = "MFS";
+
+  return {
+    id: row.id,
+    title: row.title,
+    category: (row.category as ExpenseCategory) || "General",
+    amount: Number(row.amount),
+    date: row.expense_date,
+    paymentMethod: method,
+    description: row.notes || "",
+    recipient: data.recipient || row.notes || "Store Ops",
+    referenceNumber: row.reference_number || `EXP-${row.id.slice(0, 6)}`,
   };
 };
 
@@ -161,6 +252,54 @@ export const fetchCustomerPayments = async (): Promise<
         (p.sales?.payment_status?.toLowerCase() as PaymentStatus) || "paid",
     };
   });
+};
+
+export const createIncome = async (
+  incomeData: {
+    source: string;
+    amount: number;
+    date: string;
+    paymentMethod: string;
+    payerName?: string;
+    description?: string;
+    referenceNumber?: string;
+  },
+  userId?: string,
+): Promise<void> => {
+  let method: DbPaymentMethod = "cash";
+  const low = (incomeData.paymentMethod || "").toLowerCase();
+  if (low.includes("card")) method = "card";
+  else if (low.includes("bank")) method = "bank_transfer";
+  else if (low.includes("mfs") || low.includes("mobile"))
+    method = "mobile_money";
+
+  const incomePayload: Record<string, unknown> = {
+    payment_number:
+      incomeData.referenceNumber ||
+      `PAY-INC-${Date.now().toString().slice(-6)}`,
+    payment_type: "sale",
+    amount: Number(incomeData.amount),
+    payment_date: incomeData.date || new Date().toISOString(),
+    payment_method: method,
+    notes: incomeData.description || incomeData.payerName || "Direct Income",
+  };
+  if (userId) {
+    incomePayload.created_by = userId;
+  }
+
+  let { error } = await supabase.from("payments").insert(incomePayload);
+  while (error && error.message.includes("Could not find the '")) {
+    const match = error.message.match(/Could not find the '([^']+)' column/);
+    if (match && match[1] && match[1] in incomePayload) {
+      delete incomePayload[match[1]];
+      const retry = await supabase.from("payments").insert(incomePayload);
+      error = retry.error;
+    } else {
+      break;
+    }
+  }
+
+  if (error) throw new Error(error.message);
 };
 
 export const fetchSupplierPayments = async (): Promise<
