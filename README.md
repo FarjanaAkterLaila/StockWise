@@ -36,8 +36,8 @@ Access control is enforced both in the frontend (`apps/web/src/utils/permissions
 
 | Role | Module Access | Key Permissions |
 | :--- | :--- | :--- |
-| **Admin** | Dashboard, Sales, Purchase, Inventory, Accounts, User Management | Full operational control across all modules; create, view, and edit sales (permanent deletion is not available through the application); create/edit/delete purchases; create/edit/delete customers, suppliers, and expenses; create/edit/archive/restore products; manage all user accounts and assign `admin`, `manager`, or `staff` roles (protected against removing or demoting the last active Admin). |
-| **Manager** | Dashboard, Sales, Purchase, Inventory, Accounts, User Management | Create, view, and edit sales, purchases, and inventory products (cannot delete purchases; permanent deletion of sales records is not available through the application); full management of customers, suppliers, and expenses; view accounts analytics; view users and manage `staff` accounts only (cannot assign or modify Admin/Manager roles or access system settings). |
+| **Admin** | Dashboard, Sales, Purchase, Inventory, Accounts, User Management | Create, view, and edit sales; create/edit/delete purchases; create/edit/delete customers, suppliers, and expenses; create/edit/archive/restore products; manage all user accounts and assign `admin`, `manager`, or `staff` roles (protected against removing or demoting the last active Admin). |
+| **Manager** | Dashboard, Sales, Purchase, Inventory, Accounts | Create, view, and edit sales, purchases, and inventory products; manage customers, suppliers, and expenses; view accounts analytics. No User Management access. |
 | **Staff** | Dashboard, Sales, Inventory (read-only) | View Dashboard metrics, Inventory catalog, and Customer records; create POS sales and view/record payments only on sales they created (`created_by = auth.uid()`). No access to Purchases, Accounts, Suppliers, Expenses, or User Management. |
 
 ---
