@@ -6,6 +6,8 @@ import {
   fetchUsers,
   createUserAccount,
   updateUserAccount,
+  validateOptionalPhone,
+  UserProfileSyncError,
 } from "@/services/users.service";
 import {
   canManageTargetUser,
@@ -66,6 +68,20 @@ interface UserFormState {
   role: UserRole;
 }
 
+const sanitizePhoneInput = (rawValue: string): string => {
+  const allowedOnly = rawValue.replace(/[^+\d\s()-]/g, "");
+  let digitCount = 0;
+  let result = "";
+  for (const ch of allowedOnly) {
+    if (/\d/.test(ch)) {
+      if (digitCount >= 15) continue;
+      digitCount += 1;
+    }
+    result += ch;
+  }
+  return result;
+};
+
 export const UsersModule: React.FC = () => {
   const { user, refreshProfile } = useAuth();
   const { showSuccess, showError } = useToast();
@@ -92,16 +108,24 @@ export const UsersModule: React.FC = () => {
     [actorRole],
   );
 
-  const loadUsers = async () => {
-    setLoading(true);
-    setLoadError(null);
+  const loadUsers = async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+    if (!silent) {
+      setLoading(true);
+      setLoadError(null);
+    }
     try {
       const data = await fetchUsers();
       setUsers(data);
+      setLoadError(null);
     } catch (err: unknown) {
-      setLoadError((err as Error).message || "Failed to load users.");
+      if (!silent) {
+        setLoadError((err as Error).message || "Failed to load users.");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -177,6 +201,10 @@ export const UsersModule: React.FC = () => {
     if (!assignableRoles.includes(formState.role)) {
       nextErrors.role = "You are not permitted to assign this role.";
     }
+    const phoneError = validateOptionalPhone(formState.phone);
+    if (phoneError) {
+      nextErrors.phone = phoneError;
+    }
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       return;
@@ -195,9 +223,13 @@ export const UsersModule: React.FC = () => {
           actorRole,
           users,
         );
-        setUsers((prev) =>
-          prev.map((u) => (u.id === updated.id ? updated : u)),
-        );
+        setUsers((prev) => {
+          const exists = prev.some((u) => u.id === updated.id);
+          return exists
+            ? prev.map((u) => (u.id === updated.id ? updated : u))
+            : [updated, ...prev];
+        });
+        void loadUsers({ silent: true });
         if (updated.id === user?.id) {
           await refreshProfile();
         }
@@ -219,14 +251,31 @@ export const UsersModule: React.FC = () => {
           created,
           ...prev.filter((u) => u.id !== created.id),
         ]);
+        void loadUsers({ silent: true });
         setIsModalOpen(false);
+        setEditingUser(null);
         showSuccess("User Created", `${created.fullName} added as ${formatRoleLabel(created.role)}.`);
       }
     } catch (err: unknown) {
-      showError(
-        editingUser ? "Update Failed" : "Create Failed",
-        (err as Error).message || "Unable to save user account.",
-      );
+      if (err instanceof UserProfileSyncError) {
+        // Auth user already exists: transition modal to Edit mode for the created user ID
+        // so retrying saves only the profile without calling auth.signUp() a second time.
+        setEditingUser(err.partialUser);
+        setUsers((prev) => [
+          err.partialUser,
+          ...prev.filter((u) => u.id !== err.partialUser.id),
+        ]);
+        void loadUsers({ silent: true });
+        showError(
+          "Account Created — Profile Sync Incomplete",
+          `Auth user (${err.partialUser.email}) was created, but saving profile/phone failed: ${err.message}. Click "Save Changes" to retry saving profile details without recreating the account.`,
+        );
+      } else {
+        showError(
+          editingUser ? "Update Failed" : "Create Failed",
+          (err as Error).message || "Unable to save user account.",
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -382,15 +431,21 @@ export const UsersModule: React.FC = () => {
             </FormGroup>
 
             <FormGroup>
-              <FormLabel>Phone</FormLabel>
+              <FormLabel>Phone (Optional)</FormLabel>
               <FormInput
-                type="text"
+                type="tel"
+                inputMode="tel"
                 value={formState.phone}
-                onChange={(e) =>
-                  setFormState((prev) => ({ ...prev, phone: e.target.value }))
-                }
-                placeholder="e.g. 01712345678"
+                onChange={(e) => {
+                  const sanitized = sanitizePhoneInput(e.target.value);
+                  setFormState((prev) => ({ ...prev, phone: sanitized }));
+                  setErrors((prev) =>
+                    prev.phone ? { ...prev, phone: "" } : prev,
+                  );
+                }}
+                placeholder="Optional (e.g. +880 1712-345678)"
               />
+              {errors.phone && <FormError>{errors.phone}</FormError>}
             </FormGroup>
           </FormRow>
 

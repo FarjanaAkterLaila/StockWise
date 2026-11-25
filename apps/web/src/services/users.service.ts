@@ -8,15 +8,65 @@ import {
   normalizeRole,
 } from "@/utils/permissions";
 
-const mapProfileRow = (row: ProfileRow): UserAccount => ({
+const mapProfileRow = (row: Partial<ProfileRow> & { id: string }): UserAccount => ({
   id: row.id,
   fullName: row.full_name?.trim() || row.email?.split("@")[0] || "Operator",
   email: row.email || "",
   role: normalizeRole(row.role),
-  phone: row.phone || "",
+  phone: row.phone?.trim() || "",
   isActive: row.is_active !== false,
-  createdAt: row.created_at,
+  createdAt: row.created_at || new Date().toISOString(),
 });
+
+const PHONE_ALLOWED_CHARS_RE = /^[+\d\s()-]+$/;
+
+export const validateOptionalPhone = (phone?: string | null): string | null => {
+  const trimmed = phone?.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (!PHONE_ALLOWED_CHARS_RE.test(trimmed)) {
+    return "Phone number can only contain digits, spaces, +, -, ( and ).";
+  }
+  const digitCount = trimmed.replace(/\D/g, "").length;
+  if (digitCount < 7 || digitCount > 15) {
+    return "Phone number must contain 7 to 15 digits.";
+  }
+  return null;
+};
+
+const normalizeOptionalPhone = (phone?: string | null): string | null => {
+  const trimmed = phone?.trim();
+  return trimmed ? trimmed : null;
+};
+
+const isMissingRpcError = (error: { code?: string; message?: string }): boolean => {
+  const msg = error.message || "";
+  return (
+    error.code === "PGRST202" ||
+    error.code === "42883" ||
+    msg.includes("Could not find the function") ||
+    /function\s+(?:public\.)?upsert_user_profile.*does not exist/i.test(msg)
+  );
+};
+
+const isMissingColumnError = (message: string, column: string): boolean => {
+  const escaped = column.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return (
+    new RegExp(`Could not find the '${escaped}' column`, "i").test(message) ||
+    new RegExp(`column\\s+"?${escaped}"?\\s+of relation`, "i").test(message)
+  );
+};
+
+export class UserProfileSyncError extends Error {
+  public readonly partialUser: UserAccount;
+
+  constructor(message: string, partialUser: UserAccount) {
+    super(message);
+    this.name = "UserProfileSyncError";
+    this.partialUser = partialUser;
+  }
+}
 
 export const fetchUsers = async (): Promise<UserAccount[]> => {
   const { data, error } = await supabase
@@ -58,6 +108,123 @@ const createEphemeralAuthClient = () => {
   });
 };
 
+const syncUserProfile = async (
+  params: {
+    userId: string;
+    fullName: string;
+    email?: string;
+    phone?: string | null;
+    role: UserRole;
+    isActive?: boolean;
+  },
+  actorRole: UserRole,
+): Promise<UserAccount> => {
+  const cleanName = params.fullName.trim();
+  const cleanEmail = params.email?.trim() || undefined;
+  const cleanPhone = normalizeOptionalPhone(params.phone);
+  const targetRole = actorRole === "admin" ? normalizeRole(params.role) : "staff";
+
+  // Preferred atomic path: SECURITY DEFINER RPC ensures auth.users link & optional phone persistence
+  const { data: rpcData, error: rpcError } = await supabase.rpc("upsert_user_profile", {
+    p_user_id: params.userId,
+    p_full_name: cleanName,
+    p_email: cleanEmail ?? null,
+    p_phone: cleanPhone,
+    p_role: targetRole,
+    p_is_active: actorRole === "admin" && params.isActive !== undefined ? params.isActive : null,
+  });
+
+  if (!rpcError && rpcData) {
+    return mapProfileRow(rpcData as unknown as ProfileRow);
+  }
+
+  if (rpcError && !isMissingRpcError(rpcError)) {
+    throw new Error(rpcError.message);
+  }
+
+  // Fallback for environments before Migration 05 is applied:
+  // Never silently discard a user-provided phone number if profiles.phone is absent.
+  const payload: Record<string, unknown> = {
+    full_name: cleanName,
+    phone: cleanPhone,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (cleanEmail) {
+    payload.email = cleanEmail;
+  }
+  if (actorRole === "admin") {
+    payload.role = targetRole;
+    if (params.isActive !== undefined) {
+      payload.is_active = params.isActive;
+    }
+  }
+
+  let { data, error } = await supabase
+    .from("profiles")
+    .update(payload)
+    .eq("id", params.userId)
+    .select("*")
+    .maybeSingle();
+
+  // Strip only non-essential optional columns if absent (is_active / updated_at),
+  // or strip `phone` ONLY when no phone number was supplied.
+  for (let attempt = 0; attempt < 3 && error; attempt += 1) {
+    if (isMissingColumnError(error.message, "is_active") && "is_active" in payload) {
+      delete payload.is_active;
+    } else if (isMissingColumnError(error.message, "updated_at") && "updated_at" in payload) {
+      delete payload.updated_at;
+    } else if (isMissingColumnError(error.message, "phone") && "phone" in payload) {
+      if (cleanPhone !== null) {
+        throw new Error(
+          "Database column `profiles.phone` is missing. Run Migration 05 (`05_user_profiles_phone_fix.sql`) in Supabase SQL Editor to persist phone numbers.",
+        );
+      }
+      delete payload.phone;
+    } else {
+      break;
+    }
+
+    const retry = await supabase
+      .from("profiles")
+      .update(payload)
+      .eq("id", params.userId)
+      .select("*")
+      .maybeSingle();
+    data = retry.data;
+    error = retry.error;
+  }
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    const insertPayload: Record<string, unknown> = {
+      id: params.userId,
+      ...payload,
+      role: targetRole,
+    };
+    const { data: upserted, error: upsertErr } = await supabase
+      .from("profiles")
+      .upsert(insertPayload, { onConflict: "id" })
+      .select("*")
+      .maybeSingle();
+
+    if (upsertErr) {
+      throw new Error(upsertErr.message);
+    }
+    if (!upserted) {
+      throw new Error(
+        "Profile row for this user was not found or could not be saved. Run Migration 05 (`05_user_profiles_phone_fix.sql`) in Supabase SQL Editor.",
+      );
+    }
+    return mapProfileRow(upserted as unknown as ProfileRow);
+  }
+
+  return mapProfileRow(data as unknown as ProfileRow);
+};
+
 export const createUserAccount = async (
   input: CreateUserInput,
   actorRole: UserRole,
@@ -69,60 +236,83 @@ export const createUserAccount = async (
     throw new Error("You are not authorized to assign this role.");
   }
 
+  const cleanName = input.fullName.trim();
+  const cleanEmail = input.email.trim();
+  const phoneError = validateOptionalPhone(input.phone);
+  if (phoneError) {
+    throw new Error(phoneError);
+  }
+  const cleanPhone = normalizeOptionalPhone(input.phone);
+
   const ephemeral = createEphemeralAuthClient();
   const { data, error } = await ephemeral.auth.signUp({
-    email: input.email.trim(),
+    email: cleanEmail,
     password: input.password,
     options: {
       data: {
-        full_name: input.fullName.trim(),
+        full_name: cleanName,
+        ...(cleanPhone ? { phone: cleanPhone } : {}),
       },
     },
   });
 
+  const createdUserId = data?.user?.id;
+
   if (error) {
-    throw new Error(error.message);
+    const isRateLimit =
+      error.status === 429 ||
+      /rate\s*limit|over_email_send_rate_limit/i.test(error.message);
+
+    // If Supabase Auth already created the user before hitting a downstream email/signup limit,
+    // proceed to sync their profile instead of falsely claiming complete failure.
+    if (!createdUserId) {
+      if (isRateLimit) {
+        throw new Error(
+          "Supabase Auth email rate limit reached. Wait briefly before creating another user (no duplicate Auth account was created).",
+        );
+      }
+      throw new Error(error.message);
+    }
   }
 
-  const createdUserId = data.user?.id;
   if (!createdUserId) {
     throw new Error("User creation did not return a user ID.");
   }
 
-  const updatePayload: Record<string, unknown> = {
-    full_name: input.fullName.trim(),
-    phone: input.phone?.trim() || null,
-    updated_at: new Date().toISOString(),
-  };
-
-  if (actorRole === "admin") {
-    updatePayload.role = requestedRole;
+  // When email confirmations are enabled and the email already belongs to an existing user,
+  // Supabase Auth returns a user object with an empty `identities` array instead of an error.
+  if (Array.isArray(data.user?.identities) && data.user.identities.length === 0) {
+    throw new Error("An account with this email address already exists.");
   }
 
-  const { data: updatedProfile, error: profileErr } = await supabase
-    .from("profiles")
-    .update(updatePayload)
-    .eq("id", createdUserId)
-    .select("*")
-    .maybeSingle();
-
-  if (profileErr) {
-    throw new Error(profileErr.message);
-  }
-
-  if (updatedProfile) {
-    return mapProfileRow(updatedProfile as unknown as ProfileRow);
-  }
-
-  return {
+  const effectiveRole: UserRole = actorRole === "admin" ? requestedRole : "staff";
+  const fallbackPartialUser: UserAccount = {
     id: createdUserId,
-    fullName: input.fullName.trim(),
-    email: input.email.trim(),
-    role: actorRole === "admin" ? requestedRole : "staff",
-    phone: input.phone?.trim() || "",
+    fullName: cleanName,
+    email: cleanEmail,
+    role: effectiveRole,
+    phone: "",
     isActive: true,
     createdAt: new Date().toISOString(),
   };
+
+  try {
+    return await syncUserProfile(
+      {
+        userId: createdUserId,
+        fullName: cleanName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        role: effectiveRole,
+        isActive: true,
+      },
+      actorRole,
+    );
+  } catch (syncErr: unknown) {
+    const syncMessage =
+      syncErr instanceof Error ? syncErr.message : "Failed to save user profile.";
+    throw new UserProfileSyncError(syncMessage, fallbackPartialUser);
+  }
 };
 
 export const updateUserAccount = async (
@@ -156,41 +346,21 @@ export const updateUserAccount = async (
     }
   }
 
-  const payload: Record<string, unknown> = {
-    full_name: updates.fullName.trim(),
-    phone: updates.phone?.trim() || null,
-    updated_at: new Date().toISOString(),
-  };
-
-  if (actorRole === "admin") {
-    payload.role = nextRole;
-    if (updates.isActive !== undefined) {
-      payload.is_active = updates.isActive;
-    }
+  const resolvedPhone = updates.phone === undefined ? targetUser.phone : updates.phone;
+  const phoneError = validateOptionalPhone(resolvedPhone);
+  if (phoneError) {
+    throw new Error(phoneError);
   }
 
-  let { data, error } = await supabase
-    .from("profiles")
-    .update(payload)
-    .eq("id", targetUser.id)
-    .select("*")
-    .single();
-
-  if (error && error.message.includes("Could not find the 'is_active'")) {
-    delete payload.is_active;
-    const retry = await supabase
-      .from("profiles")
-      .update(payload)
-      .eq("id", targetUser.id)
-      .select("*")
-      .single();
-    data = retry.data;
-    error = retry.error;
-  }
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return mapProfileRow(data as unknown as ProfileRow);
+  return syncUserProfile(
+    {
+      userId: targetUser.id,
+      fullName: updates.fullName,
+      email: targetUser.email,
+      phone: resolvedPhone,
+      role: actorRole === "admin" ? nextRole : targetUser.role,
+      isActive: updates.isActive,
+    },
+    actorRole,
+  );
 };
