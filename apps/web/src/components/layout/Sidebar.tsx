@@ -7,8 +7,6 @@ import {
   Monitor,
   Cpu,
   ChevronRight,
-  Sparkles,
-  ShieldCheck,
   X,
 } from "lucide-react";
 import {
@@ -36,12 +34,6 @@ import {
   NavLinkLeft,
   NavLinkRight,
   SidebarBadge,
-  SidebarFooter,
-  SystemCard,
-  SystemHeader,
-  SystemVersion,
-  SystemDesc,
-  SystemStatus,
 } from "./Sidebar.styles";
 
 interface SidebarProps {
@@ -129,22 +121,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             })}
           </NavMenuList>
         </NavSection>
-
-        <SidebarFooter>
-          <SystemCard>
-            <SystemHeader>
-              <ShieldCheck size={16} />
-              <SystemVersion>v1.0.0 Ready</SystemVersion>
-            </SystemHeader>
-            <SystemDesc>
-              All 12 Supabase ERP tables schema synchronized.
-            </SystemDesc>
-            <SystemStatus>
-              <Sparkles size={12} />
-              <span>Fast POS Mode</span>
-            </SystemStatus>
-          </SystemCard>
-        </SidebarFooter>
       </SidebarContainer>
     </>
   );

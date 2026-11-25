@@ -72,55 +72,6 @@ export const HeaderRight = styled.div`
   }
 `;
 
-export const SearchWrapper = styled.div`
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 320px;
-  ${({ theme }) => theme.media.tablet} {
-    display: none;
-  }
-`;
-
-export const SearchIconWrap = styled.div`
-  position: absolute;
-  left: 12px;
-  color: ${({ theme }) => theme.colors.textMuted};
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-`;
-
-export const SearchInput = styled.input`
-  width: 100%;
-  padding: 8px 46px 8px 36px;
-  font-size: 13px;
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.radius.md};
-  background-color: ${({ theme }) => theme.colors.backgroundSubtle};
-  color: ${({ theme }) => theme.colors.textPrimary};
-  transition: all 0.2s ease;
-  &:focus {
-    outline: none;
-    border-color: ${({ theme }) => theme.colors.primary};
-    background-color: ${({ theme }) => theme.colors.background};
-    box-shadow: ${({ theme }) => theme.shadows.focusPrimary};
-  }
-`;
-
-export const SearchShortcut = styled.span`
-  position: absolute;
-  right: 10px;
-  font-size: 10px;
-  font-family: ${({ theme }) => theme.typography.fontFamily.mono};
-  font-weight: 600;
-  color: ${({ theme }) => theme.colors.textMuted};
-  background: ${({ theme }) => theme.colors.background};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  padding: 1px 5px;
-  border-radius: 4px;
-`;
-
 export const ActionButton = styled.button`
   display: inline-flex;
   align-items: center;
@@ -178,15 +129,6 @@ export const NotificationDot = styled.span`
   background-color: ${({ theme }) => theme.colors.danger};
   border-radius: 50%;
   border: 2px solid ${({ theme }) => theme.colors.background};
-`;
-
-export const HeaderDivider = styled.div`
-  width: 1px;
-  height: 28px;
-  background-color: ${({ theme }) => theme.colors.border};
-  ${({ theme }) => theme.media.mobile} {
-    display: none;
-  }
 `;
 
 export const ProfileButton = styled.div`

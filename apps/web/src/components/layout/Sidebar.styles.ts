@@ -33,7 +33,8 @@ export const SidebarContainer = styled.aside<{ $isOpen: boolean }>`
     left: 0;
     width: min(280px, 85vw);
     transform: ${({ $isOpen }) => ($isOpen ? "translateX(0)" : "translateX(-100%)")};
-    box-shadow: ${({ theme }) => theme.shadows.sidebarMobile};
+    box-shadow: ${({ $isOpen, theme }) =>
+      $isOpen ? theme.shadows.sidebarMobile : "none"};
   }
 `;
 
@@ -236,41 +237,4 @@ export const SidebarBadge = styled.span<{
       : $variant === "danger"
         ? theme.colors.sidebarDangerText
         : theme.colors.sidebarPrimaryText};
-`;
-
-export const SidebarFooter = styled.div`
-  padding: 16px 16px 20px;
-  border-top: 1px solid ${({ theme }) => theme.colors.borderSidebar};
-`;
-export const SystemCard = styled.div`
-  background: ${({ theme }) => theme.colors.sidebarSubtle};
-  border: 1px solid ${({ theme }) => theme.colors.borderSidebar};
-  border-radius: ${({ theme }) => theme.radius.md};
-  padding: 12px;
-`;
-export const SystemHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: ${({ theme }) => theme.colors.sidebarAccent};
-`;
-export const SystemVersion = styled.span`
-  font-size: 11px;
-  font-weight: 700;
-  color: ${({ theme }) => theme.colors.border};
-`;
-export const SystemDesc = styled.p`
-  font-size: 10.5px;
-  color: ${({ theme }) => theme.colors.textSubtle};
-  margin-top: 4px;
-  line-height: 1.4;
-`;
-export const SystemStatus = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 10px;
-  color: ${({ theme }) => theme.colors.liveEmerald};
-  font-weight: 600;
-  margin-top: 8px;
 `;

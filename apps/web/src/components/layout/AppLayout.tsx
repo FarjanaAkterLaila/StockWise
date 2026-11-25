@@ -13,14 +13,12 @@ interface AppLayoutProps {
   children: React.ReactNode;
   activeModule: NavModule;
   onSelectModule: (module: NavModule) => void;
-  onQuickSale?: () => void;
 }
 
 export const AppLayout: React.FC<AppLayoutProps> = ({
   children,
   activeModule,
   onSelectModule,
-  onQuickSale,
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -37,7 +35,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         <Header
           activeModule={activeModule}
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
-          onOpenQuickSale={onQuickSale}
         />
 
         <ScrollableContent>

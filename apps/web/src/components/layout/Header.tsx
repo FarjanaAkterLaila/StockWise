@@ -1,13 +1,10 @@
 import React from "react";
 import type { NavModule } from "@/types";
-import { NAV_MODULES } from "@/utils/constants";
 import { MODULE_TITLES } from "@/utils/navigation.utils";
 import { useAuth } from "@/context/AuthContext";
-import { formatRoleLabel, hasPermission } from "@/utils/permissions";
+import { formatRoleLabel } from "@/utils/permissions";
 import {
   Menu,
-  Search,
-  PlusCircle,
   CheckCircle2,
   LogOut,
 } from "lucide-react";
@@ -19,13 +16,7 @@ import {
   PageTitle,
   PageSubtitle,
   HeaderRight,
-  SearchWrapper,
-  SearchIconWrap,
-  SearchInput,
-  SearchShortcut,
-  ActionButton,
   HeaderIconButton,
-  HeaderDivider,
   ProfileButton,
   AvatarWrap,
   AvatarLiveDot,
@@ -37,13 +28,11 @@ import {
 interface HeaderProps {
   activeModule: NavModule;
   onToggleSidebar: () => void;
-  onOpenQuickSale?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeModule,
   onToggleSidebar,
-  onOpenQuickSale,
 }) => {
   const { user, logout } = useAuth();
   const currentInfo = MODULE_TITLES[activeModule];
@@ -74,35 +63,6 @@ export const Header: React.FC<HeaderProps> = ({
       </HeaderLeft>
 
       <HeaderRight>
-        {activeModule !== NAV_MODULES.DASHBOARD && (
-          <>
-            <SearchWrapper>
-              <SearchIconWrap>
-                <Search size={16} />
-              </SearchIconWrap>
-              <SearchInput
-                type="text"
-                placeholder="Search invoice, SKU, customer..."
-                aria-label="Global search"
-              />
-              <SearchShortcut>⌘K</SearchShortcut>
-            </SearchWrapper>
-
-            {hasPermission(user?.role, "sales", "create") && (
-              <ActionButton
-                onClick={onOpenQuickSale}
-                type="button"
-                title="Create a new POS sale invoice"
-              >
-                <PlusCircle size={16} />
-                <span>New Sale</span>
-              </ActionButton>
-            )}
-
-            <HeaderDivider />
-          </>
-        )}
-
         <ProfileButton
           tabIndex={0}
           role="button"

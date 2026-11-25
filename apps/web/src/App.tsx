@@ -67,7 +67,6 @@ function MainERP() {
     <AppLayout
       activeModule={activeModule}
       onSelectModule={handleSelectModule}
-      onQuickSale={handleQuickSale}
     >
       <AppRoutes
         activeModule={activeModule}
