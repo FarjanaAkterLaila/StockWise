@@ -34,11 +34,11 @@
 
 Access control is enforced both in the frontend (`apps/web/src/utils/permissions.ts`) and in PostgreSQL via Supabase Row Level Security (RLS) policies and trigger checks (`supabase/migrations/02_rbac_policies.sql`).
 
-| Role | Module Access | Key Permissions |
-| :--- | :--- | :--- |
-| **Admin** | Dashboard, Sales, Purchase, Inventory, Accounts, User Management | Create, view, and edit sales; create/edit/delete purchases; create/edit/delete customers, suppliers, and expenses; create/edit/archive/restore products; manage all user accounts and assign `admin`, `manager`, or `staff` roles (protected against removing or demoting the last active Admin). |
-| **Manager** | Dashboard, Sales, Purchase, Inventory, Accounts | Create, view, and edit sales, purchases, and inventory products; manage customers, suppliers, and expenses; view accounts analytics. No User Management access. |
-| **Staff** | Dashboard, Sales, Inventory (read-only) | View Dashboard metrics, Inventory catalog, and Customer records; create POS sales and view/record payments only on sales they created (`created_by = auth.uid()`). No access to Purchases, Accounts, Suppliers, Expenses, or User Management. |
+| Role        | Module Access                                                    | Key Permissions                                                                                                                                                                                                                                                                                   |
+| :---------- | :--------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Admin**   | Dashboard, Sales, Purchase, Inventory, Accounts, User Management | Create, view, and edit sales; create/edit/delete purchases; create/edit/delete customers, suppliers, and expenses; create/edit/archive/restore products; manage all user accounts and assign `admin`, `manager`, or `staff` roles (protected against removing or demoting the last active Admin). |
+| **Manager** | Dashboard, Sales, Purchase, Inventory, Accounts, User Management | Create, view, and edit sales, purchases, and inventory products; manage customers, suppliers, and expenses; view accounts analytics; manage user accounts.                                                                                                                                        |
+| **Staff**   | Dashboard, Sales, Inventory (read-only)                          | View Dashboard metrics, Inventory catalog, and Customer records; create POS sales and view/record payments only on sales they created (`created_by = auth.uid()`). No access to Purchases, Accounts, Suppliers, Expenses, or User Management.                                                     |
 
 ---
 
@@ -57,17 +57,17 @@ Access control is enforced both in the frontend (`apps/web/src/utils/permissions
 
 ## 5. Technology Stack
 
-| Technology | Purpose |
-| :--- | :--- |
-| **React 19** | Component-based frontend UI |
-| **TypeScript 6** | Static typing across components, services, and database models |
-| **Vite 8** | Frontend build tool and local development server |
-| **Styled Components 6** | Component-level styling and responsive theming |
-| **Lucide React** | UI iconography |
-| **Supabase (`@supabase/supabase-js`)** | PostgreSQL database client, authentication, and RPC execution |
-| **PostgreSQL + Supabase Auth** | Relational storage, authentication, Row Level Security (RLS), triggers, and PL/pgSQL RPCs |
-| **pnpm 10** | Monorepo workspace package management |
-| **ESLint 10** | Static code linting and React Hooks checks |
+| Technology                             | Purpose                                                                                   |
+| :------------------------------------- | :---------------------------------------------------------------------------------------- |
+| **React 19**                           | Component-based frontend UI                                                               |
+| **TypeScript 6**                       | Static typing across components, services, and database models                            |
+| **Vite 8**                             | Frontend build tool and local development server                                          |
+| **Styled Components 6**                | Component-level styling and responsive theming                                            |
+| **Lucide React**                       | UI iconography                                                                            |
+| **Supabase (`@supabase/supabase-js`)** | PostgreSQL database client, authentication, and RPC execution                             |
+| **PostgreSQL + Supabase Auth**         | Relational storage, authentication, Row Level Security (RLS), triggers, and PL/pgSQL RPCs |
+| **pnpm 10**                            | Monorepo workspace package management                                                     |
+| **ESLint 10**                          | Static code linting and React Hooks checks                                                |
 
 ---
 
@@ -105,20 +105,20 @@ StockWise/
 
 StockWise runs on **Supabase PostgreSQL** with **Supabase Auth**, **Row Level Security (RLS)** enabled on all **12 core ERP tables**, database triggers (such as role escalation protection and product hard-delete prevention), and atomic `SECURITY DEFINER` **RPC functions** (`create_product_with_opening_stock`, `receive_purchase_goods_transaction`, `process_sale_transaction`, `update_sale_payment_transaction`, `upsert_user_profile`).
 
-| Table | Responsibility |
-| :--- | :--- |
-| `profiles` | Extended user profile metadata (`full_name`, `email`, `phone`, `role`, `is_active`) linked 1:1 to `auth.users` |
-| `categories` | Product classification groups |
-| `products` | Hardware catalog, SKU/barcode, cost & selling prices, stock quantity, minimum threshold, and archive status |
-| `customers` | Customer directory and receivable balances |
-| `suppliers` | Vendor directory and payable balances |
-| `purchases` | Purchase order headers, supplier links, totals, fulfillment status, and payment status |
-| `purchase_items` | Line items (product, quantity, unit cost, subtotal) belonging to a purchase order |
-| `sales` | POS invoice headers, optional customer link, totals, discounts, tax, and order status |
-| `sale_items` | Line items (product, quantity, unit price, subtotal) belonging to a sale invoice |
-| `stock_movements` | Audit ledger of stock additions, deductions, and adjustments with before/after quantities |
-| `payments` | Monetary receipts and disbursements tied to sales, purchases, customers, or suppliers |
-| `expenses` | Store operating expenditures by category, date, and payment method |
+| Table             | Responsibility                                                                                                 |
+| :---------------- | :------------------------------------------------------------------------------------------------------------- |
+| `profiles`        | Extended user profile metadata (`full_name`, `email`, `phone`, `role`, `is_active`) linked 1:1 to `auth.users` |
+| `categories`      | Product classification groups                                                                                  |
+| `products`        | Hardware catalog, SKU/barcode, cost & selling prices, stock quantity, minimum threshold, and archive status    |
+| `customers`       | Customer directory and receivable balances                                                                     |
+| `suppliers`       | Vendor directory and payable balances                                                                          |
+| `purchases`       | Purchase order headers, supplier links, totals, fulfillment status, and payment status                         |
+| `purchase_items`  | Line items (product, quantity, unit cost, subtotal) belonging to a purchase order                              |
+| `sales`           | POS invoice headers, optional customer link, totals, discounts, tax, and order status                          |
+| `sale_items`      | Line items (product, quantity, unit price, subtotal) belonging to a sale invoice                               |
+| `stock_movements` | Audit ledger of stock additions, deductions, and adjustments with before/after quantities                      |
+| `payments`        | Monetary receipts and disbursements tied to sales, purchases, customers, or suppliers                          |
+| `expenses`        | Store operating expenditures by category, date, and payment method                                             |
 
 For full schema details and relationships, see [`docs/database-schema.md`](docs/database-schema.md).
 
@@ -127,6 +127,7 @@ For full schema details and relationships, see [`docs/database-schema.md`](docs/
 ## 8. Installation & Setup
 
 ### Prerequisites
+
 - **Node.js** (LTS recommended)
 - **pnpm** (`10.x`)
 - A configured **Supabase** project with the 12 ERP tables and SQL migrations in `supabase/migrations/` applied
@@ -134,23 +135,27 @@ For full schema details and relationships, see [`docs/database-schema.md`](docs/
 ### Setup Steps
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/FarjanaAkterLaila/StockWise.git
    cd StockWise
    ```
 
 2. **Install dependencies**
+
    ```bash
    pnpm install
    ```
 
 3. **Configure environment variables**
    Copy `apps/web/.env.example` to `apps/web/.env` and fill in your Supabase project credentials:
+
    ```bash
    cp apps/web/.env.example apps/web/.env
    ```
 
 4. **Run the development server**
+
    ```bash
    pnpm dev
    ```
@@ -161,6 +166,7 @@ For full schema details and relationships, see [`docs/database-schema.md`](docs/
    ```
 
 Other available root scripts:
+
 - `pnpm lint` — Runs ESLint across the web application
 - `pnpm preview` — Previews the production Vite build locally
 
