@@ -200,8 +200,6 @@ export const APP_STRINGS = {
   emptySalesTitle: "No Sales Invoices Found",
   emptySalesDesc:
     "No sales records match your current filters. Clear the filter settings or record a new sales receipt.",
-  deleteSaleTitle: "Delete Sales Invoice?",
-  deleteSaleConfirm: "Delete Invoice",
   createSale: "Complete & Print Invoice",
   saveSale: "Update Invoice",
 

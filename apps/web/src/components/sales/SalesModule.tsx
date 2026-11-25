@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import type { Sale } from "@/types";
-import { fetchSales, createSale, updateSale, deleteSale } from "@/services/sales.service";
+import { fetchSales, createSale, updateSale } from "@/services/sales.service";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { DEFAULT_VALUES, APP_STRINGS } from "@/utils/constants";
@@ -12,7 +12,6 @@ import { SaleModal } from "./SaleModal";
 import { SalesViewModal } from "./SalesViewModal";
 import { Plus } from "lucide-react";
 import { GenericLoader } from "@/components/common/GenericLoader";
-import { GenericModal } from "@/components/common/GenericModal";
 import {
   SalesContainer,
   TopActionHeader,
@@ -28,7 +27,6 @@ export const SalesModule: React.FC = () => {
   const { showSuccess, showError } = useToast();
   const canCreate = hasPermission(user?.role, "sales", "create");
   const canEdit = hasPermission(user?.role, "sales", "edit");
-  const canDelete = hasPermission(user?.role, "sales", "delete");
   const isStaff = normalizeRole(user?.role) === "staff";
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +41,6 @@ export const SalesModule: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [viewingSale, setViewingSale] = useState<Sale | null>(null);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
-  const [deletingSale, setDeletingSale] = useState<Sale | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -195,31 +192,6 @@ export const SalesModule: React.FC = () => {
     }
   };
 
-  const handleConfirmDelete = async () => {
-    if (!deletingSale) return;
-    if (!canDelete) {
-      showError("Access Denied", "You do not have permission to delete sales.");
-      setDeletingSale(null);
-      return;
-    }
-    const invNumber = deletingSale.invoiceNumber;
-    const id = deletingSale.id;
-    try {
-      await deleteSale(id);
-      setSales((prev) => prev.filter((s) => s.id !== id));
-      setDeletingSale(null);
-      showSuccess(
-        "Sale Deleted",
-        `Invoice #${invNumber} removed and stock restored.`,
-      );
-    } catch (err: unknown) {
-      showError(
-        "Delete Failed",
-        (err as Error).message || "Failed to delete sale from database.",
-      );
-    }
-  };
-
   return (
     <SalesContainer>
       <TopActionHeader>
@@ -271,7 +243,6 @@ export const SalesModule: React.FC = () => {
             onResetFilters={handleResetFilters}
             onView={(s: Sale) => setViewingSale(s)}
             onEdit={canEdit ? (s: Sale) => setEditingSale(s) : undefined}
-            onDelete={canDelete ? (s: Sale) => setDeletingSale(s) : undefined}
           />
         </>
       )}
@@ -303,19 +274,6 @@ export const SalesModule: React.FC = () => {
         />
       )}
 
-      {deletingSale && (
-        <GenericModal
-          isOpen={Boolean(deletingSale)}
-          onClose={() => setDeletingSale(null)}
-          variant="danger"
-          size="sm"
-          title="Delete Sales Invoice"
-          message={`Are you sure you want to delete invoice #${deletingSale.invoiceNumber}? This will restore product stock.`}
-          confirmText="Delete Invoice"
-          cancelText={APP_STRINGS.cancel}
-          onConfirm={handleConfirmDelete}
-        />
-      )}
     </SalesContainer>
   );
 };

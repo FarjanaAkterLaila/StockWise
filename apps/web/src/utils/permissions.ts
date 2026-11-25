@@ -19,7 +19,7 @@ type ModulePermissions = Partial<Record<PermissionAction, boolean>>;
 const PERMISSION_MATRIX: Record<AppRole, Record<AppModule, ModulePermissions>> = {
   admin: {
     dashboard: { view: true },
-    sales: { view: true, create: true, edit: true, delete: true },
+    sales: { view: true, create: true, edit: true, delete: false },
     purchase: { view: true, create: true, edit: true, delete: true },
     inventory: { view: true, create: true, edit: true, delete: true },
     accounts: { view: true, manage: true },

@@ -12,7 +12,6 @@ interface SalesTableProps {
   onResetFilters: () => void;
   onView: (sale: Sale) => void;
   onEdit?: (sale: Sale) => void;
-  onDelete?: (sale: Sale) => void;
 }
 
 const SALES_COLUMNS: TableColumn[] = [
@@ -33,7 +32,6 @@ export const SalesTable: React.FC<SalesTableProps> = ({
   onResetFilters,
   onView,
   onEdit,
-  onDelete,
 }) => {
   return (
     <DataTable
@@ -53,7 +51,6 @@ export const SalesTable: React.FC<SalesTableProps> = ({
           sale={sale}
           onView={onView}
           onEdit={onEdit}
-          onDelete={onDelete}
         />
       ))}
     </DataTable>

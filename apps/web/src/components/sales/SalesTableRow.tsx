@@ -2,7 +2,7 @@ import React from "react";
 import type { Sale } from "@/types";
 import { Badge } from "@/components/common/Badge";
 import { BADGE_VARIANTS, UI_SIZES } from "@/utils/constants";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { formatSaleDate } from "@/utils/sale.utils";
 import {
@@ -29,14 +29,12 @@ interface SalesTableRowProps {
   sale: Sale;
   onView: (sale: Sale) => void;
   onEdit?: (sale: Sale) => void;
-  onDelete?: (sale: Sale) => void;
 }
 
 export const SalesTableRow: React.FC<SalesTableRowProps> = ({
   sale,
   onView,
   onEdit,
-  onDelete,
 }) => {
   const totalItemCount = sale.items.reduce((acc, i) => acc + i.quantity, 0);
   const itemsSummary = sale.items
@@ -145,16 +143,6 @@ export const SalesTableRow: React.FC<SalesTableRowProps> = ({
               type="button"
             >
               <Pencil size={15} />
-            </ActionBtn>
-          )}
-          {onDelete && (
-            <ActionBtn
-              $variant="delete"
-              onClick={() => onDelete(sale)}
-              title={`Delete Invoice ${sale.invoiceNumber}`}
-              type="button"
-            >
-              <Trash2 size={15} />
             </ActionBtn>
           )}
         </ActionButtonsGroup>
