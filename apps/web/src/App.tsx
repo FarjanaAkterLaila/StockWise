@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { NavModule, LowStockProduct } from "@/types";
 import { NAV_MODULES } from "@/utils/constants";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -28,14 +28,33 @@ function MainERP() {
   const [activeModule, setActiveModule] = useState<NavModule>(
     getInitialModuleFromUrl,
   );
+  const previousUserId = useRef<string | null>(null);
+
+  useEffect(() => {
+    const userId = isAuthenticated ? user?.id ?? null : null;
+    if (userId !== previousUserId.current) {
+      previousUserId.current = userId;
+      setActiveModule(NAV_MODULES.DASHBOARD);
+      if (window.location.pathname !== "/") {
+        window.history.replaceState(null, "", "/");
+      }
+    }
+  }, [isAuthenticated, user?.id]);
 
   const handleSelectModule = useCallback((module: NavModule) => {
+    if (!canAccessModule(user?.role, module)) {
+      setActiveModule(NAV_MODULES.DASHBOARD);
+      if (window.location.pathname !== "/") {
+        window.history.replaceState(null, "", "/");
+      }
+      return;
+    }
     setActiveModule(module);
     const nextPath = module === NAV_MODULES.DASHBOARD ? "/" : `/${module}`;
     if (window.location.pathname !== nextPath) {
       window.history.replaceState(null, "", nextPath);
     }
-  }, []);
+  }, [user?.role]);
 
   const handleQuickSale = () => {
     if (canAccessModule(user?.role, NAV_MODULES.SALES)) {

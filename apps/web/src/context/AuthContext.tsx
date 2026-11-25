@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { normalizeRole, type AppRole } from "@/utils/permissions";
 
@@ -28,6 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const authRequestId = useRef(0);
 
   const fetchUserProfile = async (
     userId: string,
@@ -78,23 +79,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const initAuth = async () => {
+      const requestId = ++authRequestId.current;
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
+        if (requestId !== authRequestId.current) return;
         if (session?.user) {
-          setToken(session.access_token);
           const authUser = await fetchUserProfile(
             session.user.id,
             session.user.email || "",
             session.user.user_metadata?.full_name,
           );
+          if (requestId !== authRequestId.current) return;
+          setToken(session.access_token);
           setUser(authUser);
         } else {
           setUser(null);
           setToken(null);
         }
       } catch (err) {
+        if (requestId !== authRequestId.current) return;
         if ((err as Error)?.message === "ACCOUNT_DEACTIVATED") {
           await supabase.auth.signOut().catch(() => {});
         } else {
@@ -103,7 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setUser(null);
         setToken(null);
       } finally {
-        setLoading(false);
+        if (requestId === authRequestId.current) setLoading(false);
       }
     };
 
@@ -112,6 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const requestId = ++authRequestId.current;
       if (session?.user) {
         try {
           const authUser = await fetchUserProfile(
@@ -119,18 +125,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             session.user.email || "",
             session.user.user_metadata?.full_name,
           );
+          if (requestId !== authRequestId.current) return;
           setToken(session.access_token);
           setUser(authUser);
         } catch {
+          if (requestId !== authRequestId.current) return;
           await supabase.auth.signOut().catch(() => {});
           setUser(null);
           setToken(null);
         }
       } else {
+        if (requestId !== authRequestId.current) return;
         setUser(null);
         setToken(null);
       }
-      setLoading(false);
+      if (requestId === authRequestId.current) setLoading(false);
     });
 
     return () => {
@@ -147,15 +156,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       throw new Error(error.message);
     }
     if (data.session && data.user) {
+      const requestId = ++authRequestId.current;
       try {
         const authUser = await fetchUserProfile(
           data.user.id,
           data.user.email || email,
           data.user.user_metadata?.full_name,
         );
+        if (requestId !== authRequestId.current) return;
         setToken(data.session.access_token);
         setUser(authUser);
       } catch (err) {
+        if (requestId !== authRequestId.current) return;
         if ((err as Error)?.message === "ACCOUNT_DEACTIVATED") {
           await supabase.auth.signOut().catch(() => {});
           setUser(null);
@@ -183,17 +195,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       throw new Error(error.message);
     }
     if (data.session && data.user) {
-      setToken(data.session.access_token);
+      const requestId = ++authRequestId.current;
       const authUser = await fetchUserProfile(
         data.user.id,
         data.user.email || email,
         fullName,
       );
+      if (requestId !== authRequestId.current) return;
+      setToken(data.session.access_token);
       setUser(authUser);
     }
   };
 
   const logout = async () => {
+    ++authRequestId.current;
     try {
       await supabase.auth.signOut();
     } finally {
