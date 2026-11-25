@@ -29,17 +29,31 @@ function MainERP() {
     getInitialModuleFromUrl,
   );
   const previousUserId = useRef<string | null>(null);
+  const hasResolvedInitialAuth = useRef(false);
 
   useEffect(() => {
+    if (loading) return;
+
     const userId = isAuthenticated ? user?.id ?? null : null;
-    if (userId !== previousUserId.current) {
+    if (!hasResolvedInitialAuth.current) {
       previousUserId.current = userId;
-      setActiveModule(NAV_MODULES.DASHBOARD);
-      if (window.location.pathname !== "/") {
-        window.history.replaceState(null, "", "/");
+      hasResolvedInitialAuth.current = true;
+      return;
+    }
+
+    if (userId !== previousUserId.current) {
+      const previousUserIdValue = previousUserId.current;
+      previousUserId.current = userId;
+      // Preserve a deep link during initial auth and login. Logout and direct
+      // account switches still clear the previous user's route.
+      if (userId === null || previousUserIdValue !== null) {
+        setActiveModule(NAV_MODULES.DASHBOARD);
+        if (window.location.pathname !== "/") {
+          window.history.replaceState(null, "", "/");
+        }
       }
     }
-  }, [isAuthenticated, user?.id]);
+  }, [loading, isAuthenticated, user?.id]);
 
   const handleSelectModule = useCallback((module: NavModule) => {
     if (!canAccessModule(user?.role, module)) {

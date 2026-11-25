@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { Fragment, useState, useMemo, useEffect, useRef } from "react";
 import type { Sale, PaymentMethod, Customer, Product, CustomerType } from "@/types";
 import { fetchCustomers } from "@/services/customers.service";
 import { fetchProducts, isProductSelectable } from "@/services/products.service";
@@ -48,7 +48,7 @@ interface SaleModalProps {
     newPaymentAmount?: number;
     paymentDate?: string;
     paymentReferenceNumber?: string;
-  }) => void;
+  }) => Promise<void> | void;
   initialSale?: Sale | null;
 }
 
@@ -71,6 +71,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   const [paymentDate, setPaymentDate] = useState(() => initialSale?.paymentDate || "");
   const paymentReferenceNumber = useRef<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -249,8 +250,9 @@ export const SaleModal: React.FC<SaleModalProps> = ({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     const valErrors = validateSaleForm(formData);
     const additionalPayment = isEditing
       ? (newPaymentAmount.trim() ? Number(newPaymentAmount) : 0)
@@ -269,6 +271,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
       return;
     }
 
+    setErrors({});
     if (isEditing && additionalPayment > 0 && !paymentReferenceNumber.current) {
       paymentReferenceNumber.current = `PAY-SAL-${crypto.randomUUID()}`;
     }
@@ -277,39 +280,47 @@ export const SaleModal: React.FC<SaleModalProps> = ({
       calculations;
     const paymentStatus = determinePaymentStatus(paidAmount, totalAmount);
 
-    onSave({
-      ...(initialSale ? { id: initialSale.id } : {}),
-      invoiceNumber: formData.invoiceNumber.trim(),
-      customerId: formData.customerId,
-      customerName: formData.customerName.trim(),
-      customerType: formData.customerType,
-      customerPhone: formData.customerPhone?.trim() || undefined,
-      date: formData.date,
-      time: formatTime(initialSale?.time),
-      items: formData.items.map((i) => ({
-        id: i.id,
-        productId: i.productId,
-        productName: i.productName,
-        sku: i.sku,
-        quantity: parseInt(i.quantity, 10),
-        unitPrice: parseFloat(i.unitPrice),
-        subtotal:
-          (parseInt(i.quantity, 10) || 0) * (parseFloat(i.unitPrice) || 0),
-      })),
-      subtotal,
-      discountAmount: discount,
-      taxAmount: tax,
-      totalAmount,
-      paidAmount,
-      newPaymentAmount: isEditing ? additionalPayment : undefined,
-      paymentDate: isEditing ? paymentDate : undefined,
-      paymentReferenceNumber: isEditing ? (paymentReferenceNumber.current || undefined) : undefined,
-      dueAmount,
-      paymentStatus,
-      paymentMethod: formData.paymentMethod,
-      status: formData.status,
-      notes: formData.notes?.trim() || undefined,
-    });
+    setIsSubmitting(true);
+    try {
+      await onSave({
+        ...(initialSale ? { id: initialSale.id } : {}),
+        invoiceNumber: formData.invoiceNumber.trim(),
+        customerId: formData.customerId,
+        customerName: formData.customerName.trim(),
+        customerType: formData.customerType,
+        customerPhone: formData.customerPhone?.trim() || undefined,
+        date: formData.date,
+        time: formatTime(initialSale?.time),
+        items: formData.items.map((i) => {
+          const qty = parseInt(i.quantity, 10);
+          const unitPrice = parseFloat(i.unitPrice);
+          return {
+            id: i.id,
+            productId: i.productId,
+            productName: i.productName,
+            sku: i.sku,
+            quantity: qty,
+            unitPrice,
+            subtotal: Math.round((qty || 0) * (unitPrice || 0) * 100) / 100,
+          };
+        }),
+        subtotal,
+        discountAmount: discount,
+        taxAmount: tax,
+        totalAmount,
+        paidAmount,
+        newPaymentAmount: isEditing ? additionalPayment : undefined,
+        paymentDate: isEditing ? paymentDate : undefined,
+        paymentReferenceNumber: isEditing ? (paymentReferenceNumber.current || undefined) : undefined,
+        dueAmount,
+        paymentStatus,
+        paymentMethod: formData.paymentMethod,
+        status: formData.status,
+        notes: formData.notes?.trim() || undefined,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -328,7 +339,14 @@ export const SaleModal: React.FC<SaleModalProps> = ({
           : "Create a computer shop sales invoice and POS receipt (BDT)"
       }
       onSubmit={handleSubmit}
-      submitText={isEditing ? APP_STRINGS.saveSale : APP_STRINGS.createSale}
+      isSubmitting={isSubmitting}
+      submitText={
+        isSubmitting
+          ? "Saving..."
+          : isEditing
+            ? APP_STRINGS.saveSale
+            : APP_STRINGS.createSale
+      }
       cancelText={APP_STRINGS.cancel}
     >
       <FormRow $cols="1.2fr 1fr 1fr">
@@ -425,52 +443,59 @@ export const SaleModal: React.FC<SaleModalProps> = ({
           const lineSub =
             (parseFloat(item.quantity) || 0) *
             (parseFloat(item.unitPrice) || 0);
+          const itemError =
+            errors[`item_${idx}_product`] ||
+            errors[`item_${idx}_qty`] ||
+            errors[`item_${idx}_price`];
           return (
-            <ItemLineRow key={item.id}>
-              <CustomSelect
-                fullWidth
-                value={item.productId}
-                onChange={(val) => handleItemProductChange(idx, val)}
-                placeholder={item.productName ? `${item.productName} [${item.sku || 'Product'}]` : "Select hardware component..."}
-                options={productOptions}
-              />
-              <FormInput
-                type="number"
-                min="1"
-                placeholder="Qty"
-                value={item.quantity}
-                onChange={(e) =>
-                  handleItemFieldChange(
-                    idx,
-                    SALE_ITEM_FIELDS.QUANTITY,
-                    e.target.value,
-                  )
-                }
-              />
-              <FormInput
-                type="number"
-                step="1"
-                min="0"
-                placeholder="Price"
-                value={item.unitPrice}
-                onChange={(e) =>
-                  handleItemFieldChange(
-                    idx,
-                    SALE_ITEM_FIELDS.UNIT_PRICE,
-                    e.target.value,
-                  )
-                }
-              />
-              <ItemLineTotal>{formatCurrency(lineSub)}</ItemLineTotal>
-              <RemoveItemBtn
-                type="button"
-                disabled={formData.items.length <= 1}
-                onClick={() => handleRemoveItem(idx)}
-                aria-label="Remove item"
-              >
-                <Trash2 size={13} />
-              </RemoveItemBtn>
-            </ItemLineRow>
+            <Fragment key={item.id}>
+              <ItemLineRow>
+                <CustomSelect
+                  fullWidth
+                  value={item.productId}
+                  onChange={(val) => handleItemProductChange(idx, val)}
+                  placeholder={item.productName ? `${item.productName} [${item.sku || 'Product'}]` : "Select hardware component..."}
+                  options={productOptions}
+                />
+                <FormInput
+                  type="number"
+                  min="1"
+                  placeholder="Qty"
+                  value={item.quantity}
+                  onChange={(e) =>
+                    handleItemFieldChange(
+                      idx,
+                      SALE_ITEM_FIELDS.QUANTITY,
+                      e.target.value,
+                    )
+                  }
+                />
+                <FormInput
+                  type="number"
+                  step="1"
+                  min="0"
+                  placeholder="Price"
+                  value={item.unitPrice}
+                  onChange={(e) =>
+                    handleItemFieldChange(
+                      idx,
+                      SALE_ITEM_FIELDS.UNIT_PRICE,
+                      e.target.value,
+                    )
+                  }
+                />
+                <ItemLineTotal>{formatCurrency(lineSub)}</ItemLineTotal>
+                <RemoveItemBtn
+                  type="button"
+                  disabled={formData.items.length <= 1}
+                  onClick={() => handleRemoveItem(idx)}
+                  aria-label="Remove item"
+                >
+                  <Trash2 size={13} />
+                </RemoveItemBtn>
+              </ItemLineRow>
+              {itemError && <FormError>{itemError}</FormError>}
+            </Fragment>
           );
         })}
       </ItemLinesSection>

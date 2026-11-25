@@ -126,8 +126,19 @@ export const SalesModule: React.FC = () => {
       }
       try {
         await updateSale(saleData.id, {
+          items: saleData.items.map((item) => ({
+            id: item.id,
+            productId: item.productId,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            subtotal: item.subtotal,
+          })),
           notes: saleData.notes,
+          subtotal: saleData.subtotal,
+          discountAmount: saleData.discountAmount,
+          taxAmount: saleData.taxAmount,
           totalAmount: saleData.totalAmount,
+          paidAmount: saleData.paidAmount,
           newPaymentAmount: saleData.newPaymentAmount || 0,
           paymentMethod: saleData.paymentMethod,
           paymentDate: saleData.paymentDate,
@@ -136,6 +147,11 @@ export const SalesModule: React.FC = () => {
         });
         const updated = await fetchSales();
         setSales(updated);
+        if (viewingSale && viewingSale.id === saleData.id) {
+          setViewingSale(
+            updated.find((item) => item.id === saleData.id) || null,
+          );
+        }
         setEditingSale(null);
         showSuccess("Sale Updated", "Invoice details updated successfully.");
       } catch (err: unknown) {
@@ -175,13 +191,10 @@ export const SalesModule: React.FC = () => {
           user?.id,
         );
 
+        const updated = await fetchSales();
+        setSales(updated);
         setIsCreateModalOpen(false);
         showSuccess("Sale Completed", "Invoice created successfully.");
-
-        // Fetch fresh sales list
-        fetchSales()
-          .then((updated) => setSales(updated))
-          .catch(() => { });
       } catch (err: unknown) {
         showError(
           "Transaction Failed",

@@ -71,7 +71,18 @@ export interface CreateSaleInput {
 }
 
 export interface UpdateSaleInput {
+  items: Array<{
+    id?: string;
+    productId: string;
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+  }>;
+  subtotal?: number;
+  discountAmount?: number;
+  taxAmount?: number;
   totalAmount: number;
+  paidAmount?: number;
   newPaymentAmount: number;
   paymentMethod: string;
   paymentDate?: string;
@@ -391,32 +402,455 @@ export const createSale = async (
   return data;
 };
 
+const normalizeRpcPaymentMethod = (rawMethod: string): string => {
+  const method = rawMethod.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (method === "card") return "card";
+  if (method === "bank_transfer" || method === "bank") return "bank_transfer";
+  if (method === "mfs" || method === "mobile_money" || method === "mobile") {
+    return "mobile_money";
+  }
+  if (method === "cheque") return "cheque";
+  return "cash";
+};
+
+const isMissingRpcWithItemsError = (error: {
+  code?: string;
+  message?: string;
+}): boolean => {
+  const msg = error.message || "";
+  return (
+    (error.code === "PGRST202" ||
+      msg.includes("Could not find the function")) &&
+    msg.includes("update_sale_payment_transaction") &&
+    msg.includes("p_items")
+  );
+};
+
+const insertStockMovementResilient = async (payload: {
+  productId: string;
+  movementType: "stock_in" | "stock_out";
+  quantity: number;
+  previousStock: number;
+  currentStock: number;
+  referenceId: string;
+  notes: string;
+  createdBy?: string | null;
+}) => {
+  const baseRow: Record<string, unknown> = {
+    product_id: payload.productId,
+    type: payload.movementType,
+    movement_type: payload.movementType,
+    quantity: payload.quantity,
+    previous_stock: payload.previousStock,
+    current_stock: payload.currentStock,
+    reference_id: payload.referenceId,
+    reference_type: "sale",
+    notes: payload.notes,
+    created_by: payload.createdBy || null,
+  };
+
+  let { error } = await supabase.from("stock_movements").insert(baseRow);
+  while (error && error.message.includes("Could not find the '")) {
+    const match = error.message.match(/Could not find the '([^']+)' column/);
+    if (match && match[1] && match[1] in baseRow) {
+      delete baseRow[match[1]];
+      const retry = await supabase.from("stock_movements").insert(baseRow);
+      error = retry.error;
+    } else {
+      break;
+    }
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+};
+
+const extractNonWritableColumn = (message: string): string | null => {
+  const missingMatch = message.match(/Could not find the '([^']+)' column/);
+  if (missingMatch?.[1]) return missingMatch[1];
+
+  const defaultOnlyMatch = message.match(
+    /column "([^"]+)" can only be updated to DEFAULT/i,
+  );
+  if (defaultOnlyMatch?.[1]) return defaultOnlyMatch[1];
+
+  const nonDefaultInsertMatch = message.match(
+    /cannot insert a non-DEFAULT value into column "([^"]+)"/i,
+  );
+  if (nonDefaultInsertMatch?.[1]) return nonDefaultInsertMatch[1];
+
+  return null;
+};
+
+const syncSaleSummaryColumns = async (
+  saleId: string,
+  summary: {
+    discountAmount: number;
+    taxAmount: number;
+  },
+) => {
+  // Never send generated/read-only columns like subtotal or total_amount here;
+  // subtotal/discount/tax metadata is also preserved in sales.notes <!--META:...-->.
+  const payload: Record<string, unknown> = {
+    discount_amount: summary.discountAmount,
+    tax_amount: summary.taxAmount,
+    updated_at: new Date().toISOString(),
+  };
+
+  let { error } = await supabase.from("sales").update(payload).eq("id", saleId);
+  while (error) {
+    const colToStrip = extractNonWritableColumn(error.message || "");
+    if (colToStrip && colToStrip in payload) {
+      delete payload[colToStrip];
+      if (Object.keys(payload).length === 0) return;
+      const retry = await supabase.from("sales").update(payload).eq("id", saleId);
+      error = retry.error;
+    } else {
+      break;
+    }
+  }
+};
+
+const reconcileSaleItemsRows = async (
+  saleId: string,
+  items: UpdateSaleInput["items"],
+  existingRows: Array<Record<string, unknown>>,
+) => {
+  const existingIds = new Set(existingRows.map((row) => String(row.id)));
+  const keptIds: string[] = [];
+
+  for (const item of items) {
+    const qty = Math.trunc(Number(item.quantity));
+    const unitPrice = Number(item.unitPrice) || 0;
+    const subtotal =
+      Number.isFinite(Number(item.subtotal))
+        ? Math.round(Number(item.subtotal) * 100) / 100
+        : Math.round(qty * unitPrice * 100) / 100;
+    const trimmedId = isUuid(item.id) ? item.id!.trim() : "";
+
+    if (trimmedId && existingIds.has(trimmedId)) {
+      const updatePayload: Record<string, unknown> = {
+        product_id: item.productId,
+        quantity: qty,
+        unit_price: unitPrice,
+        subtotal,
+      };
+      let { error: updErr } = await supabase
+        .from("sale_items")
+        .update(updatePayload)
+        .eq("id", trimmedId)
+        .eq("sale_id", saleId);
+      while (updErr) {
+        const colToStrip = extractNonWritableColumn(updErr.message || "");
+        if (colToStrip && colToStrip in updatePayload) {
+          delete updatePayload[colToStrip];
+          const retry = await supabase
+            .from("sale_items")
+            .update(updatePayload)
+            .eq("id", trimmedId)
+            .eq("sale_id", saleId);
+          updErr = retry.error;
+        } else {
+          break;
+        }
+      }
+      if (updErr) throw new Error(updErr.message);
+      keptIds.push(trimmedId);
+    } else {
+      const insertPayload: Record<string, unknown> = {
+        sale_id: saleId,
+        product_id: item.productId,
+        quantity: qty,
+        unit_price: unitPrice,
+        subtotal,
+      };
+      let { data: inserted, error: insErr } = await supabase
+        .from("sale_items")
+        .insert(insertPayload)
+        .select("id")
+        .single();
+      while (insErr) {
+        const colToStrip = extractNonWritableColumn(insErr.message || "");
+        if (colToStrip && colToStrip in insertPayload) {
+          delete insertPayload[colToStrip];
+          const retry = await supabase
+            .from("sale_items")
+            .insert(insertPayload)
+            .select("id")
+            .single();
+          inserted = retry.data;
+          insErr = retry.error;
+        } else {
+          break;
+        }
+      }
+      if (insErr) throw new Error(insErr.message);
+      if (inserted?.id) keptIds.push(String(inserted.id));
+    }
+  }
+
+  const removedIds = Array.from(existingIds).filter(
+    (existingId) => !keptIds.includes(existingId),
+  );
+  if (removedIds.length > 0) {
+    const { error: delErr } = await supabase
+      .from("sale_items")
+      .delete()
+      .eq("sale_id", saleId)
+      .in("id", removedIds);
+    if (delErr) throw new Error(delErr.message);
+  }
+};
+
 export const updateSale = async (
   id: string,
   updates: UpdateSaleInput,
 ): Promise<void> => {
-  const newPaymentAmount = Number(updates.newPaymentAmount);
+  if (!updates.items || updates.items.length === 0) {
+    throw new Error("Sale edits must include at least one item.");
+  }
+
+  for (const item of updates.items) {
+    const qty = Number(item.quantity);
+    if (!item.productId || !Number.isInteger(qty) || qty < 1) {
+      throw new Error(
+        "Each sale item requires a product and a positive integer quantity.",
+      );
+    }
+    if (!Number.isFinite(Number(item.unitPrice)) || Number(item.unitPrice) < 0) {
+      throw new Error("Sale item unit price cannot be negative.");
+    }
+  }
+
+  const newPaymentAmount = Number(updates.newPaymentAmount) || 0;
   const referenceNumber = updates.referenceNumber || "";
   if (newPaymentAmount > 0 && !referenceNumber) {
     throw new Error("A payment reference is required to safely record the new payment.");
   }
-  const method = updates.paymentMethod.trim().toLowerCase().replace(/[\s-]+/g, "_");
-  const paymentMethod = method === "card"
-    ? "card"
-    : method === "bank_transfer" || method === "bank"
-      ? "bank_transfer"
-      : method === "mfs" || method === "mobile_money" || method === "mobile"
-        ? "mobile_money"
-        : "cash";
+
+  const paymentMethod = normalizeRpcPaymentMethod(updates.paymentMethod || "Cash");
+  const paymentDate = updates.paymentDate || new Date().toISOString().slice(0, 10);
+  const normalizedStatus = (updates.status || "completed").trim().toLowerCase();
+
+  const normalizedItems = updates.items.map((item) => {
+    const qty = Math.trunc(Number(item.quantity));
+    const unitPrice = Number(item.unitPrice) || 0;
+    const subtotal =
+      Number.isFinite(Number(item.subtotal))
+        ? Math.round(Number(item.subtotal) * 100) / 100
+        : Math.round(qty * unitPrice * 100) / 100;
+    return {
+      id: isUuid(item.id) ? item.id!.trim() : null,
+      product_id: item.productId,
+      quantity: qty,
+      unit_price: unitPrice,
+      subtotal,
+    };
+  });
+
+  const itemsSubtotal = normalizedItems.reduce(
+    (sum, item) => sum + item.subtotal,
+    0,
+  );
+  const actualSubtotal =
+    Number(updates.subtotal) > 0 ? Number(updates.subtotal) : itemsSubtotal;
+  const discountAmount = Number(updates.discountAmount) || 0;
+  const taxAmount = Number(updates.taxAmount) || 0;
+  const paidAmount = Number(updates.paidAmount) || 0;
+
+  const metaTag = `<!--META:${JSON.stringify({
+    subtotal: actualSubtotal,
+    discountAmount,
+    taxAmount,
+    paidAmount,
+  })}-->`;
+  const cleanNotes = updates.notes?.replace(/<!--META:.*?-->/g, "").trim();
+  const combinedNotes = cleanNotes ? `${cleanNotes}\n${metaTag}` : metaTag;
+
   const { error } = await supabase.rpc("update_sale_payment_transaction", {
     p_sale_id: id,
+    p_items: normalizedItems,
     p_total_amount: Number(updates.totalAmount),
     p_new_payment_amount: newPaymentAmount,
     p_payment_method: paymentMethod,
-    p_payment_date: updates.paymentDate || new Date().toISOString().slice(0, 10),
+    p_payment_date: paymentDate,
     p_reference_number: referenceNumber,
-    p_notes: updates.notes || null,
-    p_status: (updates.status || "completed").trim().toLowerCase(),
+    p_notes: combinedNotes,
+    p_status: normalizedStatus,
   });
-  if (error) throw new Error(error.message);
+
+  if (!error) {
+    await syncSaleSummaryColumns(id, {
+      discountAmount,
+      taxAmount,
+    });
+    return;
+  }
+
+  if (!isMissingRpcWithItemsError(error)) {
+    throw new Error(error.message);
+  }
+
+  // Fallback for live databases running the 8-parameter update_sale_payment_transaction RPC
+  const [saleRes, existingItemsRes] = await Promise.all([
+    supabase
+      .from("sales")
+      .select("id, invoice_number, status, created_by")
+      .eq("id", id)
+      .single(),
+    supabase.from("sale_items").select("*").eq("sale_id", id),
+  ]);
+
+  if (saleRes.error || !saleRes.data) {
+    throw new Error(saleRes.error?.message || "Sale record was not found.");
+  }
+  if (existingItemsRes.error) {
+    throw new Error(existingItemsRes.error.message);
+  }
+
+  const existingRows = (existingItemsRes.data || []) as Array<
+    Record<string, unknown>
+  >;
+  const oldStatus = String(saleRes.data.status || "completed")
+    .trim()
+    .toLowerCase();
+
+  const oldQtyByProduct = new Map<string, number>();
+  for (const row of existingRows) {
+    const pid = String(row.product_id || "");
+    const qty = readNumericField(row, "quantity", "qty") || 0;
+    if (pid) {
+      oldQtyByProduct.set(pid, (oldQtyByProduct.get(pid) ?? 0) + qty);
+    }
+  }
+
+  const newQtyByProduct = new Map<string, number>();
+  for (const item of normalizedItems) {
+    newQtyByProduct.set(
+      item.product_id,
+      (newQtyByProduct.get(item.product_id) ?? 0) + item.quantity,
+    );
+  }
+
+  const allProductIds = Array.from(
+    new Set([...oldQtyByProduct.keys(), ...newQtyByProduct.keys()]),
+  );
+  const stockDeltas = allProductIds
+    .map((productId) => ({
+      productId,
+      delta:
+        (oldQtyByProduct.get(productId) ?? 0) -
+        (newQtyByProduct.get(productId) ?? 0),
+    }))
+    .filter((entry) => entry.delta !== 0);
+
+  if (oldStatus === "completed" && normalizedStatus === "completed" && stockDeltas.length > 0) {
+    const { data: productRows, error: prodFetchErr } = await supabase
+      .from("products")
+      .select("id, name, quantity")
+      .in(
+        "id",
+        stockDeltas.map((d) => d.productId),
+      );
+    if (prodFetchErr) throw new Error(prodFetchErr.message);
+
+    const productMap = new Map(
+      (productRows || []).map((p) => [String(p.id), p]),
+    );
+    for (const { productId, delta } of stockDeltas) {
+      const prod = productMap.get(productId);
+      if (!prod) {
+        throw new Error(`Product with ID ${productId} was not found.`);
+      }
+      const currentQty = Number(prod.quantity) || 0;
+      if (delta < 0 && currentQty < Math.abs(delta)) {
+        throw new Error(
+          `Insufficient stock for ${prod.name}. Available: ${currentQty}, Additional quantity requested: ${Math.abs(delta)}.`,
+        );
+      }
+    }
+  }
+
+  if (oldStatus !== "completed" && normalizedStatus === "completed") {
+    await reconcileSaleItemsRows(id, updates.items, existingRows);
+    const { error: rpc8Err } = await supabase.rpc(
+      "update_sale_payment_transaction",
+      {
+        p_sale_id: id,
+        p_total_amount: Number(updates.totalAmount),
+        p_new_payment_amount: newPaymentAmount,
+        p_payment_method: paymentMethod,
+        p_payment_date: paymentDate,
+        p_reference_number: referenceNumber,
+        p_notes: combinedNotes,
+        p_status: normalizedStatus,
+      },
+    );
+    if (rpc8Err) throw new Error(rpc8Err.message);
+  } else {
+    const { error: rpc8Err } = await supabase.rpc(
+      "update_sale_payment_transaction",
+      {
+        p_sale_id: id,
+        p_total_amount: Number(updates.totalAmount),
+        p_new_payment_amount: newPaymentAmount,
+        p_payment_method: paymentMethod,
+        p_payment_date: paymentDate,
+        p_reference_number: referenceNumber,
+        p_notes: combinedNotes,
+        p_status: normalizedStatus,
+      },
+    );
+    if (rpc8Err) throw new Error(rpc8Err.message);
+
+    await reconcileSaleItemsRows(id, updates.items, existingRows);
+
+    if (oldStatus === "completed" && normalizedStatus === "completed") {
+      for (const { productId, delta } of stockDeltas) {
+        const { data: prod, error: prodErr } = await supabase
+          .from("products")
+          .select("id, name, quantity")
+          .eq("id", productId)
+          .single();
+        if (prodErr || !prod) {
+          throw new Error(
+            prodErr?.message || `Product with ID ${productId} was not found.`,
+          );
+        }
+
+        const currentStock = Number(prod.quantity) || 0;
+        const nextStock = currentStock + delta;
+        if (nextStock < 0) {
+          throw new Error(
+            `Insufficient stock for ${prod.name}. Available: ${currentStock}, Additional quantity requested: ${Math.abs(delta)}.`,
+          );
+        }
+
+        const { error: updProdErr } = await supabase
+          .from("products")
+          .update({
+            quantity: nextStock,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", productId);
+        if (updProdErr) throw new Error(updProdErr.message);
+
+        await insertStockMovementResilient({
+          productId,
+          movementType: delta > 0 ? "stock_in" : "stock_out",
+          quantity: Math.abs(delta),
+          previousStock: currentStock,
+          currentStock: nextStock,
+          referenceId: id,
+          notes: `Sale quantity updated for invoice #${saleRes.data.invoice_number}`,
+          createdBy: saleRes.data.created_by,
+        });
+      }
+    }
+  }
+
+  await syncSaleSummaryColumns(id, {
+    discountAmount,
+    taxAmount,
+  });
 };
