@@ -353,7 +353,7 @@ export const createSale = async (
     ? `${saleData.notes.trim()}\n${metaTag}`
     : metaTag;
 
-  // 3. Execute through PostgreSQL RPC function for atomic stock validation & deduction
+  // 3. Execute through PostgreSQL RPC function (single authoritative atomic mechanism)
   const { data, error } = await supabase.rpc("process_sale_transaction", {
     p_invoice_number: invoiceNumber,
     p_customer_id: resolvedCustomerId || null,
@@ -363,179 +363,26 @@ export const createSale = async (
     p_total_amount: Number(saleData.totalAmount) || 0,
     p_paid_amount: Number(saleData.paidAmount) || 0,
     p_payment_method: saleData.paymentMethod || "Cash",
-    p_status: saleData.status || "completed",
+    p_status: (saleData.status || "completed").trim().toLowerCase(),
     p_notes: combinedNotes,
     p_user_id: userId || null,
     p_items: normalizedItems,
   });
 
-  // 4. Resilient Fallback: If RPC function is not installed or raises execution error, run direct transactional flow
   if (error) {
-    if (
-      error.message.includes("function") ||
-      error.message.includes("does not exist") ||
-      error.message.includes("Could not find the function")
-    ) {
-      console.warn("RPC process_sale_transaction unavailable, executing direct fallback:", error.message);
+    const isMissingRpcError =
+      error.code === "PGRST202" ||
+      error.code === "42883" ||
+      error.message.includes("Could not find the function") ||
+      /function\s+(?:public\.)?process_sale_transaction.*does not exist/i.test(
+        error.message,
+      );
 
-      const isCompleted = (saleData.status || "completed").toLowerCase() === "completed";
-
-      // Check stock before sale
-      if (isCompleted) {
-        for (const item of saleData.items) {
-          const { data: prod } = await supabase
-            .from("products")
-            .select("quantity, name")
-            .eq("id", item.productId)
-            .maybeSingle();
-
-          if (prod && (prod.quantity || 0) < item.quantity) {
-            throw new Error(
-              `Insufficient stock for "${prod.name}". Available: ${prod.quantity || 0}, Requested: ${item.quantity}`,
-            );
-          }
-        }
-      }
-
-      const salePayload: Record<string, unknown> = {
-        invoice_number: invoiceNumber,
-        customer_id: resolvedCustomerId || null,
-        sale_date: new Date().toISOString(),
-        subtotal: actualSubtotal,
-        discount_amount: Number(saleData.discountAmount) || 0,
-        tax_amount: Number(saleData.taxAmount) || 0,
-        total_amount: Number(saleData.totalAmount) || 0,
-        status: saleData.status || "completed",
-        notes: combinedNotes,
-      };
-      if (userId) salePayload.created_by = userId;
-
-      let { data: newSale, error: saleErr } = await supabase
-        .from("sales")
-        .insert(salePayload)
-        .select()
-        .single();
-
-      while (saleErr && saleErr.message.includes("Could not find the '")) {
-        const match = saleErr.message.match(/Could not find the '([^']+)' column/);
-        if (match && match[1] && match[1] in salePayload) {
-          delete salePayload[match[1]];
-          const retry = await supabase
-            .from("sales")
-            .insert(salePayload)
-            .select()
-            .single();
-          newSale = retry.data;
-          saleErr = retry.error;
-        } else {
-          break;
-        }
-      }
-
-      if (saleErr || !newSale) {
-        throw new Error(saleErr?.message || "Failed to record sale.");
-      }
-
-      // Insert sale items with resilience for generated columns
-      let itemsToInsert: Record<string, unknown>[] = saleData.items.map((i) => ({
-        sale_id: newSale.id,
-        product_id: i.productId,
-        quantity: Number(i.quantity) || 1,
-        unit_price: Number(i.unitPrice) || 0,
-        subtotal:
-          Number(i.subtotal) || (Number(i.quantity) || 1) * (Number(i.unitPrice) || 0),
-      }));
-
-      let { error: itemsErr } = await supabase
-        .from("sale_items")
-        .insert(itemsToInsert);
-
-      while (
-        itemsErr &&
-        (itemsErr.message.includes("Could not find the '") ||
-          itemsErr.message.includes("cannot insert a non-DEFAULT value into column"))
-      ) {
-        let colToStrip: string | null = null;
-        const missingMatch = itemsErr.message.match(/Could not find the '([^']+)' column/);
-        const genMatch = itemsErr.message.match(/cannot insert a non-DEFAULT value into column "([^"]+)"/);
-        if (missingMatch && missingMatch[1]) {
-          colToStrip = missingMatch[1];
-        } else if (genMatch && genMatch[1]) {
-          colToStrip = genMatch[1];
-        }
-
-        if (colToStrip) {
-          itemsToInsert = itemsToInsert.map((item) => {
-            const copy = { ...item };
-            delete copy[colToStrip!];
-            return copy;
-          });
-          const retry = await supabase.from("sale_items").insert(itemsToInsert);
-          itemsErr = retry.error;
-        } else {
-          break;
-        }
-      }
-
-      if (itemsErr) throw new Error(itemsErr.message);
-
-      // Deduct stock if completed
-      if (isCompleted) {
-        for (const item of saleData.items) {
-          const { data: prod } = await supabase
-            .from("products")
-            .select("quantity")
-            .eq("id", item.productId)
-            .maybeSingle();
-
-          if (prod) {
-            const currentQty = Number(prod.quantity) || 0;
-            const newQty = Math.max(0, currentQty - Number(item.quantity));
-            await supabase
-              .from("products")
-              .update({ quantity: newQty, updated_at: new Date().toISOString() })
-              .eq("id", item.productId);
-
-            await supabase.from("stock_movements").insert({
-              product_id: item.productId,
-              type: "sale",
-              quantity: -Number(item.quantity),
-              previous_stock: currentQty,
-              current_stock: newQty,
-              reference_id: newSale.id,
-              notes: `POS Sale invoice #${invoiceNumber}`,
-            });
-          }
-        }
-      }
-
-      // Record payment if paid_amount > 0
-      if (Number(saleData.paidAmount) > 0) {
-        const paymentPayload: Record<string, unknown> = {
-          payment_type: "received",
-          sale_id: newSale.id,
-          purchase_id: null,
-          amount: Number(saleData.paidAmount),
-          payment_date: new Date().toISOString().slice(0, 10),
-          payment_method: "cash",
-          notes: `Payment for invoice #${invoiceNumber}`,
-        };
-        if (userId) paymentPayload.created_by = userId;
-
-        let { error: payErr } = await supabase.from("payments").insert(paymentPayload);
-        while (payErr && payErr.message.includes("Could not find the '")) {
-          const match = payErr.message.match(/Could not find the '([^']+)' column/);
-          if (match && match[1] && match[1] in paymentPayload) {
-            delete paymentPayload[match[1]];
-            const retry = await supabase.from("payments").insert(paymentPayload);
-            payErr = retry.error;
-          } else {
-            break;
-          }
-        }
-      }
-
-      return newSale;
+    if (isMissingRpcError) {
+      throw new Error(
+        `Sale could not be completed because the atomic database RPC process_sale_transaction is unavailable (${error.message}). Apply the database migrations and reload schema cache.`,
+        { cause: error },
+      );
     }
 
     throw new Error(error.message);
@@ -569,63 +416,94 @@ export const updateSale = async (
     p_payment_date: updates.paymentDate || new Date().toISOString().slice(0, 10),
     p_reference_number: referenceNumber,
     p_notes: updates.notes || null,
-    p_status: updates.status || "completed",
+    p_status: (updates.status || "completed").trim().toLowerCase(),
   });
   if (error) throw new Error(error.message);
 };
 
 export const deleteSale = async (id: string): Promise<void> => {
   // 1. Fetch sale details to check status and invoice number
-  const { data: sale } = await supabase
+  const { data: sale, error: saleFetchErr } = await supabase
     .from("sales")
     .select("id, status, invoice_number")
     .eq("id", id)
     .maybeSingle();
 
+  if (saleFetchErr) throw new Error(saleFetchErr.message);
   if (!sale) return;
 
-  // 2. If status was completed, restore product stock
+  // 2. If status was completed, restore aggregated product stock
   if (sale.status?.toLowerCase() === "completed") {
-    const { data: items } = await supabase
+    const { data: items, error: itemsFetchErr } = await supabase
       .from("sale_items")
       .select("product_id, quantity")
       .eq("sale_id", id);
 
+    if (itemsFetchErr) throw new Error(itemsFetchErr.message);
+
     if (items && items.length > 0) {
+      const qtyByProduct = new Map<string, number>();
       for (const item of items) {
-        const { data: prod } = await supabase
+        qtyByProduct.set(
+          item.product_id,
+          (qtyByProduct.get(item.product_id) || 0) + (Number(item.quantity) || 0),
+        );
+      }
+
+      for (const [productId, totalQty] of qtyByProduct.entries()) {
+        const { data: prod, error: prodErr } = await supabase
           .from("products")
           .select("quantity")
-          .eq("id", item.product_id)
+          .eq("id", productId)
           .maybeSingle();
 
+        if (prodErr) throw new Error(prodErr.message);
         if (prod) {
           const currentStock = Number(prod.quantity) || 0;
-          const restoredStock = currentStock + Number(item.quantity);
-          await supabase
+          const restoredStock = currentStock + totalQty;
+          const { error: updateErr } = await supabase
             .from("products")
             .update({ quantity: restoredStock, updated_at: new Date().toISOString() })
-            .eq("id", item.product_id);
+            .eq("id", productId);
+          if (updateErr) {
+            throw new Error(`Failed to restore stock for deleted sale: ${updateErr.message}`);
+          }
 
-          await supabase.from("stock_movements").insert({
-            product_id: item.product_id,
-            type: "return",
-            quantity: Number(item.quantity),
+          const movePayload: Record<string, unknown> = {
+            product_id: productId,
+            movement_type: "stock_in",
+            quantity: totalQty,
             previous_stock: currentStock,
             current_stock: restoredStock,
             reference_id: id,
             notes: `Stock returned from deleted sale #${sale.invoice_number}`,
-          });
+          };
+          let { error: moveErr } = await supabase.from("stock_movements").insert(movePayload);
+          while (moveErr && moveErr.message.includes("Could not find the '")) {
+            const match = moveErr.message.match(/Could not find the '([^']+)' column/);
+            if (match?.[1] && match[1] in movePayload) {
+              delete movePayload[match[1]];
+              const retry = await supabase.from("stock_movements").insert(movePayload);
+              moveErr = retry.error;
+            } else {
+              break;
+            }
+          }
+          if (moveErr) {
+            throw new Error(`Failed to record stock return: ${moveErr.message}`);
+          }
         }
       }
     }
   }
 
   // 3. Delete payments linked to this sale
-  await supabase.from("payments").delete().eq("sale_id", id);
+  const { error: delPayErr } = await supabase.from("payments").delete().eq("sale_id", id);
+  if (delPayErr) throw new Error(delPayErr.message);
 
   // 4. Delete sale line items
-  await supabase.from("sale_items").delete().eq("sale_id", id);
+  const { error: delItemsErr } = await supabase.from("sale_items").delete().eq("sale_id", id);
+  if (delItemsErr) throw new Error(delItemsErr.message);
 
   // 5. Delete sale record
   const { error } = await supabase.from("sales").delete().eq("id", id);

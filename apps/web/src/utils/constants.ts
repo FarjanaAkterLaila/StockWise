@@ -53,7 +53,24 @@ export const STOCK_STATUS = {
 export const PRODUCT_STATUS = {
   ACTIVE: "active",
   INACTIVE: "inactive",
+  ARCHIVED: "archived",
 } as const;
+
+export const PRODUCT_STATUS_FILTER = {
+  ACTIVE_CATALOG: "active_catalog",
+  ACTIVE: "active",
+  INACTIVE: "inactive",
+  ARCHIVED: "archived",
+  ALL: "all",
+} as const;
+
+export const PRODUCT_STATUS_FILTER_OPTIONS = [
+  { value: PRODUCT_STATUS_FILTER.ACTIVE_CATALOG, label: "Catalog (Active & Inactive)" },
+  { value: PRODUCT_STATUS_FILTER.ACTIVE, label: "Active Only" },
+  { value: PRODUCT_STATUS_FILTER.INACTIVE, label: "Inactive Only" },
+  { value: PRODUCT_STATUS_FILTER.ARCHIVED, label: "Archived Products" },
+  { value: PRODUCT_STATUS_FILTER.ALL, label: "All Products" },
+] as const;
 
 export const PAYMENT_STATUS = {
   ALL: "all",

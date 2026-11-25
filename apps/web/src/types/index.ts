@@ -15,7 +15,7 @@ export interface UserAccount {
   createdAt: string;
 }
 
-export type ProductStatus = "active" | "inactive";
+export type ProductStatus = "active" | "inactive" | "archived";
 
 export type BadgeVariant =
   "success" | "warning" | "danger" | "info" | "neutral" | "primary";

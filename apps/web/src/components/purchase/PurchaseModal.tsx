@@ -7,7 +7,7 @@ import type {
   Product,
 } from "@/types";
 import { fetchSuppliers } from "@/services/suppliers.service";
-import { fetchProducts } from "@/services/products.service";
+import { fetchProducts, isProductSelectable } from "@/services/products.service";
 import { PAYMENT_METHODS, APP_STRINGS } from "@/utils/constants";
 import {
   validatePurchaseForm,
@@ -180,7 +180,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
   }, [suppliers, formData.supplierId, formData.supplierName]);
 
   const productOptions = useMemo(() => {
-    const list = products.map((p) => ({
+    const list = products.filter(isProductSelectable).map((p) => ({
       value: p.id,
       label: `${p.name} [${p.sku || "No SKU"}] - Cost: ৳${p.costPrice.toLocaleString()}`,
     }));

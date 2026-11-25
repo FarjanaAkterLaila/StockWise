@@ -2,7 +2,7 @@ import React from "react";
 import type { Product } from "@/types";
 import { Badge } from "@/components/common/Badge";
 import { PRODUCT_STATUS, BADGE_VARIANTS, UI_SIZES } from "@/utils/constants";
-import { Pencil, Trash2, XCircle } from "lucide-react";
+import { Archive, Pencil, RotateCcw, XCircle } from "lucide-react";
 import {
   formatCurrency,
   calculateMargin,
@@ -34,21 +34,22 @@ import {
 interface InventoryTableRowProps {
   product: Product;
   onEdit?: (product: Product) => void;
-  onDelete?: (product: Product) => void;
+  onArchive?: (product: Product) => void;
+  onRestore?: (product: Product) => void;
 }
 
 export const InventoryTableRow: React.FC<InventoryTableRowProps> = ({
   product,
   onEdit,
-  onDelete,
+  onArchive,
+  onRestore,
 }) => {
-  const isOutOfStock = product.stockQuantity === 0;
-  const isLowStock =
-    product.stockQuantity <= product.minStockLevel && !isOutOfStock;
-  const percentage = calculateStockPercentage(
-    product.stockQuantity,
-    product.minStockLevel,
-  );
+  const currentStock = Math.max(0, Number(product.stockQuantity) || 0);
+  const reorderLevel = Math.max(0, Number(product.minStockLevel) || 0);
+  const isOutOfStock = currentStock === 0;
+  const isLowStock = !isOutOfStock && currentStock <= reorderLevel;
+  const stockHealth = isOutOfStock ? "out" : isLowStock ? "low" : "healthy";
+  const percentage = calculateStockPercentage(currentStock, reorderLevel);
   const marginPercent = calculateMargin(
     product.sellingPrice,
     product.costPrice,
@@ -87,15 +88,15 @@ export const InventoryTableRow: React.FC<InventoryTableRowProps> = ({
       <TableCell>
         <StockProgressWrap>
           <StockCountRow>
-            <QuantityText $isLow={isLowStock || isOutOfStock}>
-              {product.stockQuantity} {product.unit}
+            <QuantityText $stockHealth={stockHealth}>
+              {currentStock} {product.unit}
             </QuantityText>
-            <MinThreshold>Min: {product.minStockLevel}</MinThreshold>
+            <MinThreshold>Min: {reorderLevel}</MinThreshold>
           </StockCountRow>
-          <ProgressBarTrack>
+          <ProgressBarTrack $stockHealth={stockHealth}>
             <ProgressBarFill
               $percentage={percentage}
-              $isLow={isLowStock || isOutOfStock}
+              $stockHealth={stockHealth}
             />
           </ProgressBarTrack>
         </StockProgressWrap>
@@ -122,6 +123,14 @@ export const InventoryTableRow: React.FC<InventoryTableRowProps> = ({
           <Badge variant={BADGE_VARIANTS.NEUTRAL} size={UI_SIZES.SM}>
             Active
           </Badge>
+        ) : product.status === PRODUCT_STATUS.ARCHIVED ? (
+          <Badge variant={BADGE_VARIANTS.WARNING} size={UI_SIZES.SM}>
+            <Archive
+              size={10}
+              style={{ display: "inline", marginRight: "3px" }}
+            />
+            Archived
+          </Badge>
         ) : (
           <Badge variant={BADGE_VARIANTS.DANGER} size={UI_SIZES.SM}>
             <XCircle
@@ -145,16 +154,27 @@ export const InventoryTableRow: React.FC<InventoryTableRowProps> = ({
               <Pencil size={15} />
             </ActionBtn>
           )}
-          {onDelete && (
-            <ActionBtn
-              $variant="delete"
-              onClick={() => onDelete(product)}
-              title={`Delete ${product.name}`}
-              type="button"
-            >
-              <Trash2 size={15} />
-            </ActionBtn>
-          )}
+          {product.status === PRODUCT_STATUS.ARCHIVED
+            ? onRestore && (
+                <ActionBtn
+                  $variant="view"
+                  onClick={() => onRestore(product)}
+                  title={`Restore ${product.name}`}
+                  type="button"
+                >
+                  <RotateCcw size={15} />
+                </ActionBtn>
+              )
+            : onArchive && (
+                <ActionBtn
+                  $variant="view"
+                  onClick={() => onArchive(product)}
+                  title={`Archive ${product.name}`}
+                  type="button"
+                >
+                  <Archive size={15} />
+                </ActionBtn>
+              )}
         </ActionButtonsGroup>
       </TableCell>
     </TableRow>

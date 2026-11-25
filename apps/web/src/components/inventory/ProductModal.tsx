@@ -260,6 +260,15 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 label: "Inactive (Discontinued / Hidden)",
                 dotColor: theme.colors.textMuted,
               },
+              ...(initialProduct
+                ? [
+                    {
+                      value: PRODUCT_STATUS.ARCHIVED,
+                      label: "Archived (Preserved for History Only)",
+                      dotColor: theme.colors.warning,
+                    },
+                  ]
+                : []),
             ]}
           />
         </FormGroup>

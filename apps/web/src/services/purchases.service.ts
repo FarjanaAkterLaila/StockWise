@@ -229,6 +229,15 @@ export const createPurchase = async (
   input: CreatePurchaseInput,
   userId?: string,
 ): Promise<Purchase> => {
+  if (!input.items || input.items.length === 0) {
+    throw new Error("Purchase order must include at least one item.");
+  }
+  for (const item of input.items) {
+    if (!item.productId || !item.productId.trim() || !(Number(item.quantity) > 0)) {
+      throw new Error("Every purchase item must specify a valid product and positive quantity.");
+    }
+  }
+
   let suppId = input.supplierId ? input.supplierId.trim() : "";
   const nameToUse = (input.supplierName || "").trim() || "Supplier";
 
@@ -343,7 +352,7 @@ export const createPurchase = async (
   const userNotes = (input.notes || "").replace(/<!--META:.*?-->/g, "").trim();
   const notesWithMeta = `${userNotes ? userNotes + " " : ""}<!--META:${JSON.stringify(metaObj)}-->`;
 
-  // 1. Insert Purchase (Stock is NOT increased on order creation)
+  // 1. Insert Purchase (Stock is only increased atomically via receivePurchaseGoods RPC)
   const purchasePayload: Record<string, unknown> = {
     purchase_number: purchaseNumber,
     supplier_id: suppId,
@@ -368,11 +377,10 @@ export const createPurchase = async (
     .select()
     .single();
 
-  // Resilience: If database check constraint purchases_status_check fails
-  if (poErr && poErr.message.includes("purchases_status_check")) {
-    const fallbackStatus =
-      purchasePayload.status === "ordered" ? "received" : "ordered";
-    purchasePayload.status = fallbackStatus;
+  // Never silently flip a pending/ordered PO to 'received' if check constraint fails;
+  // try 'pending' as non-received fallback if 'ordered' is rejected.
+  if (poErr && poErr.message.includes("purchases_status_check") && purchasePayload.status === "ordered") {
+    purchasePayload.status = "pending";
     const retry = await supabase
       .from("purchases")
       .insert(purchasePayload)
@@ -400,6 +408,12 @@ export const createPurchase = async (
 
   if (poErr || !po)
     throw new Error(poErr?.message || "Failed to create purchase order.");
+
+  const rollbackCreatedPurchase = async () => {
+    await supabase.from("payments").delete().eq("purchase_id", po.id);
+    await supabase.from("purchase_items").delete().eq("purchase_id", po.id);
+    await supabase.from("purchases").delete().eq("id", po.id);
+  };
 
   // 2. Insert items with robust column stripping & fallback (omit generated 'subtotal' column)
   let itemsToInsert: Record<string, unknown>[] = input.items.map((item) => {
@@ -471,6 +485,7 @@ export const createPurchase = async (
   }
 
   if (itemsErr) {
+    await rollbackCreatedPurchase();
     throw new Error(`Failed to save purchase items: ${itemsErr.message}`);
   }
 
@@ -507,22 +522,25 @@ export const createPurchase = async (
         break;
       }
     }
-    if (payRes.error) throw new Error(`Could not record purchase payment: ${payRes.error.message}`);
+    if (payRes.error) {
+      await rollbackCreatedPurchase();
+      throw new Error(`Could not record purchase payment: ${payRes.error.message}`);
+    }
   }
 
-  // 4. If goods were marked received at creation, invoke atomic RPC
+  // 4. If goods were marked received at creation, invoke authoritative atomic RPC;
+  //    never fake status = 'received' or leave an un-received PO on RPC failure.
   if (isReceived) {
-    if (po.status !== "received") {
-      try {
-        await receivePurchaseGoods(po.id, userId);
-      } catch (rcvErr: unknown) {
-        console.warn("Could not execute receivePurchaseGoods RPC:", rcvErr);
-        // Resilient fallback: set status directly so order is marked received
-        await supabase
-          .from("purchases")
-          .update({ status: "received" })
-          .eq("id", po.id);
-      }
+    try {
+      await receivePurchaseGoods(po.id, userId);
+    } catch (rcvErr: unknown) {
+      await rollbackCreatedPurchase();
+      const message =
+        rcvErr instanceof Error ? rcvErr.message : String(rcvErr);
+      throw new Error(
+        `Failed to receive purchase stock (${message}). Purchase order was not saved.`,
+        { cause: rcvErr },
+      );
     }
   }
 
@@ -568,7 +586,68 @@ export const updatePurchase = async (
     newPaymentAmount?: number;
     paymentReference?: string;
   },
+  userId?: string,
 ): Promise<void> => {
+  const { data: existingPurchase, error: existingErr } = await supabase
+    .from("purchases")
+    .select("id, status, total_amount")
+    .eq("id", id)
+    .single();
+  if (existingErr || !existingPurchase) {
+    throw new Error(existingErr?.message || "Purchase order not found.");
+  }
+
+  const previousStatus = (existingPurchase.status || "ordered").trim().toLowerCase();
+  const requestedStatus = input.status
+    ? input.status.trim().toLowerCase() === "pending"
+      ? "ordered"
+      : input.status.trim().toLowerCase()
+    : previousStatus;
+  const shouldReceiveGoodsNow =
+    previousStatus !== "received" && requestedStatus === "received";
+
+  if (previousStatus === "received" && requestedStatus !== "received") {
+    throw new Error(
+      `Cannot change a received purchase order status back to "${requestedStatus}". Delete or reverse it instead.`,
+    );
+  }
+
+  if (previousStatus === "received" && input.items && input.items.length > 0) {
+    const { data: currentItems, error: currentItemsErr } = await supabase
+      .from("purchase_items")
+      .select("product_id, quantity")
+      .eq("purchase_id", id);
+    if (currentItemsErr) {
+      throw new Error(`Could not verify received purchase items: ${currentItemsErr.message}`);
+    }
+
+    const aggregateMap = (rows: Array<{ product_id: string; quantity: number }>) => {
+      const m = new Map<string, number>();
+      for (const r of rows) {
+        m.set(r.product_id, (m.get(r.product_id) || 0) + (Number(r.quantity) || 0));
+      }
+      return m;
+    };
+
+    const existingMap = aggregateMap(
+      (currentItems || []) as Array<{ product_id: string; quantity: number }>,
+    );
+    const incomingMap = aggregateMap(
+      input.items
+        .filter((i) => i.productId && i.productId.trim())
+        .map((i) => ({ product_id: i.productId, quantity: Number(i.quantity) || 0 })),
+    );
+
+    const itemsChanged =
+      existingMap.size !== incomingMap.size ||
+      Array.from(existingMap.entries()).some(([pid, qty]) => incomingMap.get(pid) !== qty);
+    if (itemsChanged) {
+      throw new Error(
+        "Cannot modify products or quantities after a purchase order has already been received.",
+      );
+    }
+  }
+
   const payload: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
@@ -593,11 +672,9 @@ export const updatePurchase = async (
     payload.payment_method = input.paymentMethod;
   }
 
-  if (input.status) {
-    payload.status =
-      input.status.toLowerCase() === "pending"
-        ? "ordered"
-        : input.status.toLowerCase();
+  // Only receive_purchase_goods_transaction may transition status -> 'received'
+  if (input.status && !shouldReceiveGoodsNow) {
+    payload.status = requestedStatus;
   }
 
   // If supplierId was not provided or empty but supplierName was, resolve or create supplier
@@ -637,13 +714,9 @@ export const updatePurchase = async (
     (sum, payment) => sum + (Number(payment.amount) || 0),
     0,
   );
-  const existingPurchase = input.totalAmount === undefined
-    ? await supabase.from("purchases").select("total_amount").eq("id", id).single()
-    : null;
-  if (existingPurchase?.error) throw new Error(existingPurchase.error.message);
   const finalTotal = input.totalAmount !== undefined
     ? Number(input.totalAmount)
-    : Number(existingPurchase?.data?.total_amount) || 0;
+    : Number(existingPurchase.total_amount) || 0;
   const newPayment = input.newPaymentAmount === undefined ? 0 : Number(input.newPaymentAmount);
   const remainingBeforePayment = Math.max(0, finalTotal - previouslyPaid);
   if (!Number.isFinite(newPayment) || newPayment < 0 || newPayment > remainingBeforePayment) {
@@ -680,13 +753,20 @@ export const updatePurchase = async (
 
   if (error) throw new Error(error.message);
 
-  // If line items were provided, synchronize purchase_items
-  if (input.items && input.items.length > 0) {
+  // Sync line items only while purchase has not yet been received;
+  // already-received purchases keep immutable received quantities unless unchanged.
+  if (input.items && input.items.length > 0 && previousStatus !== "received") {
     const validItems = input.items.filter(
       (item) => item.productId && item.productId.trim(),
     );
     if (validItems.length > 0) {
-      await supabase.from("purchase_items").delete().eq("purchase_id", id);
+      const { error: delItemsErr } = await supabase
+        .from("purchase_items")
+        .delete()
+        .eq("purchase_id", id);
+      if (delItemsErr) {
+        throw new Error(`Could not replace purchase items: ${delItemsErr.message}`);
+      }
 
       let itemsToInsert: Record<string, unknown>[] = validItems.map((item) => {
         const qty = Number(item.quantity) || 1;
@@ -756,7 +836,7 @@ export const updatePurchase = async (
       }
 
       if (itemsErr) {
-        console.warn("Could not save purchase items on update:", itemsErr.message);
+        throw new Error(`Could not save updated purchase items: ${itemsErr.message}`);
       }
     }
   }
@@ -848,60 +928,98 @@ export const updatePurchase = async (
     summaryErr = (await supabase.from("purchases").update(summaryPayload).eq("id", id)).error;
   }
   if (summaryErr) throw new Error(`Could not update purchase payment summary: ${summaryErr.message}`);
+
+  // If transitioning Pending/Ordered -> Received during edit, receive goods atomically via RPC
+  if (shouldReceiveGoodsNow) {
+    await receivePurchaseGoods(id, userId);
+  }
 };
 
 export const deletePurchase = async (id: string): Promise<void> => {
   // 1. Fetch purchase to see if goods were received
-  const { data: po } = await supabase
+  const { data: po, error: poFetchErr } = await supabase
     .from("purchases")
     .select("id, status, purchase_number")
     .eq("id", id)
     .maybeSingle();
 
+  if (poFetchErr) throw new Error(poFetchErr.message);
   if (!po) return;
 
-  // 2. If status was received, reverse stock additions safely
+  // 2. If status was received, reverse aggregated stock additions safely
   if (po.status?.toLowerCase() === "received") {
-    const { data: items } = await supabase
+    const { data: items, error: itemsFetchErr } = await supabase
       .from("purchase_items")
       .select("product_id, quantity")
       .eq("purchase_id", id);
 
+    if (itemsFetchErr) throw new Error(itemsFetchErr.message);
+
     if (items && items.length > 0) {
+      const qtyByProduct = new Map<string, number>();
       for (const item of items) {
-        const { data: prod } = await supabase
+        qtyByProduct.set(
+          item.product_id,
+          (qtyByProduct.get(item.product_id) || 0) + (Number(item.quantity) || 0),
+        );
+      }
+
+      for (const [productId, totalQty] of qtyByProduct.entries()) {
+        const { data: prod, error: prodErr } = await supabase
           .from("products")
           .select("quantity")
-          .eq("id", item.product_id)
+          .eq("id", productId)
           .maybeSingle();
 
+        if (prodErr) throw new Error(prodErr.message);
         if (prod) {
           const currentQty = Number(prod.quantity) || 0;
-          const newQty = Math.max(0, currentQty - Number(item.quantity));
-          await supabase
+          const newQty = Math.max(0, currentQty - totalQty);
+          const { error: updateErr } = await supabase
             .from("products")
             .update({ quantity: newQty, updated_at: new Date().toISOString() })
-            .eq("id", item.product_id);
+            .eq("id", productId);
+          if (updateErr) {
+            throw new Error(`Failed to reverse stock for deleted purchase: ${updateErr.message}`);
+          }
 
-          await supabase.from("stock_movements").insert({
-            product_id: item.product_id,
-            type: "adjustment",
-            quantity: -Number(item.quantity),
-            previous_stock: currentQty,
-            current_stock: newQty,
-            reference_id: id,
-            notes: `Stock reversal for deleted purchase #${po.purchase_number}`,
-          });
+          if (totalQty > 0) {
+            const movePayload: Record<string, unknown> = {
+              product_id: productId,
+              movement_type: "adjustment",
+              quantity: totalQty,
+              previous_stock: currentQty,
+              current_stock: newQty,
+              reference_id: id,
+              notes: `Stock reversal for deleted purchase #${po.purchase_number}`,
+            };
+            let { error: moveErr } = await supabase.from("stock_movements").insert(movePayload);
+            while (moveErr && moveErr.message.includes("Could not find the '")) {
+              const match = moveErr.message.match(/Could not find the '([^']+)' column/);
+              if (match?.[1] && match[1] in movePayload) {
+                delete movePayload[match[1]];
+                const retry = await supabase.from("stock_movements").insert(movePayload);
+                moveErr = retry.error;
+              } else {
+                break;
+              }
+            }
+            if (moveErr) {
+              throw new Error(`Failed to log stock reversal: ${moveErr.message}`);
+            }
+          }
         }
       }
     }
   }
 
   // 3. Delete payments linked to this purchase
-  await supabase.from("payments").delete().eq("purchase_id", id);
+  const { error: delPayErr } = await supabase.from("payments").delete().eq("purchase_id", id);
+  if (delPayErr) throw new Error(delPayErr.message);
 
   // 4. Delete purchase items
-  await supabase.from("purchase_items").delete().eq("purchase_id", id);
+  const { error: delItemsErr } = await supabase.from("purchase_items").delete().eq("purchase_id", id);
+  if (delItemsErr) throw new Error(delItemsErr.message);
 
   // 5. Delete purchase row
   const { error } = await supabase.from("purchases").delete().eq("id", id);

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import type { Sale, PaymentMethod, Customer, Product, CustomerType } from "@/types";
 import { fetchCustomers } from "@/services/customers.service";
-import { fetchProducts } from "@/services/products.service";
+import { fetchProducts, isProductSelectable } from "@/services/products.service";
 import { useAuth } from "@/context/AuthContext";
 import { hasPermission } from "@/utils/permissions";
 import { PAYMENT_METHODS, APP_STRINGS } from "@/utils/constants";
@@ -132,7 +132,7 @@ export const SaleModal: React.FC<SaleModalProps> = ({
   ]);
 
   const productOptions = useMemo(() => {
-    const list = products.map((p) => ({
+    const list = products.filter(isProductSelectable).map((p) => ({
       value: p.id,
       label: `${p.name} [${p.sku || "No SKU"}] (Stock: ${p.stockQuantity}) - ৳${p.sellingPrice.toLocaleString()}`,
     }));

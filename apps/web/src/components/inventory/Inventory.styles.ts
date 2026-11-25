@@ -401,10 +401,16 @@ export const StockCountRow = styled.div`
   font-size: 11.5px;
 `;
 
-export const QuantityText = styled.span<{ $isLow?: boolean }>`
+export type StockHealth = "healthy" | "low" | "out";
+
+export const QuantityText = styled.span<{ $stockHealth?: StockHealth }>`
   font-weight: 700;
-  color: ${({ $isLow, theme }) =>
-    $isLow ? theme.colors.danger : theme.colors.textPrimary};
+  color: ${({ $stockHealth, theme }) =>
+    $stockHealth === "out"
+      ? theme.colors.danger
+      : $stockHealth === "low"
+        ? theme.colors.warning
+        : theme.colors.textPrimary};
 `;
 
 export const MinThreshold = styled.span`
@@ -412,21 +418,32 @@ export const MinThreshold = styled.span`
   font-size: 10.5px;
 `;
 
-export const ProgressBarTrack = styled.div`
+export const ProgressBarTrack = styled.div<{ $stockHealth?: StockHealth }>`
   height: 5px;
   width: 100%;
-  background-color: ${({ theme }) => theme.colors.border};
+  background-color: ${({ $stockHealth, theme }) =>
+    $stockHealth === "out" ? theme.colors.dangerLightAlt : theme.colors.border};
+  box-shadow: ${({ $stockHealth, theme }) =>
+    $stockHealth === "out"
+      ? `inset 0 0 0 1px ${theme.colors.dangerBorder}`
+      : "none"};
   border-radius: 999px;
   overflow: hidden;
 `;
 
 export const ProgressBarFill = styled.div<{
   $percentage: number;
-  $isLow?: boolean;
+  $stockHealth?: StockHealth;
 }>`
   height: 100%;
-  width: ${({ $percentage }) => Math.min(Math.max($percentage, 5), 100)}%;
-  background-color: ${({ $isLow, theme }) =>
-    $isLow ? theme.colors.danger : theme.colors.success};
+  width: ${({ $percentage }) =>
+    $percentage <= 0 ? 0 : Math.min(Math.max($percentage, 5), 100)}%;
+  background-color: ${({ $stockHealth, theme }) =>
+    $stockHealth === "out"
+      ? theme.colors.danger
+      : $stockHealth === "low"
+        ? theme.colors.warning
+        : theme.colors.success};
   border-radius: 999px;
+  transition: width 0.25s ease, background-color 0.25s ease;
 `;

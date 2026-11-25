@@ -11,7 +11,8 @@ interface InventoryTableProps {
   hasActiveFilters: boolean;
   onResetFilters: () => void;
   onEdit?: (product: Product) => void;
-  onDelete?: (product: Product) => void;
+  onArchive?: (product: Product) => void;
+  onRestore?: (product: Product) => void;
 }
 
 const INVENTORY_COLUMNS: TableColumn[] = [
@@ -31,7 +32,8 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
   hasActiveFilters,
   onResetFilters,
   onEdit,
-  onDelete,
+  onArchive,
+  onRestore,
 }) => {
   return (
     <DataTable
@@ -50,7 +52,8 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
           key={product.id}
           product={product}
           onEdit={onEdit}
-          onDelete={onDelete}
+          onArchive={onArchive}
+          onRestore={onRestore}
         />
       ))}
     </DataTable>

@@ -22,11 +22,11 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
     <GenericModal
       isOpen={isOpen}
       onClose={onClose}
-      variant="danger"
+      variant="primary"
       size="sm"
-      title={APP_STRINGS.deleteTitle}
-      message={`Are you sure you want to remove "${product.name}" (${product.sku}) from the catalog? This action will permanently remove it from stock tracking.`}
-      confirmText={APP_STRINGS.deleteConfirm}
+      title="Archive Product?"
+      message={`Archive "${product.name}" (${product.sku || "No SKU"})? It will be hidden from new Sales and Purchases while preserving all historical transaction records, and can be restored anytime from the Archived filter.`}
+      confirmText="Archive Product"
       cancelText={APP_STRINGS.cancel}
       onConfirm={onConfirm}
     />

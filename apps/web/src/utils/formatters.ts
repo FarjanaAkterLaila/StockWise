@@ -82,8 +82,12 @@ export const calculateStockPercentage = (
   currentStock: number,
   minStock: number,
 ): number => {
-  if (minStock <= 0) return 100;
-  return Math.round((currentStock / minStock) * 100);
+  if (!Number.isFinite(currentStock) || currentStock <= 0) return 0;
+  if (!Number.isFinite(minStock) || minStock <= 0) return 100;
+  // Scale against 4x the reorder threshold so stock at the reorder level renders at 25%
+  // and reductions above the threshold (e.g. 4 -> 2 with min 1) visibly reduce bar width.
+  const healthyTarget = minStock * 4;
+  return Math.min(100, Math.max(0, Math.round((currentStock / healthyTarget) * 100)));
 };
 
 export const triggerPrintModal = (cleanupDelayMs = 2000): void => {

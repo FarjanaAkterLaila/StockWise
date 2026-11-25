@@ -3,6 +3,7 @@ import { Search, Filter, RotateCcw } from "lucide-react";
 import {
   HARDWARE_CATEGORIES,
   STOCK_FILTER_OPTIONS,
+  PRODUCT_STATUS_FILTER_OPTIONS,
   APP_STRINGS,
 } from "@/utils/constants";
 import { CustomSelect } from "@/components/common/CustomSelect";
@@ -22,6 +23,8 @@ interface InventoryFilterBarProps {
   onCategoryChange: (value: string) => void;
   selectedStockFilter: string;
   onStockFilterChange: (value: string) => void;
+  selectedStatusFilter: string;
+  onStatusFilterChange: (value: string) => void;
   hasActiveFilters: boolean;
   onResetFilters: () => void;
 }
@@ -33,6 +36,8 @@ export const InventoryFilterBar: React.FC<InventoryFilterBarProps> = ({
   onCategoryChange,
   selectedStockFilter,
   onStockFilterChange,
+  selectedStatusFilter,
+  onStatusFilterChange,
   hasActiveFilters,
   onResetFilters,
 }) => {
@@ -66,6 +71,16 @@ export const InventoryFilterBar: React.FC<InventoryFilterBarProps> = ({
             onChange={onStockFilterChange}
             ariaLabel="Filter hardware by stock level"
             options={STOCK_FILTER_OPTIONS.map((opt) => ({
+              value: opt.value,
+              label: opt.label,
+            }))}
+          />
+
+          <CustomSelect
+            value={selectedStatusFilter}
+            onChange={onStatusFilterChange}
+            ariaLabel="Filter hardware by catalog status"
+            options={PRODUCT_STATUS_FILTER_OPTIONS.map((opt) => ({
               value: opt.value,
               label: opt.label,
             }))}

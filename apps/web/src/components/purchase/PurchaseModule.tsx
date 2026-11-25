@@ -148,29 +148,33 @@ export const PurchaseModule: React.FC = () => {
           return false;
         }
         try {
-          await updatePurchase(purchaseData.id, {
-            purchaseNumber: purchaseData.purchaseNumber,
-            supplierId: purchaseData.supplierId,
-            supplierName: purchaseData.supplierName,
-            date: purchaseData.date,
-            paymentMethod: purchaseData.paymentMethod,
-            items: purchaseData.items.map((i) => ({
-              productId: i.productId,
-              productName: i.productName,
-              sku: i.sku,
-              quantity: i.quantity,
-              unitPrice: i.unitPrice,
-              subtotal: i.subtotal,
-            })),
-            notes: purchaseData.notes,
-            totalAmount: purchaseData.grandTotal,
-            newPaymentAmount: purchaseData.newPaymentAmount,
-            paymentReference: purchaseData.paymentReference,
-            discountAmount: purchaseData.discountAmount,
-            vatRate: purchaseData.vatRate,
-            vatAmount: purchaseData.vatAmount,
-            status: purchaseData.status,
-          });
+          await updatePurchase(
+            purchaseData.id,
+            {
+              purchaseNumber: purchaseData.purchaseNumber,
+              supplierId: purchaseData.supplierId,
+              supplierName: purchaseData.supplierName,
+              date: purchaseData.date,
+              paymentMethod: purchaseData.paymentMethod,
+              items: purchaseData.items.map((i) => ({
+                productId: i.productId,
+                productName: i.productName,
+                sku: i.sku,
+                quantity: i.quantity,
+                unitPrice: i.unitPrice,
+                subtotal: i.subtotal,
+              })),
+              notes: purchaseData.notes,
+              totalAmount: purchaseData.grandTotal,
+              newPaymentAmount: purchaseData.newPaymentAmount,
+              paymentReference: purchaseData.paymentReference,
+              discountAmount: purchaseData.discountAmount,
+              vatRate: purchaseData.vatRate,
+              vatAmount: purchaseData.vatAmount,
+              status: purchaseData.status,
+            },
+            user?.id,
+          );
           const updated = await fetchPurchases();
           setPurchases(updated);
           setEditingPurchase(null);

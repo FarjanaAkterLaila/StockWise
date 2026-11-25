@@ -6,6 +6,18 @@ interface ProductRowWithCategory extends ProductRow {
   categories: { id: string; name: string } | null;
 }
 
+const normalizeProductStatus = (status: unknown): ProductStatus => {
+  const normalized = String(status ?? "active").trim().toLowerCase();
+  if (normalized === "inactive" || normalized === "archived") {
+    return normalized;
+  }
+  return "active";
+};
+
+export const isProductSelectable = (
+  product: Pick<Product, "status">,
+): boolean => product.status === "active";
+
 export const fetchProducts = async (): Promise<Product[]> => {
   const { data, error } = await supabase
     .from("products")
@@ -29,7 +41,7 @@ export const fetchProducts = async (): Promise<Product[]> => {
     stockQuantity: Number(p.quantity) || 0,
     minStockLevel: Number(p.min_stock_level) || 5,
     unit: p.unit || "Pcs",
-    status: (p.status as ProductStatus) || "active",
+    status: normalizeProductStatus(p.status),
     description: "",
   }));
 };
@@ -71,62 +83,48 @@ export const createProduct = async (
 
   const sku =
     productData.sku?.trim() || `SKU-${Date.now().toString().slice(-6)}`;
+  const name = productData.name?.trim() || "Untitled Product";
+  const costPrice = Number(productData.costPrice) || 0;
+  const sellingPrice = Number(productData.sellingPrice) || 0;
+  const stockQuantity = Math.trunc(Number(productData.stockQuantity) || 0);
+  const minStockLevel = Math.trunc(
+    Number(productData.minStockLevel ?? 5),
+  );
+  const unit = productData.unit || "Pcs";
+  const status = normalizeProductStatus(productData.status);
 
-  const insertPayload: Record<string, unknown> = {
-    name: productData.name?.trim() || "Untitled Product",
-    sku,
-    category_id: categoryId,
-    purchase_price: Number(productData.costPrice) || 0,
-    cost_price: Number(productData.costPrice) || 0,
-    selling_price: Number(productData.sellingPrice) || 0,
-    quantity: Number(productData.stockQuantity) || 0,
-    min_stock_level: Number(productData.minStockLevel) || 5,
-    unit: productData.unit || "Pcs",
-    status: productData.status || "active",
-  };
-  if (productData.barcode && productData.barcode.trim()) {
-    insertPayload.barcode = productData.barcode.trim();
-  }
-
-  let { data, error } = await supabase
-    .from("products")
-    .insert(insertPayload)
-    .select("*, categories:category_id (id, name)")
-    .single();
-
-  // Dynamic resilience loop: strip any column that the database schema cache says is missing
-  while (error && error.message.includes("Could not find the '")) {
-    const match = error.message.match(/Could not find the '([^']+)' column/);
-    if (match && match[1] && match[1] in insertPayload) {
-      delete insertPayload[match[1]];
-      const retry = await supabase
-        .from("products")
-        .insert(insertPayload)
-        .select("*, categories:category_id (id, name)")
-        .single();
-      data = retry.data;
-      error = retry.error;
-    } else {
-      break;
-    }
-  }
+  const { data, error } = await supabase.rpc(
+    "create_product_with_opening_stock",
+    {
+      p_name: name,
+      p_sku: sku,
+      p_barcode: productData.barcode?.trim() || null,
+      p_category_id: categoryId,
+      p_cost_price: costPrice,
+      p_selling_price: sellingPrice,
+      p_stock_quantity: stockQuantity,
+      p_min_stock_level: minStockLevel,
+      p_unit: unit,
+      p_status: status,
+    },
+  );
 
   if (error) throw new Error(error.message);
 
-  const row = data as unknown as ProductRowWithCategory;
+  const created = (data || {}) as Record<string, unknown>;
 
   return {
-    id: row.id,
-    name: row.name,
-    sku: row.sku || "",
-    barcode: row.barcode || "",
-    category: row.categories?.name || productData.category || "General",
-    costPrice: Number(row.purchase_price) || 0,
-    sellingPrice: Number(row.selling_price) || 0,
-    stockQuantity: Number(row.quantity) || 0,
-    minStockLevel: Number(row.min_stock_level) || 5,
-    unit: row.unit || "Pcs",
-    status: (row.status as ProductStatus) || "active",
+    id: String(created.id || ""),
+    name: String(created.name || name),
+    sku: String(created.sku || sku),
+    barcode: String(created.barcode || productData.barcode?.trim() || ""),
+    category: productData.category?.trim() || "General",
+    costPrice: Number(created.costPrice ?? costPrice) || 0,
+    sellingPrice: Number(created.sellingPrice ?? sellingPrice) || 0,
+    stockQuantity: Number(created.stockQuantity ?? stockQuantity) || 0,
+    minStockLevel: Number(created.minStockLevel ?? minStockLevel) || 0,
+    unit: String(created.unit || unit),
+    status: normalizeProductStatus(created.status ?? status),
   };
 };
 
@@ -164,7 +162,11 @@ export const updateProduct = async (
   if (updates.minStockLevel !== undefined)
     payload.min_stock_level = Number(updates.minStockLevel);
   if (updates.unit !== undefined) payload.unit = updates.unit;
-  if (updates.status !== undefined) payload.status = updates.status;
+  if (updates.status !== undefined) {
+    payload.status = updates.status;
+    payload.archived_at =
+      updates.status === "archived" ? new Date().toISOString() : null;
+  }
 
   let { data, error } = await supabase
     .from("products")
@@ -206,11 +208,16 @@ export const updateProduct = async (
     stockQuantity: Number(row.quantity) || 0,
     minStockLevel: Number(row.min_stock_level) || 5,
     unit: row.unit || "Pcs",
-    status: (row.status as ProductStatus) || "active",
+    status: normalizeProductStatus(row.status),
   };
 };
 
-export const deleteProduct = async (id: string): Promise<void> => {
-  const { error } = await supabase.from("products").delete().eq("id", id);
-  if (error) throw new Error(error.message);
-};
+export const archiveProduct = async (id: string): Promise<Product> =>
+  updateProduct(id, { status: "archived" });
+
+export const restoreProduct = async (id: string): Promise<Product> =>
+  updateProduct(id, { status: "active" });
+
+// Soft-delete only: archive instead of permanently deleting product rows
+export const deleteProduct = async (id: string): Promise<Product> =>
+  archiveProduct(id);
